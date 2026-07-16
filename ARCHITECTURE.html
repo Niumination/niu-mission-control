@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Niu-MissionControl Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #020617; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
+.container { max-width: 1100px; width: 100%; }
+.header { text-align: center; margin-bottom: 40px; }
+.header h1 { font-size: 28px; font-weight: 700; color: #f8fafc; }
+.header .dot { display: inline-block; width: 10px; height: 10px; background: #22d3ee; border-radius: 50%; margin-right: 12px; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.header .subtitle { font-size: 13px; color: #64748b; margin-top: 8px; }
+.diagram-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 30px; margin-bottom: 30px; overflow-x: auto; }
+svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+.card { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 20px; }
+.card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.card-dot { width: 8px; height: 8px; border-radius: 50%; }
+.card-dot.cyan { background: #22d3ee; }
+.card-dot.emerald { background: #34d399; }
+.card-dot.violet { background: #a78bfa; }
+.card h3 { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+.card ul { list-style: none; }
+.card li { font-size: 11px; color: #94a3b8; padding: 3px 0; line-height: 1.6; }
+.card li::before { content: '▸ '; color: #475569; }
+.footer { text-align: center; font-size: 10px; color: #334155; padding: 20px 0; border-top: 1px solid #1e293b; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span class="dot"></span>Niu-MissionControl — System Architecture</h1>
+    <div class="subtitle">Three-Tier Command System · Niumination Ecosystem · v1.0</div>
+  </div>
+
+  <div class="diagram-card">
+    <svg viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+          <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1e293b" stroke-width="0.4"/>
+        </pattern>
+        <marker id="arrow-cyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M 0 0 L 8 3 L 0 6" fill="#22d3ee"/>
+        </marker>
+        <marker id="arrow-emerald" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M 0 0 L 8 3 L 0 6" fill="#34d399"/>
+        </marker>
+        <marker id="arrow-violet" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M 0 0 L 8 3 L 0 6" fill="#a78bfa"/>
+        </marker>
+        <marker id="arrow-slate" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M 0 0 L 8 3 L 0 6" fill="#94a3b8"/>
+        </marker>
+      </defs>
+
+      <!-- Background -->
+      <rect width="1000" height="700" fill="url(#grid)"/>
+
+      <!-- Connections Arrows (back layer) -->
+      <!-- Orchestrator → Command layer -->
+      <path d="M 500 185 L 500 230" stroke="#22d3ee" stroke-width="1.5" fill="none" marker-end="url(#arrow-cyan)"/>
+      <!-- Orchestrator → Intell layer -->
+      <path d="M 500 185 L 500 230" stroke="#22d3ee" stroke-width="1.5" fill="none" marker-end="url(#arrow-cyan)" opacity="0.3"/>
+      <!-- Command → Execute connectors -->
+      <path d="M 210 410 L 160 455" stroke="#34d399" stroke-width="1.5" fill="none" marker-end="url(#arrow-emerald)"/>
+      <path d="M 330 410 L 330 455" stroke="#34d399" stroke-width="1.5" fill="none" marker-end="url(#arrow-emerald)"/>
+      <path d="M 450 410 L 500 455" stroke="#34d399" stroke-width="1.5" fill="none" marker-end="url(#arrow-emerald)"/>
+      <path d="M 570 410 L 620 455" stroke="#34d399" stroke-width="1.5" fill="none" marker-end="url(#arrow-emerald)"/>
+      <path d="M 690 410 L 740 455" stroke="#34d399" stroke-width="1.5" fill="none" marker-end="url(#arrow-emerald)"/>
+      <!-- Dashboard ↔ Data lines -->
+      <path d="M 120 555 L 120 600" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#arrow-violet)" stroke-dasharray="4,3"/>
+      <path d="M 330 555 L 330 600" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#arrow-violet)" stroke-dasharray="4,3"/>
+      <path d="M 540 555 L 540 600" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#arrow-violet)" stroke-dasharray="4,3"/>
+      <path d="M 750 555 L 750 600" stroke="#a78bfa" stroke-width="1.5" fill="none" marker-end="url(#arrow-violet)" stroke-dasharray="4,3"/>
+
+      <!-- ====== LAYER 1: COMMAND (Telegram) ====== -->
+      <rect x="20" y="15" width="960" height="220" rx="10" fill="rgba(8, 51, 68, 0.08)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+      <text x="30" y="40" font-size="11" fill="#22d3ee" font-weight="600">LAYER 1 — COMMAND</text>
+      <text x="160" y="40" font-size="9" fill="#64748b">Telegram · niumination-mission-control</text>
+
+      <!-- Telegram group box -->
+      <rect x="40" y="55" width="920" height="50" rx="6" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+      <rect x="40" y="55" width="920" height="50" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="none"/>
+      <text x="55" y="78" font-size="12" fill="#f8fafc" font-weight="600">Mission-Control Telegram Group</text>
+      <text x="55" y="95" font-size="9" fill="#64748b">Orchestrator · Operating Rules · Task Routing · Approval Flow</text>
+
+      <!-- Labels row -->
+      <rect x="40" y="120" width="80" height="28" rx="4" fill="rgba(8, 51, 68, 0.5)" stroke="#22d3ee" stroke-width="0.8"/>
+      <text x="50" y="138" font-size="9" fill="#22d3ee">[Plan]</text>
+      <rect x="130" y="120" width="80" height="28" rx="4" fill="rgba(6, 78, 59, 0.5)" stroke="#34d399" stroke-width="0.8"/>
+      <text x="140" y="138" font-size="9" fill="#34d399">[Dev]</text>
+      <rect x="220" y="120" width="95" height="28" rx="4" fill="rgba(76, 29, 149, 0.5)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="230" y="138" font-size="9" fill="#a78bfa">[Research]</text>
+      <rect x="325" y="120" width="80" height="28" rx="4" fill="rgba(136, 19, 55, 0.5)" stroke="#fb7185" stroke-width="0.8"/>
+      <text x="335" y="138" font-size="9" fill="#fb7185">[Urgent]</text>
+      <rect x="415" y="120" width="80" height="28" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#94a3b8" stroke-width="0.8"/>
+      <text x="425" y="138" font-size="9" fill="#94a3b8">[Docs]</text>
+      <rect x="505" y="120" width="80" height="28" rx="4" fill="rgba(251, 146, 60, 0.4)" stroke="#fb923c" stroke-width="0.8"/>
+      <text x="515" y="138" font-size="9" fill="#fb923c">[Audit]</text>
+      <rect x="595" y="120" width="75" height="28" rx="4" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="0.8"/>
+      <text x="605" y="138" font-size="9" fill="#34d399">[Quick]</text>
+      <rect x="680" y="120" width="100" height="28" rx="4" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="0.8"/>
+      <text x="690" y="138" font-size="9" fill="#a78bfa">[Maintenance]</text>
+
+      <!-- Orchestrator Agent -->
+      <rect x="350" y="160" width="300" height="55" rx="8" fill="#0f172a" stroke="#22d3ee" stroke-width="2"/>
+      <rect x="350" y="160" width="300" height="55" rx="8" fill="rgba(8, 51, 68, 0.5)" stroke="none"/>
+      <text x="380" y="186" font-size="13" fill="#f8fafc" font-weight="700">Orchestrator (Hermes Agent)</text>
+      <text x="380" y="203" font-size="9" fill="#64748b">Plan → Route → Verify → Report · Own outcomes end-to-end</text>
+
+      <!-- ====== LAYER 2: INTELL (Dashboard) ====== -->
+      <rect x="20" y="250" width="960" height="140" rx="10" fill="rgba(76, 29, 149, 0.06)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+      <text x="30" y="275" font-size="11" fill="#a78bfa" font-weight="600">LAYER 2 — INTELL</text>
+      <text x="135" y="275" font-size="9" fill="#64748b">Visibility · Monitoring · Data Aggregation</text>
+
+      <!-- 4 panels in a row -->
+      <rect x="40" y="290" width="215" height="85" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <rect x="40" y="290" width="215" height="85" rx="6" fill="rgba(76, 29, 149, 0.2)" stroke="none"/>
+      <text x="55" y="312" font-size="11" fill="#c4b5fd" font-weight="600">Kanban Board</text>
+      <text x="55" y="328" font-size="9" fill="#64748b">Task status · lanes · priority</text>
+      <text x="55" y="343" font-size="9" fill="#64748b">Filters · stats · export</text>
+      <text x="55" y="358" font-size="9" fill="#475569">← niu-kanban-dash (existing)</text>
+
+      <rect x="275" y="290" width="215" height="85" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <rect x="275" y="290" width="215" height="85" rx="6" fill="rgba(76, 29, 149, 0.2)" stroke="none"/>
+      <text x="290" y="312" font-size="11" fill="#c4b5fd" font-weight="600">System Health</text>
+      <text x="290" y="328" font-size="9" fill="#64748b">Gateway · herdr agents · cron</text>
+      <text x="290" y="343" font-size="9" fill="#64748b">Disk · memory · uptime</text>
+
+      <rect x="510" y="290" width="215" height="85" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <rect x="510" y="290" width="215" height="85" rx="6" fill="rgba(76, 29, 149, 0.2)" stroke="none"/>
+      <text x="525" y="312" font-size="11" fill="#c4b5fd" font-weight="600">Project Health</text>
+      <text x="525" y="328" font-size="9" fill="#64748b">Git status · 36 repos</text>
+      <text x="525" y="343" font-size="9" fill="#64748b">Uncommitted · diverged</text>
+
+      <rect x="745" y="290" width="215" height="85" rx="6" fill="#0f172a" stroke="#a78bfa" stroke-width="1"/>
+      <rect x="745" y="290" width="215" height="85" rx="6" fill="rgba(76, 29, 149, 0.2)" stroke="none"/>
+      <text x="760" y="312" font-size="11" fill="#c4b5fd" font-weight="600">Brain Vault</text>
+      <text x="760" y="328" font-size="9" fill="#64748b">Obsidian · daily notes</text>
+      <text x="760" y="343" font-size="9" fill="#64748b">Knowledge base · archive</text>
+
+      <!-- ====== LAYER 3: EXECUTE ====== -->
+      <rect x="20" y="410" width="960" height="170" rx="10" fill="rgba(6, 78, 59, 0.06)" stroke="#34d399" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+      <text x="30" y="435" font-size="11" fill="#34d399" font-weight="600">LAYER 3 — EXECUTE</text>
+      <text x="130" y="435" font-size="9" fill="#64748b">Agent Fleet · Automation · External Tools</text>
+
+      <!-- Dev Agents -->
+      <rect x="40" y="455" width="130" height="80" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.2"/>
+      <rect x="40" y="455" width="130" height="80" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="none"/>
+      <text x="55" y="477" font-size="10" fill="#6ee7b7" font-weight="600">🏗️ Builder</text>
+      <text x="55" y="494" font-size="8" fill="#94a3b8">Dev · Implementation</text>
+      <text x="55" y="508" font-size="8" fill="#475569">opencode · code gen</text>
+      <text x="55" y="522" font-size="8" fill="#475569">fix bugs · features</text>
+
+      <rect x="190" y="455" width="130" height="80" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.2"/>
+      <rect x="190" y="455" width="130" height="80" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="none"/>
+      <text x="205" y="477" font-size="10" fill="#6ee7b7" font-weight="600">🔍 Pengawas</text>
+      <text x="205" y="494" font-size="8" fill="#94a3b8">Review · Research</text>
+      <text x="205" y="508" font-size="8" fill="#475569">code review · QA</text>
+      <text x="205" y="522" font-size="8" fill="#475569">trend intel · analysis</text>
+
+      <rect x="340" y="455" width="150" height="80" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.2"/>
+      <rect x="340" y="455" width="150" height="80" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="none"/>
+      <text x="355" y="477" font-size="10" fill="#6ee7b7" font-weight="600">📐 Arsitek</text>
+      <text x="355" y="494" font-size="8" fill="#94a3b8">Architecture · Planning</text>
+      <text x="355" y="508" font-size="8" fill="#475569">system design · DB schema</text>
+      <text x="355" y="522" font-size="8" fill="#475569">tech stack decisions</text>
+
+      <rect x="510" y="455" width="130" height="80" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.2"/>
+      <rect x="510" y="455" width="130" height="80" rx="6" fill="rgba(6, 78, 59, 0.3)" stroke="none"/>
+      <text x="525" y="477" font-size="10" fill="#6ee7b7" font-weight="600">🛡️ Penjaga</text>
+      <text x="525" y="494" font-size="8" fill="#94a3b8">Auto-pilot · Ops</text>
+      <text x="525" y="508" font-size="8" fill="#475569">monitoring · cron</text>
+      <text x="525" y="522" font-size="8" fill="#475569">maintenance · deploy</text>
+
+      <!-- Deep work -->
+      <rect x="660" y="455" width="150" height="80" rx="6" fill="rgba(120, 53, 15, 0.25)" stroke="#fbbf24" stroke-width="1.2"/>
+      <text x="675" y="477" font-size="10" fill="#fde68a" font-weight="600">⚡ Niu-Flow</text>
+      <text x="675" y="494" font-size="8" fill="#94a3b8">JCode AI bridge</text>
+      <text x="675" y="508" font-size="8" fill="#475569">deep code audit</text>
+      <text x="675" y="522" font-size="8" fill="#475569">full codebase gen</text>
+
+      <rect x="830" y="455" width="130" height="80" rx="6" fill="rgba(30, 41, 59, 0.4)" stroke="#94a3b8" stroke-width="1.2"/>
+      <text x="845" y="477" font-size="10" fill="#cbd5e1" font-weight="600">⚙️ Direct Cmd</text>
+      <text x="845" y="494" font-size="8" fill="#94a3b8">Terminal · Git</text>
+      <text x="845" y="508" font-size="8" fill="#475569">quick operations</text>
+      <text x="845" y="522" font-size="8" fill="#475569">one-shot tasks</text>
+
+      <!-- ====== DATA SOURCES ====== -->
+      <rect x="20" y="595" width="960" height="90" rx="10" fill="rgba(30, 41, 59, 0.08)" stroke="#475569" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+      <text x="30" y="618" font-size="11" fill="#94a3b8" font-weight="600">DATA SOURCES</text>
+
+      <rect x="40" y="630" width="215" height="42" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.8"/>
+      <text x="55" y="650" font-size="10" fill="#94a3b8">~/.hermes/kanban.db</text>
+      <text x="55" y="663" font-size="8" fill="#475569">SQLite — task state</text>
+
+      <rect x="275" y="630" width="215" height="42" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.8"/>
+      <text x="290" y="650" font-size="10" fill="#94a3b8">~/.hermes/state.db</text>
+      <text x="290" y="663" font-size="8" fill="#475569">SQLite — cron, gateway</text>
+
+      <rect x="510" y="630" width="215" height="42" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.8"/>
+      <text x="525" y="650" font-size="10" fill="#94a3b8">herdr.sock</text>
+      <text x="525" y="663" font-size="8" fill="#475569">Unix socket — agent status</text>
+
+      <rect x="745" y="630" width="215" height="42" rx="5" fill="#0f172a" stroke="#475569" stroke-width="0.8"/>
+      <text x="760" y="650" font-size="10" fill="#94a3b8">git repos (36x)</text>
+      <text x="760" y="663" font-size="8" fill="#475569">Niumination ecosystem</text>
+    </svg>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-header"><div class="card-dot cyan"></div><h3>Command Protocols</h3></div>
+      <ul>
+        <li>Label taxonomy: [Dev] [Research] [Docs] [Urgent] [Plan] [Audit] [Quick] [Maintenance]</li>
+        <li>Approval flow: show plan before acting</li>
+        <li>Progress: [Agent]: Step X of Y — every 60s max</li>
+        <li>No filler phrases — lead with decision</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-dot emerald"></div><h3>Delegation Rules</h3></div>
+      <ul>
+        <li>Builder → code implementation, bug fixes</li>
+        <li>Pengawas → review, research, QA</li>
+        <li>Arsitek → system design, architecture decisions</li>
+        <li>Penjaga → ops, monitoring, maintenance</li>
+        <li>Niu-Flow → deep audit, full codebase generation</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-dot violet"></div><h3>Verification & Failures</h3></div>
+      <ul>
+        <li>Never fabricate — report failures plainly</li>
+        <li>Verify tool side-effects (file writes, HTTP calls)</li>
+        <li>Health check cron every 15 min</li>
+        <li>Auto-recovery: herdr restart, dashboard restart</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">Niu-MissionControl v1.0 — Niumination Ecosystem — 2026</div>
+</div>
+</body>
+</html>

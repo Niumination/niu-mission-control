@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Niu-MissionControl Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #020617; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; min-height: 100vh; padding: 20px; }
+.container { max-width: 1400px; margin: 0 auto; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 16px 20px; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; }
+.header h1 { font-size: 20px; font-weight: 700; color: #f8fafc; }
+.header .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+.header .dot.green { background: #34d399; }
+.header .dot.red { background: #ef4444; }
+.header .dot.yellow { background: #fbbf24; }
+.header .status { font-size: 11px; color: #64748b; }
+.header .time { font-size: 11px; color: #475569; }
+.header .actions { display: flex; gap: 8px; }
+.header .actions button { background: #1e293b; border: 1px solid #334155; color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+.header .actions button:hover { background: #334155; color: #e2e8f0; border-color: #22d3ee; }
+
+iframe { width: 100%; border: none; border-radius: 8px; background: #0f172a; }
+
+.widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.widget { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; }
+.widget.full { grid-column: 1 / -1; }
+.widget h3 { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.widget h3 .count { color: #f8fafc; font-weight: 700; }
+.widget .card-content { font-size: 11px; line-height: 1.6; }
+.widget .card-content .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #1e293b; }
+.widget .card-content .row:last-child { border-bottom: none; }
+.widget .card-content .label { color: #64748b; }
+.widget .card-content .value { color: #e2e8f0; font-weight: 500; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.badge.green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+.badge.yellow { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.badge.red { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.badge.gray { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
+.badge.cyan { background: rgba(34, 211, 238, 0.15); color: #22d3ee; }
+
+.agent-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1e293b; font-size: 11px; }
+.agent-row:last-child { border-bottom: none; }
+.agent-row .name { color: #f1f5f9; font-weight: 600; min-width: 100px; }
+.agent-row .emoji { font-size: 14px; }
+.agent-row .status-text { font-size: 10px; }
+
+.project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-top: 8px; }
+.project-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 10px; }
+.project-card .proj-name { font-size: 11px; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; }
+.project-card .proj-meta { font-size: 9px; color: #64748b; }
+
+.error-state { padding: 20px; text-align: center; color: #ef4444; font-size: 12px; }
+.loading { padding: 20px; text-align: center; color: #64748b; font-size: 11px; }
+
+.refreshing .widget-content { opacity: 0.5; transition: opacity 0.2s; }
+
+.status-bar { display: flex; gap: 16px; align-items: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>🎮 Niu-MissionControl</h1>
+      <div class="status" id="statusText">Loading...</div>
+    </div>
+    <div class="status-bar">
+      <div class="status" id="timeDisplay">--:--:--</div>
+      <div class="actions">
+        <button onclick="refreshAll()">⟳ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kanban Overview -->
+  <div class="widget full">
+    <h3>📋 Kanban Board</h3>
+    <div id="kanban-widget"><div class="loading">Loading...</div></div>
+  </div>
+
+  <div class="widget-grid">
+    <!-- Agents -->
+    <div class="widget">
+      <h3>🤖 Agent Fleet <span id="agent-count" class="count"></span></h3>
+      <div id="agents-widget"><div class="loading">Loading...</div></div>
+    </div>
+    <!-- Gateway -->
+    <div class="widget">
+      <h3>🌐 Gateway</h3>
+      <div id="gateway-widget"><div class="loading">Loading...</div></div>
+    </div>
+    <!-- Cron Jobs -->
+    <div class="widget">
+      <h3>⏰ Cron Automation</h3>
+      <div id="cron-widget"><div class="loading">Loading...</div></div>
+    </div>
+    <!-- Quick Stats -->
+    <div class="widget">
+      <h3>📊 Quick Stats</h3>
+      <div id="stats-widget"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- Project Health -->
+  <div class="widget full">
+    <h3>📁 Project Health <span id="proj-count" class="count"></span></h3>
+    <div id="projects-widget"><div class="loading">Loading...</div></div>
+  </div>
+
+  <!-- Kanban iframe -->
+  <div class="widget full" style="margin-top: 16px;">
+    <h3>📋 Full Kanban Board</h3>
+    <div style="position: relative; width: 100%; height: 600px;">
+      <iframe src="http://localhost:5199/" title="Kanban Board" style="width:100%;height:100%;"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:5200';
+
+function updateTime() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
+  document.getElementById('timeDisplay').textContent = 'WIB ' + t;
+}
+
+function setStatus(text, ok) {
+  const el = document.getElementById('statusText');
+  if (ok === true) { el.innerHTML = `<span class="dot green"></span> ${text}`; }
+  else if (ok === false) { el.innerHTML = `<span class="dot red"></span> ${text}`; }
+  else { el.innerHTML = `<span class="dot yellow"></span> ${text}`; }
+}
+
+function badge(status) {
+  const map = {
+    'idle': 'green', 'running': 'green', 'ok': 'green', 'connected': 'green',
+    'working': 'yellow', 'pending': 'yellow', 'partial': 'yellow',
+    'done': 'cyan', 'completed': 'cyan',
+    'error': 'red', 'failed': 'red', 'offline': 'red', 'stopped': 'red',
+    'unknown': 'gray', 'ready': 'gray',
+  };
+  const cls = map[status] || 'gray';
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+async function fetchJSON(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+// --- Kanban widget ---
+async function renderKanban() {
+  const el = document.getElementById('kanban-widget');
+  const data = await fetchJSON('http://localhost:5199/api/stats');
+  if (data.error) {
+    el.innerHTML = `<div class="error-state">⚠ Kanban server offline (http://localhost:5199)</div>`;
+    return;
+  }
+  const total = data.total || 0;
+  const byStatus = data.byStatus || [];
+  const byPriority = data.byPriority || [];
+
+  let rows = byStatus.map(s => `<div class="row"><span class="label">${badge(s.status)} ${s.status}</span><span class="value">${s.count}</span></div>`).join('');
+  let priRows = byPriority.map(p => `<div class="row"><span class="label">Priority ${p.priority}</span><span class="value">${p.count}</span></div>`).join('');
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div><h4 style="font-size:11px;color:#64748b;margin-bottom:8px;">By Status</h4>${rows}</div>
+      <div><h4 style="font-size:11px;color:#64748b;margin-bottom:8px;">By Priority</h4>${priRows}</div>
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e293b;font-size:12px;text-align:center;">
+      <strong>${total}</strong> total tasks
+      ${data.oldestTodo ? `· Oldest: <span style="color:#94a3b8">${data.oldestTodo.title}</span>` : ''}
+    </div>
+  `;
+}
+
+// --- Agents widget ---
+async function renderAgents() {
+  const el = document.getElementById('agents-widget');
+  const c = document.getElementById('agent-count');
+  const data = await fetchJSON(`${API_BASE}/api/mc/agents`);
+  if (data.error) {
+    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
+    return;
+  }
+  const agents = data.agents || [];
+  c.textContent = `(${agents.length})`;
+
+  if (agents.length === 0) {
+    el.innerHTML = `<div class="card-content" style="color:#64748b;">No agents spawned. <a href="#" onclick="return false" style="color:#22d3ee;">Phase 3 needed</a></div>`;
+    return;
+  }
+
+  const html = agents.map(a => `
+    <div class="agent-row">
+      <span class="emoji">${a.name.includes('pembangun') || a.name.includes('Builder') ? '🏗️' : a.name.includes('pengawas') || a.name.includes('Pengawas') ? '🔍' : a.name.includes('arsitek') || a.name.includes('Arsitek') ? '📐' : a.name.includes('penjaga') || a.name.includes('Penjaga') ? '🛡️' : '🤖'}</span>
+      <span class="name">${a.name}</span>
+      ${badge(a.status)}
+      <span class="status-text">${a.tab || ''}</span>
+    </div>
+  `).join('');
+  el.innerHTML = html;
+}
+
+// --- Gateway widget ---
+async function renderGateway() {
+  const el = document.getElementById('gateway-widget');
+  const data = await fetchJSON(`${API_BASE}/api/mc/gateway`);
+  if (data.error) {
+    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
+    return;
+  }
+  const gw = data.launchd_status || {};
+  const running = gw.gateway_running;
+  const el2 = document.createElement('div');
+  el2.className = 'card-content';
+  el2.innerHTML = `
+    <div class="row"><span class="label">launchd</span><span class="value">${running ? badge('running') : badge('stopped')}</span></div>
+    <div class="row"><span class="label">Lock file</span><span class="value">${data.gateway_lock?.exists ? '✅' : '❌'}</span></div>
+    <div class="row"><span class="label">State</span><span class="value">${data.gateway_state?.status || 'unknown'}</span></div>
+    <div class="row"><span class="label">Log lines</span><span class="value">${data.gateway_log_tail ? data.gateway_log_tail.split('\\n').length + ' recent' : '0'}</span></div>
+  `;
+  el.innerHTML = el2.innerHTML;
+}
+
+// --- Cron widget ---
+async function renderCron() {
+  const el = document.getElementById('cron-widget');
+  const data = await fetchJSON(`${API_BASE}/api/mc/cron`);
+  if (data.error) {
+    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
+    return;
+  }
+  const cli = data.cronjob_cli || '';
+  // Try to extract job info from CLI output
+  const jobs = cli.split('"job_id"').length - 1;
+
+  const el2 = document.createElement('div');
+  el2.className = 'card-content';
+  el2.innerHTML = `
+    <div class="row"><span class="label">Cron jobs</span><span class="value">${jobs} detected</span></div>
+    <div class="row"><span class="label">State DB</span><span class="value">${data.state_db_cron?.length ? data.state_db_cron.length + ' entries' : 'no cron table'}</span></div>
+    <div style="margin-top:8px;font-size:9px;color:#475569;word-break:break-all;">${cli.substring(0, 300)}</div>
+  `;
+  el.innerHTML = el2.innerHTML;
+}
+
+// --- Stats widget ---
+async function renderStats() {
+  const el = document.getElementById('stats-widget');
+  const agg = await fetchJSON(`${API_BASE}/api/mc/aggregated`);
+  const projects = agg.projects || {};
+  const agents = agg.agents || {};
+
+  const totalRepos = projects.total_repos || 0;
+  const dirtyRepos = projects.dirty_repos || 0;
+  const agentCount = agents.agent_count || 0;
+
+  el.innerHTML = `
+    <div class="card-content">
+      <div class="row"><span class="label">Git repos</span><span class="value">${totalRepos} (${dirtyRepos} dirty)</span></div>
+      <div class="row"><span class="label">Agents</span><span class="value">${agentCount} deployed</span></div>
+      <div class="row"><span class="label">Dashboard</span><span class="value">${badge('running')}</span></div>
+      <div class="row"><span class="label">Kanban</span><span class="value">${agg.kanban?.total || '?'} tasks</span></div>
+    </div>
+  `;
+}
+
+// --- Projects widget ---
+async function renderProjects() {
+  const el = document.getElementById('projects-widget');
+  const c = document.getElementById('proj-count');
+  const data = await fetchJSON(`${API_BASE}/api/mc/projects`);
+  if (data.error) {
+    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
+    return;
+  }
+  const cats = data.categories || {};
+  c.textContent = `(${data.total_repos || 0} repos, ${data.dirty_repos || 0} dirty)`;
+
+  let html = '';
+  for (const [catName, repos] of Object.entries(cats)) {
+    const entries = Object.entries(repos);
+    if (entries.length === 0) continue;
+    html += `<div style="margin-bottom:12px;"><h4 style="font-size:10px;color:#64748b;margin-bottom:6px;">${catName}</h4><div class="project-grid">`;
+    for (const [name, info] of entries) {
+      const cls = info.dirty ? 'yellow' : 'green';
+      const ch = info.changes || 0;
+      html += `<div class="project-card">
+        <div class="proj-name">${name} ${badge(cls)}</div>
+        <div class="proj-meta">${info.branch || '?'} · ${ch} change${ch !== 1 ? 's' : ''} ${info.ahead > 0 ? '· +'+info.ahead : ''}${info.behind > 0 ? '· -'+info.behind : ''}</div>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+  el.innerHTML = html || '<div class="card-content" style="color:#64748b;">No git repos detected</div>';
+}
+
+async function refreshAll() {
+  document.querySelector('.container').classList.add('refreshing');
+  setStatus('Refreshing...', null);
+
+  await Promise.allSettled([
+    renderKanban(), renderAgents(), renderGateway(),
+    renderCron(), renderStats(), renderProjects()
+  ]);
+
+  document.querySelector('.container').classList.remove('refreshing');
+  setStatus('All systems monitored', true);
+}
+
+// Init
+updateTime();
+setInterval(updateTime, 1000);
+refreshAll();
+setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>
