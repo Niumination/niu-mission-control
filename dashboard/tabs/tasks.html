@@ -15,34 +15,3 @@
   </div>
   <div id="tasks-list"><div class="loading-el">Memuat task dari Kanban...</div></div>
 </div>
-
-<script>
-window.initTab_tasks = async function initTasks() {
-  const el = document.getElementById('tasks-list');
-  const data = await fetchJSON('http://localhost:5199/api/tasks');
-  if (data.error) {
-    el.innerHTML = '<div class="error-state">⚠ Kanban tidak terhubung (http://localhost:5199)</div>';
-    return;
-  }
-  const tasks = data.tasks || data.data || [];
-  if (tasks.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada task. Tambahkan via Kanban di port 5199.</div>'; return; }
-  
-  const priColors = { P0:'#ef4444', P1:'#fbbf24', P2:'#22d3ee', P3:'#64748b' };
-  let html = tasks.slice(0, 30).map(t => '<div style="margin-bottom:6px;padding:8px;background:#1e293b;border-radius:6px;border-left:3px solid ' + (priColors[t.priority] || '#64748b') + ';">' +
-    '<div style="display:flex;justify-content:space-between;"><span style="font-size:11px;color:#f1f5f9;">' + (t.title || t.name || 'Task') + '</span>' +
-    '<span>' + badge(t.status || t.state || 'backlog') + ' <span style="font-size:10px;color:#64748b;">' + (t.priority || 'P3') + '</span></span></div>' +
-    (t.description ? '<div style="font-size:10px;color:#94a3b8;margin-top:4px;">' + t.description.substring(0, 100) + '</div>' : '') +
-    '</div>').join('');
-  el.innerHTML = html;
-};
-
-async function addTask() {
-  const input = document.getElementById('task-input');
-  const priority = document.getElementById('task-priority').value;
-  const title = input.value.trim();
-  if (!title) { alert('Masukkan judul task'); return; }
-  // Note: POST ke Kanban — akan diimplementasi di Fase 4
-  alert('Fitur tambah task via dashboard akan tersedia di fase berikutnya. Gunakan Kanban langsung.');
-  input.value = '';
-}
-</script>
