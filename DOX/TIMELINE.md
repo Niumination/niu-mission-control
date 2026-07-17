@@ -87,7 +87,7 @@
 | 5.3 | Tambah token usage chart Chart.js di Overview | Builder | 30m | 1.1 | ✅ |
 | 5.4 | Setup Tailscale + test remote access via dashboard | Builder | 20m | 3.1 | ✅ |
 | 5.5 | Update listener server.py ke 0.0.0.0 (already `("", PORT)`) | Builder | 5m | 5.4 | ✅ |
-| 5.6 | Test Office + Tailscale dari mobile | Pengawas | 30m | 5.1, 5.4 | ⏳ |
+| 5.6 | Test Office + Tailscale dari mobile | Pengawas | 30m | 5.1, 5.4 | ✅ |
 
 ### Fase 6: Docs & QA (17 Juli — ✅ Selesai)
 
