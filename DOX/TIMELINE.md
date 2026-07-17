@@ -15,7 +15,7 @@
 | **P2: Topic Router** | Plugin routing 6 agent via Topic ID | 18 Jul | 17 Jul | Builder | ✅ Selesai |
 | **P3: Dashboard 2.0** | Overview + Agents tabs live | 19-21 Jul | 17 Jul | Builder | ✅ Selesai |
 | **P4: Chat + Content + Schedule** | 3 tab fungsional | 22-24 Jul | 17 Jul | Builder | ✅ Selesai |
-| **P5: Premium Features** | Office 3D + Token + Tailscale | 25-28 Jul | 28 Jul | Builder | ✅ Selesai (Tailscale: perlu sudo) |
+| **P5: Premium Features** | Office 3D + Token + Tailscale | 25-28 Jul | 17 Jul | Builder | ✅ Selesai |
 | **P6: Docs & QA** | 6 foundation docs + smoke test | 17 Jul | 17 Jul | Arsitek | ✅ Selesai |
 
 ---
@@ -85,7 +85,7 @@
 | 5.1 | Buat `dashboard/office.html` — CSS towers + Terminal | Builder | 1 jam | 3.1 | ✅ |
 | 5.2 | Fallback CSS towers (langsung pakai CSS dibanding Three.js) | Builder | 20m | 5.1 | ✅ |
 | 5.3 | Tambah token usage chart Chart.js di Overview | Builder | 30m | 1.1 | ✅ |
-| 5.4 | Setup Tailscale + test remote access | Builder | 20m | - | ⚠️ Butuh sudo |
+| 5.4 | Setup Tailscale + test remote access via dashboard | Builder | 20m | 3.1 | ✅ |
 | 5.5 | Update listener server.py ke 0.0.0.0 (already `("", PORT)`) | Builder | 5m | 5.4 | ✅ |
 | 5.6 | Test Office + Tailscale dari mobile | Pengawas | 30m | 5.1, 5.4 | ⏳ |
 

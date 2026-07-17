@@ -65,8 +65,8 @@
 
 | # | Kriteria | Status |
 |---|----------|--------|
-| 1 | Dashboard bisa diakses via `http://<tailscale-ip>:5200` | ☐ |
-| 2 | Semua tab berfungsi dari remote (sama seperti local) | ☐ |
+| 1 | Dashboard bisa diakses via `http://<tailscale-ip>:5200` | ✅ |
+| 2 | Semua tab berfungsi dari remote (sama seperti local) | ✅ |
 | 3 | API endpoints return 200 dari remote | ☐ |
 
 ---
