@@ -44,22 +44,22 @@
 | 5 | `/tasks` menampilkan iframe kanban | ✅ |
 | 6 | `/content` menampilkan daftar dokumen dengan filter | ✅ |
 | 7 | `/schedule` menampilkan tabel cron dengan tombol Run/Hapus | ✅ |
-| 8 | `/projects` menampilkan git health (existing) | ☐ |
-| 9 | `/docs` menampilkan daftar DOX dengan status | ☐ |
-| 10 | Navigasi tab berfungsi (klik → ganti konten) | ☐ |
+| 8 | `/projects` menampilkan git health | ✅ |
+| 9 | `/docs` menampilkan daftar DOX dengan status | ✅ |
+| 10 | Navigasi tab berfungsi (klik link → tab tampil) | ✅ |
 
 ### Fitur: Server API
 
 | # | Kriteria | Status |
 |---|----------|--------|
-| 1 | Semua endpoint existing return 200 (regression test) | ☐ |
-| 2 | `GET /api/mc/activity` return JSON array | ☐ |
-| 3 | `GET /api/mc/activity/stats` return JSON with counts | ☐ |
+| 1 | Semua endpoint existing return 200 (regression test) | ✅ |
+| 2 | `GET /api/mc/activity` return JSON array | ✅ |
+| 3 | `GET /api/mc/activity/stats` return JSON with counts | ✅ |
 | 4 | `POST /api/mc/chat` dengan body valid return response | ✅ |
 | 5 | `POST /api/mc/chat` dengan agent invalid return 400 | ✅ |
 | 6 | `POST /api/mc/cron/run/{id}` return `{"status":"triggered"}` | ✅ |
-| 7 | `GET /api/mc/tokens` return JSON dengan breakdown | ☐ |
-| 8 | `GET /api/mc/content` return JSON array | ☐ |
+| 7 | `GET /api/mc/tokens` return JSON dengan breakdown | ✅ |
+| 8 | `GET /api/mc/content` return JSON array | ✅ |
 
 ### Fitur: Tailscale Remote Access
 
