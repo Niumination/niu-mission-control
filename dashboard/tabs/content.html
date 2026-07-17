@@ -1,0 +1,25 @@
+<!-- Tab Konten -->
+<div class="widget full">
+  <h3>📝 Perpustakaan Konten</h3>
+  <div id="content-list"><div class="loading-el">Memuat...</div></div>
+</div>
+
+<script>
+window.initTab_content = async function initContent() {
+  const el = document.getElementById('content-list');
+  const data = await fetchJSON(API_BASE + '/api/mc/content');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const items = data.data || data.contents || [];
+  if (items.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada konten tersimpan</div>'; return; }
+  
+  const agentEmoji = { builder:'🏗️', pengawas:'🔍', arsitek:'📐', penjaga:'🛡️', scribe:'✍️', reach:'📡' };
+  let html = items.map(c => '<div style="margin-bottom:8px;padding:10px;background:#1e293b;border-radius:6px;border-left:3px solid #22d3ee;">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">' +
+    '<span style="font-size:11px;font-weight:600;color:#f1f5f9;">' + (agentEmoji[c.agent] || '📄') + ' ' + (c.title || c.name || 'Untitled') + '</span>' +
+    '<span style="font-size:10px;color:#64748b;">' + badge(c.status || 'draft') + '</span></div>' +
+    '<div style="font-size:10px;color:#94a3b8;">' + (c.description || c.summary || '').substring(0, 120) + '</div>' +
+    '<div style="font-size:9px;color:#475569;margin-top:4px;">' + (c.agent || '?') + ' · ' + (c.created_at || '').substring(0, 10) + '</div>' +
+    '</div>').join('');
+  el.innerHTML = html;
+};
+</script>

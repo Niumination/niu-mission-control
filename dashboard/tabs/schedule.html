@@ -1,0 +1,62 @@
+<!-- Tab Jadwal -->
+<div class="widget-grid">
+  <div class="widget">
+    <h3>⏰ Cron Jobs Aktif</h3>
+    <div id="cron-full"><div class="loading-el">Memuat...</div></div>
+  </div>
+  <div class="widget">
+    <h3>📅 Akan Datang</h3>
+    <div id="cron-upcoming"><div class="loading-el">Memuat...</div></div>
+  </div>
+</div>
+
+<div class="widget full">
+  <h3>📊 Riwayat Eksekusi</h3>
+  <div id="cron-history"><div class="loading-el">Memuat...</div></div>
+</div>
+
+<script>
+window.initTab_schedule = async function initSchedule() {
+  const [cronData, activityData] = await Promise.allSettled([
+    fetchJSON(API_BASE + '/api/mc/cron'),
+    fetchJSON(API_BASE + '/api/mc/activity?limit=20')
+  ]);
+  
+  renderCronFull(cronData.value);
+  renderCronHistory(activityData.value);
+};
+
+function renderCronFull(data) {
+  const el = document.getElementById('cron-full');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const jobs = data.cron_jobs || data.state_db_cron || [];
+  if (jobs.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Tidak ada cron jobs terdaftar</div>'; return; }
+  
+  let rows = jobs.map(j => {
+    const name = j.name || j.job_name || j.id || 'Unnamed';
+    const schedule = j.schedule || j.cron_expr || j.interval || '?';
+    const status = j.last_status || j.status || 'unknown';
+    const lastRun = j.last_run_at ? new Date(j.last_run_at).toLocaleString('id-ID') : '-';
+    return '<div class="card-content" style="margin-bottom:8px;padding:8px;background:#1e293b;border-radius:6px;">' +
+      '<div class="row"><span class="label">' + (j.enabled !== false ? '' : '⏸ ') + name + '</span><span class="value">' + badge(status) + '</span></div>' +
+      '<div class="row"><span class="label">Jadwal</span><span class="value">' + schedule + '</span></div>' +
+      '<div class="row"><span class="label">Terakhir</span><span class="value">' + lastRun + '</span></div>' +
+      '</div>';
+  }).join('');
+  el.innerHTML = rows;
+}
+
+function renderCronHistory(data) {
+  const el = document.getElementById('cron-history');
+  const items = data.activities || data.data || [];
+  if (items.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada riwayat eksekusi</div>'; return; }
+  
+  let html = '<div class="card-content">';
+  items.slice(0, 20).forEach(a => {
+    const time = a.created_at || a.timestamp || '';
+    html += '<div class="row"><span class="label">' + time.substring(0, 16) + '</span><span class="value">' + (a.message || a.action || '') + '</span></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+</script>

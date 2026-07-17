@@ -15,24 +15,44 @@ channel_skill_bindings). Sebagai gantinya, plugin ini:
 3. Utility functions untuk mengelola routing
 
 KONFIGURASI:
-Semua routing dikonfigurasi di Hermes config.yaml → telegram → extra:
+Semua routing dikonfigurasi di Hermes config.yaml → telegram:
 
 ```yaml
 telegram:
+  channel_prompts:
+    '1': |
+      Kamu adalah General / Command Center...
+    '236': |
+      Kamu adalah Builder...
+    '235': |
+      Kamu adalah Pengawas...
+    '230': |
+      Kamu adalah Arsitek...
+    '231': |
+      Kamu adalah Penjaga...
+    '232': |
+      Kamu adalah Scribe...
+    '233': |
+      Kamu adalah Reach...
+  allowed_chats: '-1004204696417'
+  require_mention: false
+  free_response_chats: '-1004204696417'
+  allowed_topics: 1,230,231,232,233,235,236
   extra:
-    allowed_topics: ["1", "2", "3", "4", "5", "6", "7"]
-    channel_prompts:
-      "1": "Kamu adalah General agent..."
-      "2": "Kamu adalah Builder..."
-      ...
     channel_skill_bindings:
-      - id: "1"
-        skills: []
-      - id: "2"
-        skills: ["ponytail"]
-      ...
-    require_mention: false
-    free_response_chats: ["-1001234567890"]
+    - id: '235'
+      skills: [ponytail, requesting-code-review]
+    - id: '236'
+      skills: [codebase-audit]
+    - id: '230'
+      skills: [project-foundation, writing-plans]
+    - id: '231'
+      skills: [kanban-orchestrator]
+    - id: '232'
+      skills: [project-foundation, writing-plans]
+    - id: '233'
+      skills: [xurl, youtube-content, gif-search]
+```
 """
 
 from __future__ import annotations
@@ -48,24 +68,27 @@ logger = logging.getLogger("telegram_router")
 # Nilai default sebelum topic ID sebenarnya didapat dari Telegram.
 # Angka 1-7 = urutan topic (General, Dev, Audit, Plan, Ops, Docs, Social)
 
+# ── Mapping Persona: topic_id (Telegram message_thread_id) → nama agent ──────
+# ID asli dari Niu-MissionControl group.
+# Topic 1 = #general (default), topic lain punya ID numerik unik.
 PERSONA_MAP: dict[str, str] = {
-    "1": "general",
-    "2": "builder",
-    "3": "pengawas",
-    "4": "arsitek",
-    "5": "penjaga",
-    "6": "scribe",
-    "7": "reach",
+    "1": "general",      # #general — urusan umum / orchestrator
+    "236": "builder",    # #dev — coding, implementasi
+    "235": "pengawas",   # #audit — review, keamanan
+    "230": "arsitek",    # #plan — arsitektur, riset
+    "231": "penjaga",    # #ops — operasi, monitoring
+    "232": "scribe",     # #docs — dokumentasi
+    "233": "reach",      # #social — outreach
 }
 
 PERSONA_NAMES: dict[str, str] = {
     "1": "General / Command Center",
-    "2": "Dev / Builder",
-    "3": "Audit / Pengawas",
-    "4": "Plan / Arsitek",
-    "5": "Ops / Penjaga",
-    "6": "Docs / Scribe",
-    "7": "Social / Reach",
+    "236": "Dev / Builder",
+    "235": "Audit / Pengawas",
+    "230": "Plan / Arsitek",
+    "231": "Ops / Penjaga",
+    "232": "Docs / Scribe",
+    "233": "Social / Reach",
 }
 
 # ── Validasi ────────────────────────────────────────────────────────────────────
@@ -96,8 +119,8 @@ def validate_config(extra: dict[str, Any]) -> list[str]:
     elif not isinstance(prompts, dict):
         issues.append("channel_prompts harus dict dengan key = topic_id")
 
-    # Cek channel_skill_bindings
-    bindings = extra.get("channel_skill_bindings", [])
+    # Cek channel_skill_bindings (di dalam extra)
+    bindings = extra.get("extra", {}).get("channel_skill_bindings", [])
     if bindings and isinstance(bindings, list):
         for b in bindings:
             if not isinstance(b, dict) or "id" not in b:
@@ -162,9 +185,9 @@ def register(ctx) -> None:
             import yaml
             with open(config_path, "r") as f:
                 cfg = yaml.safe_load(f)
-            telegram_extra = (cfg or {}).get("telegram", {}).get("extra", {})
-            if telegram_extra:
-                issues = validate_config(telegram_extra)
+            telegram_cfg = (cfg or {}).get("telegram", {})
+            if telegram_cfg:
+                issues = validate_config(telegram_cfg)
                 if issues:
                     logger.warning(
                         "[telegram_router] Config issues ditemukan:\n  - %s",

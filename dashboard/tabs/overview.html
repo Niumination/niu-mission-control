@@ -1,0 +1,183 @@
+<!-- Ringkasan Overview -->
+<div class="widget-grid-3">
+  <!-- System Health -->
+  <div class="widget">
+    <h3>🖥️ Kesehatan Sistem</h3>
+    <div id="system-widget"><div class="loading-el">Memuat...</div></div>
+  </div>
+  <!-- Agents -->
+  <div class="widget">
+    <h3>🤖 Armada Agen <span id="agent-count" class="count"></span></h3>
+    <div id="agents-widget"><div class="loading-el">Memuat...</div></div>
+  </div>
+  <!-- Gateway -->
+  <div class="widget">
+    <h3>🌐 Gateway</h3>
+    <div id="gateway-widget"><div class="loading-el">Memuat...</div></div>
+  </div>
+</div>
+
+<!-- Kanban Overview -->
+<div class="widget full">
+  <h3>📋 Papan Kanban</h3>
+  <div id="kanban-widget"><div class="loading-el">Memuat...</div></div>
+</div>
+
+<!-- Row 2 -->
+<div class="widget-grid">
+  <!-- Cron -->
+  <div class="widget">
+    <h3>⏰ Cron Automation</h3>
+    <div id="cron-widget"><div class="loading-el">Memuat...</div></div>
+  </div>
+  <!-- Activity -->
+  <div class="widget">
+    <h3>📊 Aktivitas Terkini</h3>
+    <div id="activity-widget"><div class="loading-el">Memuat...</div></div>
+  </div>
+</div>
+
+<!-- Quick Stats + Activity P1 -->
+<div class="widget-grid">
+  <div class="widget">
+    <h3>📈 Statistik Cepat</h3>
+    <div id="stats-widget"><div class="loading-el">Memuat...</div></div>
+  </div>
+  <div class="widget">
+    <h3>🔋 Token API</h3>
+    <div id="tokens-widget"><div class="loading-el">Memuat...</div></div>
+  </div>
+</div>
+
+<!-- Projects -->
+<div class="widget full">
+  <h3>📁 Kesehatan Proyek <span id="proj-count" class="count"></span></h3>
+  <div id="projects-widget"><div class="loading-el">Memuat...</div></div>
+</div>
+
+<!-- Kanban iframe -->
+<div class="widget full" style="margin-top: 16px;">
+  <h3>📋 Papan Kanban Penuh</h3>
+  <div style="position: relative; width: 100%; height: 600px;">
+    <iframe src="http://localhost:5199/" title="Kanban Board" style="width:100%;height:100%;"></iframe>
+  </div>
+</div>
+
+<script>
+window.initTab_overview = async function initOverview() {
+  await Promise.allSettled([
+    renderSystem(), renderAgents(), renderGateway(),
+    renderKanban(), renderCron(), renderActivity(),
+    renderStats(), renderTokens(), renderProjects()
+  ]);
+};
+
+// ── System Health ──
+async function renderSystem() {
+  const el = document.getElementById('system-widget');
+  const data = await fetchJSON(API_BASE + '/api/mc/system');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const hRing = document.getElementById('healthRing');
+  const score = data.health_score ?? 0;
+  if (score >= 80) hRing.className = 'health-ring good'; else if (score >= 50) hRing.className = 'health-ring fair'; else hRing.className = 'health-ring bad';
+  hRing.textContent = score;
+
+  let diskHtml = (data.disks || []).map(d => '<div style="margin-bottom:6px;"><div class="row"><span class="label">' + d.mount + '</span><span class="value">' + d.free_gb + 'GB free / ' + d.total_gb + 'GB</span></div><div class="disk-bar"><div class="fill ' + d.status + '" style="width:' + d.used_pct + '%"></div></div></div>').join('');
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">Uptime</span><span class="value">' + (data.uptime || '?') + '</span></div><div class="row"><span class="label">Memory</span><span class="value">' + (data.memory?.free_gb || '?') + 'GB free / ' + (data.memory?.total_gb || '?') + 'GB</span></div><div class="row"><span class="label">Memory Pressure</span><span class="value">' + badge(data.memory?.pressure || 'unknown') + '</span></div><div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e293b;">' + diskHtml + '</div></div>';
+}
+
+// ── Kanban ──
+async function renderKanban() {
+  const el = document.getElementById('kanban-widget');
+  const data = await fetchJSON('http://localhost:5199/api/stats');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ Kanban offline (http://localhost:5199)</div>'; return; }
+  let rows = (data.byStatus || []).map(s => '<div class="row"><span class="label">' + badge(s.status) + ' ' + s.status + '</span><span class="value">' + s.count + '</span></div>').join('');
+  let priRows = (data.byPriority || []).map(p => '<div class="row"><span class="label">Priority ' + p.priority + '</span><span class="value">' + p.count + '</span></div>').join('');
+  el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"><div><h4 style="font-size:11px;color:#64748b;margin-bottom:8px;">By Status</h4>' + rows + '</div><div><h4 style="font-size:11px;color:#64748b;margin-bottom:8px;">By Priority</h4>' + priRows + '</div></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e293b;font-size:12px;text-align:center;"><strong>' + (data.total || 0) + '</strong> total tasks</div>';
+}
+
+// ── Agents widget ──
+async function renderAgents() {
+  const el = document.getElementById('agents-widget');
+  const c = document.getElementById('agent-count');
+  const data = await fetchJSON(API_BASE + '/api/mc/agents');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const agents = data.agents || [];
+  c.textContent = agents.length ? '(' + agents.length + ')' : '(0)';
+  if (agents.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">No herdr agents spawned.</div>'; return; }
+  const emojiMap = { 'builder':'🏗️','pembangun':'🏗️','pengawas':'🔍','arsitek':'📐','penjaga':'🛡️','scribe':'✍️','reach':'📡' };
+  const html = agents.map(a => { const name = (a.name || '').toLowerCase(); const emoji = Object.entries(emojiMap).find(([k]) => name.includes(k))?.[1] || '🤖'; return '<div class="agent-row"><span class="emoji">' + emoji + '</span><span class="name">' + a.name + '</span>' + badge(a.status) + '<span class="status-text">' + (a.tab || '') + '</span></div>'; }).join('');
+  el.innerHTML = '<div class="card-content" style="margin-bottom:6px;">herdr: ' + badge(data.herdr_connected ? 'connected' : 'offline') + '</div>' + html;
+}
+
+// ── Gateway ──
+async function renderGateway() {
+  const el = document.getElementById('gateway-widget');
+  const data = await fetchJSON(API_BASE + '/api/mc/gateway');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const gw = data.gateway_state || {};
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">launchd</span><span class="value">' + (data.launchd_status?.gateway_running ? badge('running') : badge('stopped')) + '</span></div><div class="row"><span class="label">PID</span><span class="value">' + (gw.pid || '-') + '</span></div><div class="row"><span class="label">State</span><span class="value">' + badge(gw.gateway_state || 'unknown') + '</span></div><div class="row"><span class="label">Lock file</span><span class="value">' + (data.gateway_lock?.exists ? '✅' : '❌') + '</span></div><div class="row"><span class="label">Agen aktif</span><span class="value">' + (gw.active_agents ?? '?') + '</span></div><div class="row"><span class="label">Platform</span><span class="value">' + Object.keys(gw.platforms || {}).length + '</span></div></div>';
+}
+
+// ── Cron ──
+async function renderCron() {
+  const el = document.getElementById('cron-widget');
+  const data = await fetchJSON(API_BASE + '/api/mc/cron');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const jobs = data.cron_jobs || data.state_db_cron || [];
+  if (jobs.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Tidak ada cron jobs</div>'; return; }
+  let rows = jobs.slice(0, 8).map(j => '<div class="row"><span class="label">' + ((j.enabled !== false) ? '' : '⏸ ') + (j.name || j.job_name || j.id || '?') + '</span><span class="value">' + badge(j.last_status || j.status || 'unknown') + ' ' + (j.schedule || j.cron_expr || j.interval || '?') + '</span></div>').join('');
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">Total jobs</span><span class="value">' + jobs.length + '</span></div>' + rows + '</div>';
+}
+
+// ── Activity (P1) ──
+async function renderActivity() {
+  const el = document.getElementById('activity-widget');
+  const data = await fetchJSON(API_BASE + '/api/mc/activity?limit=8');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const items = data.activities || data.data || [];
+  if (items.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada aktivitas tercatat</div>'; return; }
+  let rows = items.slice(0, 8).map(a => '<div class="row"><span class="label">' + (a.agent || a.type || '?') + '</span><span class="value">' + (a.message || a.action || '').substring(0, 50) + '</span></div>').join('');
+  el.innerHTML = '<div class="card-content">' + rows + '</div>';
+}
+
+// ── Stats ──
+async function renderStats() {
+  const el = document.getElementById('stats-widget');
+  const agg = await fetchJSON(API_BASE + '/api/mc/aggregated');
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">Git repos</span><span class="value">' + ((agg.projects || {}).total_repos || 0) + ' (' + ((agg.projects || {}).dirty_repos || 0) + ' dirty)</span></div><div class="row"><span class="label">Agen</span><span class="value">' + ((agg.agents || {}).agent_count || 0) + ' deployed</span></div><div class="row"><span class="label">Kanban</span><span class="value">' + ((agg.kanban || {}).total || '?') + ' tasks</span></div><div class="row"><span class="label">Host</span><span class="value">' + ((agg.system || {}).hostname || '?') + '</span></div><div class="row"><span class="label">Uptime</span><span class="value">' + ((agg.system || {}).uptime || '?') + '</span></div></div>';
+}
+
+// ── Tokens ──
+async function renderTokens() {
+  const el = document.getElementById('tokens-widget');
+  const data = await fetchJSON(API_BASE + '/api/mc/tokens');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const tokens = data.token_usage || data.data || [];
+  if (tokens.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada data token</div>'; return; }
+  let total = tokens.reduce((s, t) => s + (t.total_tokens || t.tokens || 0), 0);
+  let rows = tokens.slice(0, 5).map(t => '<div class="row"><span class="label">' + (t.model || t.provider || '?') + '</span><span class="value">' + (t.total_tokens || t.tokens || 0).toLocaleString() + '</span></div>').join('');
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">Total token</span><span class="value">' + total.toLocaleString() + '</span></div>' + rows + '</div>';
+}
+
+// ── Projects ──
+async function renderProjects() {
+  const el = document.getElementById('projects-widget');
+  const c = document.getElementById('proj-count');
+  const data = await fetchJSON(API_BASE + '/api/mc/projects');
+  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const cats = data.categories || {};
+  c.textContent = '(' + (data.total_repos || 0) + ' repos, ' + (data.dirty_repos || 0) + ' dirty)';
+  let html = '';
+  for (const [catName, repos] of Object.entries(cats)) {
+    const entries = Object.entries(repos);
+    if (entries.length === 0) continue;
+    html += '<div style="margin-bottom:12px;"><h4 style="font-size:10px;color:#64748b;margin-bottom:6px;">' + catName + '</h4><div class="project-grid">';
+    for (const [name, info] of entries) {
+      html += '<div class="project-card"><div class="proj-name">' + name + ' ' + badge(info.dirty ? 'yellow' : 'green') + '</div><div class="proj-meta">' + (info.branch || '?') + ' · ' + (info.changes || 0) + ' changes</div></div>';
+    }
+    html += '</div></div>';
+  }
+  el.innerHTML = html || '<div class="card-content" style="color:#64748b;">Tidak ada git repos</div>';
+}
+</script>

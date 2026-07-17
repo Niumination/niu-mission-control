@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,9 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #020617; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; min-height: 100vh; padding: 20px; }
-.container { max-width: 1400px; margin: 0 auto; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 16px 20px; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; }
+body { background: #020617; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; min-height: 100vh; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; padding: 16px 20px; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px 10px 0 0; }
 .header h1 { font-size: 20px; font-weight: 700; color: #f8fafc; }
 .header .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
 .header .dot.green { background: #34d399; }
@@ -21,9 +21,17 @@ body { background: #020617; color: #e2e8f0; font-family: 'JetBrains Mono', monos
 .header .actions { display: flex; gap: 8px; }
 .header .actions button { background: #1e293b; border: 1px solid #334155; color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
 .header .actions button:hover { background: #334155; color: #e2e8f0; border-color: #22d3ee; }
+.header .actions button.active { background: #334155; color: #22d3ee; border-color: #22d3ee; }
 
+/* Navigation */
+.nav-bar { display: flex; gap: 4px; padding: 8px 20px; background: #0f172a; border: 1px solid #1e293b; border-top: none; border-radius: 0 0 10px 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.nav-item { padding: 6px 16px; font-size: 11px; font-weight: 500; color: #64748b; background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-family: 'JetBrains Mono', monospace; }
+.nav-item:hover { background: #1e293b; color: #94a3b8; }
+.nav-item.active { background: #1e293b; color: #22d3ee; border-color: #22d3ee; }
+
+/* Content */
+.tab-content { min-height: 60vh; }
 iframe { width: 100%; border: none; border-radius: 8px; background: #0f172a; }
-
 .widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .widget-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .widget { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; }
@@ -35,40 +43,35 @@ iframe { width: 100%; border: none; border-radius: 8px; background: #0f172a; }
 .widget .card-content .row:last-child { border-bottom: none; }
 .widget .card-content .label { color: #64748b; }
 .widget .card-content .value { color: #e2e8f0; font-weight: 500; }
-
 .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
 .badge.green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
 .badge.yellow { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
 .badge.red { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 .badge.gray { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
 .badge.cyan { background: rgba(34, 211, 238, 0.15); color: #22d3ee; }
-
 .agent-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1e293b; font-size: 11px; }
 .agent-row:last-child { border-bottom: none; }
 .agent-row .name { color: #f1f5f9; font-weight: 600; min-width: 100px; }
 .agent-row .emoji { font-size: 14px; }
 .agent-row .status-text { font-size: 10px; }
-
 .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-top: 8px; }
 .project-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 10px; }
 .project-card .proj-name { font-size: 11px; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; }
 .project-card .proj-meta { font-size: 9px; color: #64748b; }
-
 .disk-bar { height: 6px; border-radius: 3px; background: #1e293b; margin: 4px 0; }
 .disk-bar .fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
 .disk-bar .fill.green { background: #34d399; }
 .disk-bar .fill.yellow { background: #fbbf24; }
 .disk-bar .fill.red { background: #ef4444; }
-
 .error-state { padding: 20px; text-align: center; color: #ef4444; font-size: 12px; }
-.loading { padding: 20px; text-align: center; color: #64748b; font-size: 11px; }
+.loading-el { padding: 20px; text-align: center; color: #64748b; font-size: 11px; }
 .refreshing .widget-content { opacity: 0.5; transition: opacity 0.2s; }
 .status-bar { display: flex; gap: 16px; align-items: center; }
-
 .health-ring { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; font-size: 14px; font-weight: 700; }
 .health-ring.good { background: rgba(52, 211, 153, 0.15); border: 2px solid #34d399; color: #34d399; }
 .health-ring.fair { background: rgba(251, 191, 36, 0.15); border: 2px solid #fbbf24; color: #fbbf24; }
 .health-ring.bad { background: rgba(239, 68, 68, 0.15); border: 2px solid #ef4444; color: #ef4444; }
+.fragment-loading { display: none; }
 </style>
 </head>
 <body>
@@ -76,7 +79,7 @@ iframe { width: 100%; border: none; border-radius: 8px; background: #0f172a; }
   <div class="header">
     <div>
       <h1>🎮 Niu-MissionControl</h1>
-      <div class="status" id="statusText">Loading...</div>
+      <div class="status" id="statusText"><span class="dot yellow"></span> Memuat...</div>
     </div>
     <div class="status-bar">
       <div id="healthRing" class="health-ring good">--</div>
@@ -87,339 +90,118 @@ iframe { width: 100%; border: none; border-radius: 8px; background: #0f172a; }
     </div>
   </div>
 
-  <!-- First row: 3 widgets -->
-  <div class="widget-grid-3">
-    <!-- System Health -->
-    <div class="widget">
-      <h3>🖥️ System Health</h3>
-      <div id="system-widget"><div class="loading">Loading...</div></div>
-    </div>
-    <!-- Agents -->
-    <div class="widget">
-      <h3>🤖 Agent Fleet <span id="agent-count" class="count"></span></h3>
-      <div id="agents-widget"><div class="loading">Loading...</div></div>
-    </div>
-    <!-- Gateway -->
-    <div class="widget">
-      <h3>🌐 Gateway</h3>
-      <div id="gateway-widget"><div class="loading">Loading...</div></div>
-    </div>
+  <!-- Navigasi -->
+  <div class="nav-bar" id="navBar">
+    <button class="nav-item" data-tab="overview">📊 Ringkasan</button>
+    <button class="nav-item" data-tab="agents">🤖 Agen</button>
+    <button class="nav-item" data-tab="chat">💬 Chat</button>
+    <button class="nav-item" data-tab="schedule">⏰ Jadwal</button>
+    <button class="nav-item" data-tab="content">📝 Konten</button>
+    <button class="nav-item" data-tab="office">🏢 Office</button>
+    <button class="nav-item" data-tab="tasks">📋 Tasks</button>
+    <button class="nav-item" data-tab="projects">📁 Proyek</button>
+    <button class="nav-item" data-tab="docs">📚 Dokumen</button>
   </div>
 
-  <!-- Kanban Overview -->
-  <div class="widget full">
-    <h3>📋 Kanban Board</h3>
-    <div id="kanban-widget"><div class="loading">Loading...</div></div>
-  </div>
-
-  <!-- Second row: 2 widgets -->
-  <div class="widget-grid">
-    <!-- Cron Jobs -->
-    <div class="widget">
-      <h3>⏰ Cron Automation</h3>
-      <div id="cron-widget"><div class="loading">Loading...</div></div>
-    </div>
-    <!-- Quick Stats -->
-    <div class="widget">
-      <h3>📊 Quick Stats</h3>
-      <div id="stats-widget"><div class="loading">Loading...</div></div>
-    </div>
-  </div>
-
-  <!-- Project Health -->
-  <div class="widget full">
-    <h3>📁 Project Health <span id="proj-count" class="count"></span></h3>
-    <div id="projects-widget"><div class="loading">Loading...</div></div>
-  </div>
-
-  <!-- Kanban iframe -->
-  <div class="widget full" style="margin-top: 16px;">
-    <h3>📋 Full Kanban Board</h3>
-    <div style="position: relative; width: 100%; height: 600px;">
-      <iframe src="http://localhost:5199/" title="Kanban Board" style="width:100%;height:100%;"></iframe>
-    </div>
+  <!-- Konten Tab -->
+  <div id="tabContent" class="tab-content">
+    <div class="loading-el">Memuat tab...</div>
   </div>
 </div>
 
 <script>
 const API_BASE = 'http://localhost:5200';
 
+// ── Map tab name → fragment URL ──
+const TAB_FRAGMENTS = {
+  overview: '/tabs/overview',
+  agents: '/tabs/agents',
+  chat: '/tabs/chat',
+  schedule: '/tabs/schedule',
+  content: '/tabs/content',
+  docs: '/tabs/docs',
+  office: '/tabs/office',
+  tasks: '/tabs/tasks',
+  projects: '/tabs/projects',
+};
+
+let currentTab = 'overview';
+
+// ── Utility ──
 function updateTime() {
   const now = new Date();
-  const t = now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
-  document.getElementById('timeDisplay').textContent = 'WIB ' + t;
+  document.getElementById('timeDisplay').textContent = 'WIB ' + now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
 }
 
 function setStatus(text, ok) {
   const el = document.getElementById('statusText');
-  if (ok === true) { el.innerHTML = `<span class="dot green"></span> ${text}`; }
-  else if (ok === false) { el.innerHTML = `<span class="dot red"></span> ${text}`; }
-  else { el.innerHTML = `<span class="dot yellow"></span> ${text}`; }
-}
-
-function setHealthRing(score) {
-  const el = document.getElementById('healthRing');
-  if (score >= 80) { el.className = 'health-ring good'; el.textContent = score; }
-  else if (score >= 50) { el.className = 'health-ring fair'; el.textContent = score; }
-  else { el.className = 'health-ring bad'; el.textContent = score; }
+  if (ok === true) { el.innerHTML = '<span class="dot green"></span> ' + text; }
+  else if (ok === false) { el.innerHTML = '<span class="dot red"></span> ' + text; }
+  else { el.innerHTML = '<span class="dot yellow"></span> ' + text; }
 }
 
 function badge(status) {
-  const map = {
-    'idle': 'green', 'running': 'green', 'ok': 'green', 'connected': 'green', 'live': 'green',
-    'working': 'yellow', 'pending': 'yellow', 'partial': 'yellow', 'warning': 'yellow',
-    'done': 'cyan', 'completed': 'cyan',
-    'error': 'red', 'failed': 'red', 'offline': 'red', 'stopped': 'red', 'critical': 'red',
-    'unknown': 'gray', 'ready': 'gray', 'unavailable': 'gray',
-  };
+  const map = { idle:'green', running:'green', ok:'green', connected:'green', live:'green', working:'yellow', pending:'yellow', partial:'yellow', warning:'yellow', done:'cyan', completed:'cyan', error:'red', failed:'red', offline:'red', stopped:'red', critical:'red', unknown:'gray', ready:'gray', unavailable:'gray' };
   const cls = map[status] || 'gray';
-  return `<span class="badge ${cls}">${status}</span>`;
+  return '<span class="badge ' + cls + '">' + status + '</span>';
 }
 
 async function fetchJSON(url) {
+  try { const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
+  catch (e) { return { error: e.message }; }
+}
+
+// ── Tab Switching ──
+async function switchTab(tab) {
+  currentTab = tab;
+  history.replaceState(null, '', '/' + tab);
+
+  // Update nav active
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+
+  // Load fragment
+  const contentEl = document.getElementById('tabContent');
+  contentEl.innerHTML = '<div class="loading-el">Memuat tab...</div>';
+
   try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
+    const r = await fetch(TAB_FRAGMENTS[tab]);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const html = await r.text();
+    contentEl.innerHTML = html;
+
+    // Panggil init function jika ada
+    const initFn = window['initTab_' + tab];
+    if (typeof initFn === 'function') initFn();
+
+    setStatus('Tab: ' + tab, true);
   } catch (e) {
-    return { error: e.message };
+    contentEl.innerHTML = '<div class="error-state">⚠ Gagal memuat tab: ' + e.message + '</div>';
+    setStatus('Error', false);
   }
 }
 
-// --- System Health ---
-async function renderSystem() {
-  const el = document.getElementById('system-widget');
-  const data = await fetchJSON(`${API_BASE}/api/mc/system`);
-  if (data.error) {
-    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
-    return;
-  }
-  setHealthRing(data.health_score ?? 0);
-
-  let diskHtml = (data.disks || []).map(d => `
-    <div style="margin-bottom:6px;">
-      <div class="row"><span class="label">${d.mount}</span><span class="value">${d.free_gb}GB free / ${d.total_gb}GB</span></div>
-      <div class="disk-bar"><div class="fill ${d.status}" style="width:${d.used_pct}%"></div></div>
-    </div>
-  `).join('');
-
-  el.innerHTML = `
-    <div class="card-content">
-      <div class="row"><span class="label">Uptime</span><span class="value">${data.uptime || '?'}</span></div>
-      <div class="row"><span class="label">Memory</span><span class="value">${data.memory?.free_gb || '?'}GB free / ${data.memory?.total_gb || '?'}GB</span></div>
-      <div class="row"><span class="label">Memory Pressure</span><span class="value">${badge(data.memory?.pressure || 'unknown')}</span></div>
-      <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e293b;">
-        ${diskHtml}
-      </div>
-    </div>
-  `;
-}
-
-// --- Kanban widget ---
-async function renderKanban() {
-  const el = document.getElementById('kanban-widget');
-  const data = await fetchJSON('http://localhost:5199/api/stats');
-  if (data.error) {
-    el.innerHTML = `<div class="error-state">⚠ Kanban server offline (http://localhost:5199)</div>`;
-    return;
-  }
-  const total = data.total || 0;
-  const byStatus = data.byStatus || [];
-  const byPriority = data.byPriority || [];
-
-  let rows = byStatus.map(s => `<div class="row"><span class="label">${badge(s.status)} ${s.status}</span><span class="value">${s.count}</span></div>`).join('');
-  let priRows = byPriority.map(p => `<div class="row"><span class="label">Priority ${p.priority}</span><span class="value">${p.count}</span></div>`).join('');
-
-  el.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div><h4 style="font-size:11px;color:#64748b;margin-bottom:8px;">By Status</h4>${rows}</div>
-      <div><h4 style="font-size:11px;color:#64748b;margin-bottom:8px;">By Priority</h4>${priRows}</div>
-    </div>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e293b;font-size:12px;text-align:center;">
-      <strong>${total}</strong> total tasks
-      ${data.oldestTodo ? `· Oldest: <span style="color:#94a3b8">${data.oldestTodo.title}</span>` : ''}
-    </div>
-  `;
-}
-
-// --- Agents widget ---
-async function renderAgents() {
-  const el = document.getElementById('agents-widget');
-  const c = document.getElementById('agent-count');
-  const data = await fetchJSON(`${API_BASE}/api/mc/agents`);
-  if (data.error) {
-    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
-    return;
-  }
-  const agents = data.agents || [];
-  c.textContent = agents.length ? `(${agents.length})` : '(0)';
-
-  if (agents.length === 0) {
-    el.innerHTML = `<div class="card-content" style="color:#64748b;">No herdr agents spawned.</div>`;
-    return;
-  }
-
-  const emojiMap = {
-    'builder': '🏗️', 'pembangun': '🏗️',
-    'pengawas': '🔍',
-    'arsitek': '📐',
-    'penjaga': '🛡️',
-    'scribe': '✍️',
-    'reach': '📡',
-  };
-
-  const html = agents.map(a => {
-    const name = (a.name || '').toLowerCase();
-    const emoji = Object.entries(emojiMap).find(([k]) => name.includes(k))?.[1] || '🤖';
-    return `<div class="agent-row">
-      <span class="emoji">${emoji}</span>
-      <span class="name">${a.name}</span>
-      ${badge(a.status)}
-      <span class="status-text">${a.tab || ''}</span>
-    </div>`;
-  }).join('');
-
-  // Add herdr connection status
-  const connStatus = data.herdr_connected ? badge('connected') : badge('offline');
-  el.innerHTML = `<div class="card-content" style="margin-bottom:6px;">herdr: ${connStatus}</div>` + html;
-}
-
-// --- Gateway widget ---
-async function renderGateway() {
-  const el = document.getElementById('gateway-widget');
-  const data = await fetchJSON(`${API_BASE}/api/mc/gateway`);
-  if (data.error) {
-    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
-    return;
-  }
-  const launchd = data.launchd_status || {};
-  const gwState = data.gateway_state || {};
-  const running = launchd.gateway_running;
-
-  el.innerHTML = `
-    <div class="card-content">
-      <div class="row"><span class="label">launchd</span><span class="value">${running ? badge('running') : badge('stopped')}</span></div>
-      <div class="row"><span class="label">PID</span><span class="value">${gwState.pid || '-'}</span></div>
-      <div class="row"><span class="label">State</span><span class="value">${badge(gwState.gateway_state || 'unknown')}</span></div>
-      <div class="row"><span class="label">Lock file</span><span class="value">${data.gateway_lock?.exists ? '✅' : '❌'}</span></div>
-      <div class="row"><span class="label">Active agents</span><span class="value">${gwState.active_agents ?? '?'}</span></div>
-      <div class="row"><span class="label">Platforms</span><span class="value">${Object.keys(gwState.platforms || {}).length || 0}</span></div>
-      ${gwState.exit_reason ? `<div class="row"><span class="label">Exit reason</span><span class="value" style="color:#ef4444;">${gwState.exit_reason}</span></div>` : ''}
-    </div>
-  `;
-}
-
-// --- Cron widget ---
-async function renderCron() {
-  const el = document.getElementById('cron-widget');
-  const data = await fetchJSON(`${API_BASE}/api/mc/cron`);
-  if (data.error) {
-    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
-    return;
-  }
-
-  const jobs = data.cron_jobs || data.state_db_cron || [];
-  const count = jobs.length;
-
-  if (count === 0) {
-    el.innerHTML = `<div class="card-content" style="color:#64748b;">No cron jobs in database</div>`;
-    return;
-  }
-
-  let rows = jobs.slice(0, 8).map(j => {
-    const name = j.name || j.job_name || j.id || '?';
-    const schedule = j.schedule || j.cron_expr || j.interval || '?';
-    const lastRun = j.last_run_at || j.last_executed || '';
-    const status = j.last_status || j.status || 'unknown';
-    const enabled = j.enabled !== false;
-    return `<div class="row"><span class="label">${enabled ? '' : '⏸'} ${name}</span><span class="value">${badge(status)} ${schedule}</span></div>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="card-content">
-      <div class="row"><span class="label">Total jobs</span><span class="value">${count}</span></div>
-      ${rows}
-      <div style="margin-top:8px;font-size:9px;color:#475569;">
-        ${data.cronjob_cli ? 'CLI: ' + data.cronjob_cli.substring(0, 200) : ''}
-      </div>
-    </div>
-  `;
-}
-
-// --- Stats widget ---
-async function renderStats() {
-  const el = document.getElementById('stats-widget');
-  const agg = await fetchJSON(`${API_BASE}/api/mc/aggregated`);
-  const projects = agg.projects || {};
-  const agents = agg.agents || {};
-  const system = agg.system || {};
-  const gateway = agg.gateway || {};
-
-  const totalRepos = projects.total_repos || 0;
-  const dirtyRepos = projects.dirty_repos || 0;
-  const agentCount = agents.agent_count || 0;
-
-  el.innerHTML = `
-    <div class="card-content">
-      <div class="row"><span class="label">Git repos</span><span class="value">${totalRepos} (${dirtyRepos} dirty)</span></div>
-      <div class="row"><span class="label">Agents</span><span class="value">${agentCount} deployed</span></div>
-      <div class="row"><span class="label">MC Dashboard</span><span class="value">${badge('running')}</span></div>
-      <div class="row"><span class="label">Kanban</span><span class="value">${agg.kanban?.total || '?'} tasks</span></div>
-      <div class="row"><span class="label">Host</span><span class="value">${system.hostname || '?'}</span></div>
-      <div class="row"><span class="label">Uptime</span><span class="value">${system.uptime || '?'}</span></div>
-      <div class="row"><span class="label">Gateway</span><span class="value">${gateway.launchd_status?.gateway_running ? badge('running') : badge('stopped')}</span></div>
-    </div>
-  `;
-}
-
-// --- Projects widget ---
-async function renderProjects() {
-  const el = document.getElementById('projects-widget');
-  const c = document.getElementById('proj-count');
-  const data = await fetchJSON(`${API_BASE}/api/mc/projects`);
-  if (data.error) {
-    el.innerHTML = `<div class="error-state">⚠ ${data.error}</div>`;
-    return;
-  }
-  const cats = data.categories || {};
-  c.textContent = `(${data.total_repos || 0} repos, ${data.dirty_repos || 0} dirty)`;
-
-  let html = '';
-  for (const [catName, repos] of Object.entries(cats)) {
-    const entries = Object.entries(repos);
-    if (entries.length === 0) continue;
-    html += `<div style="margin-bottom:12px;"><h4 style="font-size:10px;color:#64748b;margin-bottom:6px;">${catName}</h4><div class="project-grid">`;
-    for (const [name, info] of entries) {
-      const cls = info.dirty ? 'yellow' : 'green';
-      const ch = info.changes || 0;
-      html += `<div class="project-card">
-        <div class="proj-name">${name} ${badge(cls)}</div>
-        <div class="proj-meta">${info.branch || '?'} · ${ch} change${ch !== 1 ? 's' : ''} ${info.ahead > 0 ? '· +'+info.ahead : ''}${info.behind > 0 ? '· -'+info.behind : ''}</div>
-      </div>`;
-    }
-    html += `</div></div>`;
-  }
-  el.innerHTML = html || '<div class="card-content" style="color:#64748b;">No git repos detected</div>';
-}
-
+// ── Refresh all ──
 async function refreshAll() {
   document.querySelector('.container').classList.add('refreshing');
-  setStatus('Refreshing...', null);
-
-  await Promise.allSettled([
-    renderKanban(), renderAgents(), renderGateway(),
-    renderCron(), renderStats(), renderProjects(), renderSystem()
-  ]);
-
+  setStatus('Memuat ulang...', null);
+  const initFn = window['initTab_' + currentTab];
+  if (typeof initFn === 'function') await initFn();
   document.querySelector('.container').classList.remove('refreshing');
-  setStatus('All systems monitored', true);
+  setStatus('Semua sistem terpantau', true);
 }
 
-// Init
+// ── Init ──
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => switchTab(el.dataset.tab));
+});
+
+// Detect initial tab from URL path
+const pathTab = location.pathname.replace('/', '');
+const initialTab = TAB_FRAGMENTS[pathTab] ? pathTab : 'overview';
+
 updateTime();
 setInterval(updateTime, 1000);
-refreshAll();
-setInterval(refreshAll, 30000);
+switchTab(initialTab);
 </script>
 </body>
 </html>

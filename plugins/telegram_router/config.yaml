@@ -47,7 +47,7 @@ agent_personas:
       - Tool call yang efisien
     skills: []
 
-  "2": &dev
+  "236": &dev
     nama: "Dev / Builder"
     prompt: >
       Kamu adalah **Builder** — agent pengembangan software untuk Niu-MissionControl.
@@ -66,7 +66,7 @@ agent_personas:
       Tools: terminal, file, search, web, delegate_task
     skills: ["ponytail", "requesting-code-review"]
 
-  "3": &audit
+  "235": &audit
     nama: "Audit / Pengawas"
     prompt: >
       Kamu adalah **Pengawas** — agent audit dan quality assurance untuk
@@ -87,7 +87,7 @@ agent_personas:
       Tools: search_files, terminal, web
     skills: []
 
-  "4": &plan
+  "230": &plan
     nama: "Plan / Arsitek"
     prompt: >
       Kamu adalah **Arsitek** — agent perencanaan dan arsitektur untuk
@@ -106,7 +106,7 @@ agent_personas:
       - Bahasa Indonesia untuk dokumen, istilah teknis Inggris di kode
     skills: ["project-foundation", "writing-plans"]
 
-  "5": &ops
+  "231": &ops
     nama: "Ops / Penjaga"
     prompt: >
       Kamu adalah **Penjaga** — agent operasional dan maintenance untuk
@@ -127,7 +127,7 @@ agent_personas:
       Tools: terminal, cronjob, process
     skills: ["kanban-orchestrator"]
 
-  "6": &docs
+  "232": &docs
     nama: "Docs / Scribe"
     prompt: >
       Kamu adalah **Scribe** — agent dokumentasi untuk Niu-MissionControl.
@@ -145,7 +145,7 @@ agent_personas:
       - Update DOX/ dan SKILL.md yang terkait
     skills: []
 
-  "7": &social
+  "233": &social
     nama: "Social / Reach"
     prompt: >
       Kamu adalah **Reach** — agent komunikasi dan outreach untuk
@@ -171,15 +171,15 @@ agent_personas:
 channel_skill_bindings:
   - id: "1"    # General
     skills: []
-  - id: "2"    # Dev
+  - id: "236"    # Dev
     skills: ["ponytail", "requesting-code-review"]
-  - id: "3"    # Audit
+  - id: "235"    # Audit
     skills: ["codebase-audit"]
-  - id: "4"    # Plan
+  - id: "230"    # Plan
     skills: ["project-foundation", "writing-plans"]
-  - id: "5"    # Ops
+  - id: "231"    # Ops
     skills: ["kanban-orchestrator"]
-  - id: "6"    # Docs
+  - id: "232"    # Docs
     skills: []
-  - id: "7"    # Social
+  - id: "233"    # Social
     skills: []

@@ -17,6 +17,7 @@ MC_DIR = os.path.dirname(os.path.abspath(__file__))
 # Modules P1: Data Layer
 from modules.agent_log import get_recent, get_stats, get_tokens, log as log_activity
 from modules.content_db import get_all as get_all_content, get_by_agent
+from modules.hermes_bridge import send_chat, run_terminal
 
 SCRIPTS_DIR = os.path.join(MC_DIR, "scripts")
 DASHBOARD_DIR = os.path.join(MC_DIR, "dashboard")
@@ -127,16 +128,58 @@ class MCHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json(get_all_content())
             return
 
-        # Static files from dashboard/ directory
-        if path == "/" or path == "":
-            self.path = "/index.html"
-        else:
-            self.path = path
+        # === P3: SPA Routing ===
+        # All main routes serve index.html (shell), tab fragments via /tabs/
+        if path == '/tabs/overview':
+            self.path = '/tabs/overview.html'
+            return super().do_GET()
+        if path == '/tabs/agents':
+            self.path = '/tabs/agents.html'
+            return super().do_GET()
+        if path == '/tabs/chat':
+            self.path = '/tabs/chat.html'
+            return super().do_GET()
+        if path == '/tabs/schedule':
+            self.path = '/tabs/schedule.html'
+            return super().do_GET()
+        if path == '/tabs/content':
+            self.path = '/tabs/content.html'
+            return super().do_GET()
+        if path == '/tabs/docs':
+            self.path = '/tabs/docs.html'
+            return super().do_GET()
+        if path == '/tabs/office':
+            self.path = '/tabs/office.html'
+            return super().do_GET()
+        if path == '/tabs/tasks':
+            self.path = '/tabs/tasks.html'
+            return super().do_GET()
+        if path == '/tabs/projects':
+            self.path = '/tabs/projects.html'
+            return super().do_GET()
 
-        return super().do_GET()
+        # Serve tab fragments from tabs/ directory
+        if path.startswith('/tabs/'):
+            self.path = path
+            return super().do_GET()
+
+        # SPA: all main routes serve index.html
+        if path in ('/', '/overview', '/agents', '/chat', '/schedule',
+                     '/content', '/docs', '/office', '/tasks', '/projects'):
+            self.path = '/index.html'
+            return super().do_GET()
+
+        # API routes handled above; fallback
+        if not path.startswith('/api/'):
+            self.send_response(302)
+            self.send_header('Location', '/')
+            self.end_headers()
+            return
+
+        self.send_error(404, "Not Found")
 
     def do_POST(self):
-        """Handle POST requests (untuk fase selanjutnya: chat, cron/run)."""
+        """Handle POST requests: chat, terminal, cron/run."""
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length) if content_length > 0 else b"{}"
         parsed = urllib.parse.urlparse(self.path)
@@ -148,12 +191,31 @@ class MCHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"error": "invalid JSON"}, 400)
             return
 
-        # Chat endpoint (untuk Fase 4 nanti)
+        # Chat endpoint — kirim pesan ke Telegram via Hermes bridge
         if path == "/api/mc/chat":
-            self._send_json({
-                "status": "not_implemented",
-                "message": "Chat endpoint akan tersedia di Fase 4."
-            })
+            text = data.get("text", "")
+            topic_id = str(data.get("topic_id", "1"))
+            result = send_chat(text, topic_id)
+            self._send_json(result)
+            return
+
+        # Terminal — jalankan perintah shell (terbatas)
+        if path == "/api/mc/terminal":
+            cmd = data.get("cmd", "")
+            # Whitelist commands aman
+            allowed_prefixes = (
+                "ls", "cat", "echo", "pwd", "whoami", "date", "uptime",
+                "df -h", "top -l 1", "ps aux", "tail -n", "head -n",
+                "git status", "git log", "hermes", "du -sh",
+            )
+            if not any(cmd.startswith(p) for p in allowed_prefixes):
+                self._send_json({
+                    "status": "error",
+                    "output": "Perintah diblokir demi keamanan. Gunakan terminal langsung untuk perintah sensitif."
+                }, 403)
+                return
+            result = run_terminal(cmd, timeout=10)
+            self._send_json(result)
             return
 
         # Cron run (untuk Fase 4 nanti)
