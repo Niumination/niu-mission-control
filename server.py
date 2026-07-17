@@ -163,14 +163,22 @@ class MCHandler(http.server.SimpleHTTPRequestHandler):
             self.path = path
             return super().do_GET()
 
-        # SPA: all main routes serve index.html
-        if path in ('/', '/overview', '/agents', '/chat', '/schedule',
+        # Route: main SPA pages
+        if path in ('', '/', '/overview', '/agents', '/chat', '/schedule',
                      '/content', '/docs', '/office', '/tasks', '/projects'):
             self.path = '/index.html'
             return super().do_GET()
 
-        # API routes handled above; fallback
+        # Route: static JS file
+        if path == '/dashboard.js':
+            return super().do_GET()
+
+        # SPA fallback: all unknown paths redirect to index.html
         if not path.startswith('/api/'):
+            # Check if actual file exists before SPA redirect
+            translated = self.translate_path(self.path)
+            if os.path.isfile(translated):
+                return super().do_GET()
             self.send_response(302)
             self.send_header('Location', '/')
             self.end_headers()
