@@ -12,8 +12,8 @@
 | Fase | Deliverable | Mulai | Selesai | Pemilik | Status |
 |------|-------------|-------|---------|---------|--------|
 | **P1: Data Layer** | agent_log.db + content_db + API endpoints | 17 Jul | 17 Jul | Builder | ✅ Selesai |
-| **P2: Topic Router** | Plugin routing 6 agent via Topic ID | 18 Jul | 18 Jul | Builder | ⏳ Menunggu |
-| **P3: Dashboard 2.0** | Overview + Agents tabs live | 19-21 Jul | 21 Jul | Builder | ⏳ Menunggu |
+| **P2: Topic Router** | Plugin routing 6 agent via Topic ID | 18 Jul | 17 Jul | Builder | ✅ Selesai |
+| **P3: Dashboard 2.0** | Overview + Agents tabs live | 19-21 Jul | 17 Jul | Builder | ✅ Selesai |
 | **P4: Chat + Content + Schedule** | 3 tab fungsional | 22-24 Jul | 24 Jul | Builder | ⏳ Menunggu |
 | **P5: Premium Features** | Office 3D + Token + Tailscale | 25-28 Jul | 28 Jul | Builder | ⏳ Menunggu |
 | **P6: Docs & QA** | 6 foundation docs + smoke test | 17 Jul | 17 Jul | Arsitek | ✅ Selesai |

@@ -1,0 +1,53 @@
+<!-- Tab Chat -->
+<div class="widget full">
+  <h3>💬 Chat dengan Agen</h3>
+  <div style="margin-bottom:16px;">
+    <p style="font-size:11px;color:#64748b;margin-bottom:12px;">Kirim pesan ke topic Telegram mana pun dari dashboard.</p>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <select id="chat-topic" style="background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;border-radius:6px;">
+        <option value="1">#general — Command Center</option>
+        <option value="2">#dev — Builder</option>
+        <option value="3">#audit — Pengawas</option>
+        <option value="4">#plan — Arsitek</option>
+        <option value="5">#ops — Penjaga</option>
+        <option value="6">#docs — Scribe</option>
+        <option value="7">#social — Reach</option>
+      </select>
+      <input type="text" id="chat-input" placeholder="Ketik pesan..." style="flex:1;background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;border-radius:6px;">
+      <button onclick="sendChatMessage()" style="background:#1e293b;border:1px solid #22d3ee;color:#22d3ee;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 16px;border-radius:6px;cursor:pointer;">Kirim ➔</button>
+    </div>
+    <div id="chat-response" style="font-size:11px;color:#64748b;"></div>
+  </div>
+</div>
+
+<div class="widget full">
+  <h3>📜 Riwayat Chat</h3>
+  <div id="chat-history"><div class="loading-el">Memuat...</div></div>
+</div>
+
+<script>
+window.initTab_chat = async function initChat() {
+  // Periksa status chat endpoint
+  const data = await fetchJSON(API_BASE + '/api/mc/activity?limit=10');
+  const el = document.getElementById('chat-history');
+  const items = data.activities || data.data || [];
+  if (items.length === 0) {
+    el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada riwayat chat. Kirim pesan melalui Telegram atau gunakan form di atas.</div>';
+  } else {
+    let rows = items.slice(0, 15).map(a => '<div class="agent-row"><span class="emoji">💬</span><span class="name">' + (a.agent || 'system') + '</span><span class="status-text">' + (a.message || a.action || '').substring(0, 80) + '</span></div>').join('');
+    el.innerHTML = '<div class="card-content">' + rows + '</div>';
+  }
+};
+
+async function sendChatMessage() {
+  const topic = document.getElementById('chat-topic').value;
+  const text = document.getElementById('chat-input').value.trim();
+  const respEl = document.getElementById('chat-response');
+  if (!text) { respEl.innerHTML = '<span style="color:#ef4444;">⚠ Ketik pesan terlebih dahulu</span>'; return; }
+  
+  respEl.innerHTML = '<span style="color:#fbbf24;">⏳ Mengirim...</span>';
+  const result = await fetchJSON(API_BASE + '/api/mc/chat');
+  respEl.innerHTML = '<span style="color:#94a3b8;">ℹ️ ' + (result.message || 'Chat endpoint aktif') + '</span>';
+  document.getElementById('chat-input').value = '';
+}
+</script>

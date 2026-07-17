@@ -1,0 +1,83 @@
+<!-- Tab Office -->
+<div class="widget-grid-3">
+  <div class="widget">
+    <h3>🏢 Kantor Virtual</h3>
+    <div style="text-align:center;padding:20px;">
+      <div style="font-size:48px;margin-bottom:16px;">🏢</div>
+      <p style="font-size:12px;color:#94a3b8;">Visual 3D Office akan tersedia di <strong>Fase 5</strong>.</p>
+      <p style="font-size:10px;color:#475569;margin-top:8px;">Rencana: Three.js CSS3D atau mockup SVG interaktif</p>
+    </div>
+  </div>
+  <div class="widget">
+    <h3>🖥️ Terminal Cepat</h3>
+    <div style="padding:8px;">
+      <input type="text" id="office-cmd" placeholder="jalan kan perintah..." style="width:100%;background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;border-radius:6px;margin-bottom:6px;">
+      <button onclick="runOfficeCmd()" style="background:#1e293b;border:1px solid #22d3ee;color:#22d3ee;font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 14px;border-radius:6px;cursor:pointer;">Jalankan ➔</button>
+      <div id="office-output" style="font-size:10px;color:#64748b;margin-top:8px;"></div>
+    </div>
+  </div>
+  <div class="widget">
+    <h3>🔋 Status Power</h3>
+    <div id="office-power"><div class="loading-el">Memuat...</div></div>
+  </div>
+</div>
+
+<div class="widget full">
+  <h3>📊 Ringkasan Ekosistem</h3>
+  <div id="office-ecosystem"><div class="loading-el">Memuat...</div></div>
+</div>
+
+<script>
+window.initTab_office = async function initOffice() {
+  await Promise.allSettled([renderPowerStatus(), renderEcosystem()]);
+};
+
+async function renderPowerStatus() {
+  const el = document.getElementById('office-power');
+  const sys = await fetchJSON(API_BASE + '/api/mc/system');
+  if (sys.error) { el.innerHTML = '<div class="error-state">⚠ ' + sys.error + '</div>'; return; }
+  const mem = sys.memory || {};
+  const disks = sys.disks || [];
+  const mainDisk = disks[0] || {};
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">CPU Load</span><span class="value">' + (sys.cpu || sys.load_avg || '?') + '</span></div><div class="row"><span class="label">RAM</span><span class="value">' + (mem.free_gb || '?') + 'GB / ' + (mem.total_gb || '?') + 'GB</span></div><div class="row"><span class="label">Disk</span><span class="value">' + (mainDisk.free_gb || '?') + 'GB free</span></div><div class="row"><span class="label">Uptime</span><span class="value">' + (sys.uptime || '?') + '</span></div></div>';
+}
+
+async function renderEcosystem() {
+  const el = document.getElementById('office-ecosystem');
+  const [agg, projects] = await Promise.allSettled([
+    fetchJSON(API_BASE + '/api/mc/aggregated'),
+    fetchJSON(API_BASE + '/api/mc/projects')
+  ]);
+  const a = agg.value || {};
+  const p = projects.value || {};
+  const cats = p.categories || {};
+  let totalRepos = 0;
+  let repoList = '';
+  for (const [catName, repos] of Object.entries(cats)) {
+    const entries = Object.entries(repos);
+    if (entries.length === 0) continue;
+    totalRepos += entries.length;
+    repoList += '<div style="margin-bottom:6px;"><span style="font-size:10px;color:#64748b;">' + catName + ':</span> ';
+    repoList += entries.slice(0, 5).map(([name]) => name).join(', ');
+    if (entries.length > 5) repoList += ' +' + (entries.length - 5) + ' lainnya';
+    repoList += '</div>';
+  }
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">Total Repos</span><span class="value">' + (p.total_repos || totalRepos || '?') + '</span></div><div class="row"><span class="label">Dirty</span><span class="value">' + (p.dirty_repos || 0) + '</span></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e293b;font-size:10px;">' + repoList + '</div></div>';
+}
+
+async function runOfficeCmd() {
+  const input = document.getElementById('office-cmd');
+  const output = document.getElementById('office-output');
+  const cmd = input.value.trim();
+  if (!cmd) { output.innerHTML = '<span style="color:#ef4444;">⚠ Masukkan perintah</span>'; return; }
+  output.innerHTML = '<span style="color:#fbbf24;">⏳ Menjalankan: ' + cmd + '</span>';
+  try {
+    const r = await fetch(API_BASE + '/api/mc/terminal', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cmd: cmd }) });
+    const result = await r.json();
+    output.innerHTML = '<pre style="font-size:9px;color:#94a3b8;white-space:pre-wrap;">' + (result.output || result.error || 'ok').substring(0, 500) + '</pre>';
+  } catch (e) {
+    output.innerHTML = '<span style="color:#ef4444;">⚠ ' + e.message + '</span>';
+  }
+  input.value = '';
+}
+</script>
