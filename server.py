@@ -218,12 +218,22 @@ class MCHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(result)
             return
 
-        # Cron run (untuk Fase 4 nanti)
+        # Cron run — trigger cron job
         if path.startswith("/api/mc/cron/run/"):
-            self._send_json({
-                "status": "not_implemented",
-                "message": "Cron trigger akan tersedia di Fase 4."
-            })
+            job_id = path.split("/api/mc/cron/run/")[1].strip("/")
+            try:
+                r = subprocess.run(
+                    ["hermes", "cron", "run", job_id],
+                    capture_output=True, text=True, timeout=15
+                )
+                if r.returncode == 0:
+                    self._send_json({"status": "triggered", "job_id": job_id, "message": "Job triggered"})
+                else:
+                    self._send_json({"status": "error", "job_id": job_id, "message": r.stderr[:200]}, 500)
+            except FileNotFoundError:
+                self._send_json({"status": "error", "message": "hermes CLI not found"}, 500)
+            except subprocess.TimeoutExpired:
+                self._send_json({"status": "error", "message": "Timeout triggering job"}, 504)
             return
 
         self._send_json({"error": "not found"}, 404)

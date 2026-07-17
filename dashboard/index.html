@@ -6,6 +6,7 @@
 <title>Niu-MissionControl Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #020617; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; min-height: 100vh; }
@@ -110,7 +111,7 @@ iframe { width: 100%; border: none; border-radius: 8px; background: #0f172a; }
 </div>
 
 <script>
-const API_BASE = 'http://localhost:5200';
+const API_BASE = window.location.origin;
 
 // ── Map tab name → fragment URL ──
 const TAB_FRAGMENTS = {

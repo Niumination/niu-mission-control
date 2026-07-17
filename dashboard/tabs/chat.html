@@ -27,15 +27,19 @@
 
 <script>
 window.initTab_chat = async function initChat() {
-  // Periksa status chat endpoint
   const data = await fetchJSON(API_BASE + '/api/mc/activity?limit=10');
   const el = document.getElementById('chat-history');
-  const items = data.activities || data.data || [];
+  const items = Array.isArray(data) ? data : (data.activities || data.data || []);
   if (items.length === 0) {
     el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada riwayat chat. Kirim pesan melalui Telegram atau gunakan form di atas.</div>';
   } else {
-    let rows = items.slice(0, 15).map(a => '<div class="agent-row"><span class="emoji">💬</span><span class="name">' + (a.agent || 'system') + '</span><span class="status-text">' + (a.message || a.action || '').substring(0, 80) + '</span></div>').join('');
-    el.innerHTML = '<div class="card-content">' + rows + '</div>';
+    let html = items.map(a => {
+      const time = (a.created_at || '').substring(0, 16);
+      const emojiMap = { builder:'🏗️', pengawas:'🔍', arsitek:'📐', penjaga:'🛡️', scribe:'✍️', reach:'📡' };
+      const emoji = emojiMap[a.agent] || '💬';
+      return '<div class="agent-row"><span class="emoji">' + emoji + '</span><span class="name">' + (a.agent || 'system') + '</span>' + badge(a.status || 'unknown') + '<span class="status-text">' + (a.task || a.message || a.action || '').substring(0, 80) + '</span><span style="font-size:9px;color:#475569;margin-left:auto;">' + time + '</span></div>';
+    }).join('');
+    el.innerHTML = '<div class="card-content">' + html + '</div>';
   }
 };
 
@@ -45,9 +49,26 @@ async function sendChatMessage() {
   const respEl = document.getElementById('chat-response');
   if (!text) { respEl.innerHTML = '<span style="color:#ef4444;">⚠ Ketik pesan terlebih dahulu</span>'; return; }
   
-  respEl.innerHTML = '<span style="color:#fbbf24;">⏳ Mengirim...</span>';
-  const result = await fetchJSON(API_BASE + '/api/mc/chat');
-  respEl.innerHTML = '<span style="color:#94a3b8;">ℹ️ ' + (result.message || 'Chat endpoint aktif') + '</span>';
+  respEl.innerHTML = '<span style="color:#fbbf24;">⏳ Mengirim ke topic #' + topic + '...</span>';
+  
+  try {
+    const r = await fetch(API_BASE + '/api/mc/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, topic_id: topic })
+    });
+    const result = await r.json();
+    if (result.status === 'sent') {
+      respEl.innerHTML = '<span style="color:#34d399;">✅ Pesan terkirim ke ' + (result.persona || 'topic ' + topic) + '</span>';
+    } else {
+      respEl.innerHTML = '<span style="color:#ef4444;">⚠ ' + (result.message || 'Gagal kirim') + '</span>';
+    }
+  } catch (e) {
+    respEl.innerHTML = '<span style="color:#ef4444;">⚠ ' + e.message + '</span>';
+  }
+  
   document.getElementById('chat-input').value = '';
+  // Refresh riwayat
+  initChat();
 }
 </script>

@@ -23,38 +23,90 @@ window.initTab_schedule = async function initSchedule() {
   ]);
   
   renderCronFull(cronData.value);
+  renderCronUpcoming(cronData.value);
   renderCronHistory(activityData.value);
 };
 
 function renderCronFull(data) {
   const el = document.getElementById('cron-full');
-  if (data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
-  const jobs = data.cron_jobs || data.state_db_cron || [];
+  if (data && data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const jobs = (data && data.cron_jobs) || (data && data.state_db_cron) || [];
   if (jobs.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Tidak ada cron jobs terdaftar</div>'; return; }
   
   let rows = jobs.map(j => {
+    const jobId = j.id || '';
     const name = j.name || j.job_name || j.id || 'Unnamed';
     const schedule = j.schedule || j.cron_expr || j.interval || '?';
     const status = j.last_status || j.status || 'unknown';
-    const lastRun = j.last_run_at ? new Date(j.last_run_at).toLocaleString('id-ID') : '-';
+    const lastRun = j.last_run_at ? new Date(j.last_run_at).toLocaleString('id-ID') : (j.last_run || '-');
     return '<div class="card-content" style="margin-bottom:8px;padding:8px;background:#1e293b;border-radius:6px;">' +
       '<div class="row"><span class="label">' + (j.enabled !== false ? '' : '⏸ ') + name + '</span><span class="value">' + badge(status) + '</span></div>' +
       '<div class="row"><span class="label">Jadwal</span><span class="value">' + schedule + '</span></div>' +
       '<div class="row"><span class="label">Terakhir</span><span class="value">' + lastRun + '</span></div>' +
-      '</div>';
+      '<div style="display:flex;gap:8px;margin-top:8px;">' +
+      '<button onclick="triggerCron(\'' + jobId + '\')" style="background:#0f172a;border:1px solid #22d3ee;color:#22d3ee;font-family:monospace;font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;">▶ Jalankan</button>' +
+      '</div></div>';
   }).join('');
   el.innerHTML = rows;
 }
 
+function renderCronUpcoming(data) {
+  const el = document.getElementById('cron-upcoming');
+  if (data && data.error) { el.innerHTML = '<div class="error-state">⚠ ' + data.error + '</div>'; return; }
+  const jobs = (data && data.cron_jobs) || (data && data.state_db_cron) || [];
+  const now = new Date();
+  let upcoming = jobs.filter(j => j.next_run || j.next_run_at).map(j => ({
+    name: j.name || j.job_name || j.id || 'Unnamed',
+    next: new Date(j.next_run || j.next_run_at),
+    schedule: j.schedule || j.cron_expr || j.interval || '?'
+  })).sort((a, b) => a.next - b.next).slice(0, 10);
+  
+  if (upcoming.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Tidak ada jadwal mendatang</div>'; return; }
+  
+  let rows = upcoming.map(u => {
+    const diff = u.next - now;
+    const diffStr = diff > 0 ? Math.round(diff / 3600000) + 'j lagi' : 'sekarang';
+    return '<div class="card-content" style="margin-bottom:6px;padding:6px;background:#1e293b;border-radius:4px;">' +
+      '<div class="row"><span class="label">' + u.name + '</span><span class="value">' + diffStr + '</span></div>' +
+      '<div class="row"><span class="label">' + u.next.toLocaleString('id-ID') + '</span><span class="value">' + u.schedule + '</span></div></div>';
+  }).join('');
+  el.innerHTML = rows;
+}
+
+async function triggerCron(jobId) {
+  if (!jobId) return;
+  const btn = event.target;
+  btn.textContent = '⏳...';
+  btn.disabled = true;
+  try {
+    const r = await fetch(API_BASE + '/api/mc/cron/run/' + encodeURIComponent(jobId), { method: 'POST' });
+    const result = await r.json();
+    if (result.status === 'triggered') {
+      btn.textContent = '✅ Triggered';
+      setTimeout(() => { btn.textContent = '▶ Jalankan'; btn.disabled = false; }, 2000);
+    } else {
+      btn.textContent = '⚠ Gagal';
+      setTimeout(() => { btn.textContent = '▶ Jalankan'; btn.disabled = false; }, 3000);
+    }
+  } catch (e) {
+    btn.textContent = '⚠ Error';
+    setTimeout(() => { btn.textContent = '▶ Jalankan'; btn.disabled = false; }, 3000);
+  }
+  // Refresh
+  setTimeout(initSchedule, 2000);
+}
+
 function renderCronHistory(data) {
   const el = document.getElementById('cron-history');
-  const items = data.activities || data.data || [];
+  const items = Array.isArray(data) ? data : ((data && data.activities) || (data && data.data) || []);
   if (items.length === 0) { el.innerHTML = '<div class="card-content" style="color:#64748b;">Belum ada riwayat eksekusi</div>'; return; }
   
   let html = '<div class="card-content">';
   items.slice(0, 20).forEach(a => {
     const time = a.created_at || a.timestamp || '';
-    html += '<div class="row"><span class="label">' + time.substring(0, 16) + '</span><span class="value">' + (a.message || a.action || '') + '</span></div>';
+    const emojiMap = { builder:'🏗️', pengawas:'🔍', arsitek:'📐', penjaga:'🛡️', scribe:'✍️', reach:'📡' };
+    const emoji = emojiMap[a.agent] || '📊';
+    html += '<div class="row"><span class="label">' + emoji + ' ' + (a.agent || 'system') + '</span><span class="value">' + badge(a.status || 'unknown') + ' ' + (a.task || a.message || a.action || '').substring(0, 50) + '</span></div>';
   });
   html += '</div>';
   el.innerHTML = html;
