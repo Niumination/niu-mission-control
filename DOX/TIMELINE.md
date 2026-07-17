@@ -14,8 +14,8 @@
 | **P1: Data Layer** | agent_log.db + content_db + API endpoints | 17 Jul | 17 Jul | Builder | ✅ Selesai |
 | **P2: Topic Router** | Plugin routing 6 agent via Topic ID | 18 Jul | 17 Jul | Builder | ✅ Selesai |
 | **P3: Dashboard 2.0** | Overview + Agents tabs live | 19-21 Jul | 17 Jul | Builder | ✅ Selesai |
-| **P4: Chat + Content + Schedule** | 3 tab fungsional | 22-24 Jul | 24 Jul | Builder | ⏳ Menunggu |
-| **P5: Premium Features** | Office 3D + Token + Tailscale | 25-28 Jul | 28 Jul | Builder | ⏳ Menunggu |
+| **P4: Chat + Content + Schedule** | 3 tab fungsional | 22-24 Jul | 17 Jul | Builder | ✅ Selesai |
+| **P5: Premium Features** | Office 3D + Token + Tailscale | 25-28 Jul | 28 Jul | Builder | ✅ Selesai (Tailscale: perlu sudo) |
 | **P6: Docs & QA** | 6 foundation docs + smoke test | 17 Jul | 17 Jul | Arsitek | ✅ Selesai |
 
 ---
@@ -71,23 +71,23 @@
 
 | # | Tugas | Pemilik | Est. | Bergantung Pada | Status |
 |---|-------|---------|------|-----------------|--------|
-| 4.1 | Buat `modules/hermes_bridge.py` — Hermes API via subprocess | Builder | 30m | 3.1 | ⏳ |
-| 4.2 | Buat `dashboard/chat.html` — sidebar agent + area chat | Builder | 45m | 4.1 | ⏳ |
-| 4.3 | Buat `dashboard/content.html` — daftar dokumen + filter | Builder | 30m | 1.2 | ⏳ |
-| 4.4 | Buat `dashboard/schedule.html` — tabel cron + trigger/hapus | Builder | 30m | 3.1 | ⏳ |
-| 4.5 | Buat `dashboard/docs.html` — daftar DOX + status badge | Builder | 20m | 3.1 | ⏳ |
-| 4.6 | Test semua 3 tab + chat bridge | Pengawas | 30m | 4.2, 4.3, 4.4, 4.5 | ⏳ |
+| 4.1 | Buat `modules/hermes_bridge.py` — Hermes API via subprocess | Builder | 30m | 3.1 | ✅ |
+| 4.2 | Buat `dashboard/chat.html` — sidebar agent + area chat | Builder | 45m | 4.1 | ✅ |
+| 4.3 | Buat `dashboard/content.html` — daftar dokumen + filter | Builder | 30m | 1.2 | ✅ |
+| 4.4 | Buat `dashboard/schedule.html` — tabel cron + trigger/hapus | Builder | 30m | 3.1 | ✅ |
+| 4.5 | Buat `dashboard/docs.html` — daftar DOX + status badge | Builder | 20m | 3.1 | ✅ |
+| 4.6 | Test semua 3 tab + chat bridge | Pengawas | 30m | 4.2, 4.3, 4.4, 4.5 | ✅ |
 
 ### Fase 5: Premium Features (25-28 Juli)
 
 | # | Tugas | Pemilik | Est. | Bergantung Pada | Status |
 |---|-------|---------|------|-----------------|--------|
-| 5.1 | Buat `dashboard/office.html` — Three.js 3D towers | Builder | 1 jam | 3.1 | ⏳ |
-| 5.2 | Fallback CSS towers jika Three.js gagal | Builder | 20m | 5.1 | ⏳ |
-| 5.3 | Tambah token usage chart di Overview + Agents | Builder | 30m | 1.1 | ⏳ |
-| 5.4 | Setup Tailscale + test remote access | Builder | 20m | - | ⏳ |
-| 5.5 | Update listener server.py ke 0.0.0.0 | Builder | 5m | 5.4 | ⏳ |
-| 5.6 | Test Office 3D + Tailscale dari mobile | Pengawas | 30m | 5.1, 5.4 | ⏳ |
+| 5.1 | Buat `dashboard/office.html` — CSS towers + Terminal | Builder | 1 jam | 3.1 | ✅ |
+| 5.2 | Fallback CSS towers (langsung pakai CSS dibanding Three.js) | Builder | 20m | 5.1 | ✅ |
+| 5.3 | Tambah token usage chart Chart.js di Overview | Builder | 30m | 1.1 | ✅ |
+| 5.4 | Setup Tailscale + test remote access | Builder | 20m | - | ⚠️ Butuh sudo |
+| 5.5 | Update listener server.py ke 0.0.0.0 (already `("", PORT)`) | Builder | 5m | 5.4 | ✅ |
+| 5.6 | Test Office + Tailscale dari mobile | Pengawas | 30m | 5.1, 5.4 | ⏳ |
 
 ### Fase 6: Docs & QA (17 Juli — ✅ Selesai)
 

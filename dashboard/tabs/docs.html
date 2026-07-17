@@ -4,17 +4,8 @@
   <div style="margin-bottom:16px;">
     <p style="font-size:11px;color:#64748b;">Dokumen foundation untuk Niu-MissionControl versi Bahasa Indonesia.</p>
   </div>
-  <div id="docs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
-    <div class="project-card"><div class="proj-name">📋 MASTERPLAN.md</div><div class="proj-meta">1159 baris · Rencana induk proyek · 17 Jul 2026</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/PRD.md</div><div class="proj-meta">Product Requirements Document · Spesifikasi fitur lengkap</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/TECHSPEC.md</div><div class="proj-meta">Technical Specification · Arsitektur & API</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/UX.md</div><div class="proj-meta">UserFlow & Wireframe · 6 perjalanan pengguna</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/TIMELINE.md</div><div class="proj-meta">Timeline · 6 fase dengan milestones</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/TESTING.md</div><div class="proj-meta">Testing & QA · 100% smoke test coverage</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/DEPLOY.md</div><div class="proj-meta">Deployment · RTO 15 menit, RPO 1 jam</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/AGENTS.md</div><div class="proj-meta">Panduan agent persona</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/RUNBOOK.md</div><div class="proj-meta">Runbook operasional</div></div>
-    <div class="project-card"><div class="proj-name">📋 DOX/PLAN.md</div><div class="proj-meta">Rencana kerja agent</div></div>
+  <div id="docs-list" class="project-grid">
+    <div class="loading-el">Memuat...</div>
   </div>
 </div>
 
@@ -29,3 +20,70 @@
     <div class="project-card"><div class="proj-name">📁 Proyek Root</div><div class="proj-meta">~/Desktop/Niumination/</div></div>
   </div>
 </div>
+
+<script>
+window.initTab_docs = async function initDocs() {
+  const el = document.getElementById('docs-list');
+  
+  // Scan DOX directory via API
+  const data = await fetchJSON(API_BASE + '/api/mc/system');
+  if (data.error) {
+    // Fallback ke hardcoded list
+    renderStaticDocs(el);
+    return;
+  }
+  
+  // Coba scan DOX via filesystem
+  try {
+    const r = await fetch(API_BASE + '/api/mc/terminal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cmd: 'ls -la DOX/' })
+    });
+    const result = await r.json();
+    const output = result.output || '';
+    if (output) {
+      const lines = output.split('\n').filter(l => l.includes('.md'));
+      if (lines.length > 0) {
+        let html = lines.map(line => {
+          const parts = line.trim().split(/\s+/);
+          const filename = parts[parts.length - 1];
+          const size = parts[4] || '?';
+          const date = parts[5] + ' ' + parts[6] || '';
+          const displayName = filename.replace('.md', '');
+          const emoji = filename.includes('MASTERPLAN') ? '📋' :
+                       filename.includes('PRD') ? '📋' :
+                       filename.includes('TECHSPEC') ? '🔧' :
+                       filename.includes('UX') ? '🎨' :
+                       filename.includes('TIMELINE') ? '📅' :
+                       filename.includes('TESTING') ? '🧪' :
+                       filename.includes('DEPLOY') ? '🚀' :
+                       filename.includes('AGENTS') ? '🤖' :
+                       filename.includes('RUNBOOK') ? '📘' :
+                       filename.includes('PLAN') ? '📝' : '📄';
+          return '<div class="project-card"><div class="proj-name">' + emoji + ' ' + filename + '</div><div class="proj-meta">' + size + 'B · Terakhir: ' + date + '</div></div>';
+        }).join('');
+        el.innerHTML = html;
+        return;
+      }
+    }
+  } catch (e) {}
+  
+  renderStaticDocs(el);
+};
+
+function renderStaticDocs(el) {
+  el.innerHTML = `
+    <div class="project-card"><div class="proj-name">📋 MASTERPLAN.md</div><div class="proj-meta">1159 baris · Rencana induk proyek · 17 Jul 2026</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/PRD.md</div><div class="proj-meta">Product Requirements Document · Spesifikasi fitur lengkap</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/TECHSPEC.md</div><div class="proj-meta">Technical Specification · Arsitektur & API</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/UX.md</div><div class="proj-meta">UserFlow & Wireframe · 6 perjalanan pengguna</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/TIMELINE.md</div><div class="proj-meta">Timeline · 6 fase dengan milestones</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/TESTING.md</div><div class="proj-meta">Testing & QA · 100% smoke test coverage</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/DEPLOY.md</div><div class="proj-meta">Deployment · RTO 15 menit, RPO 1 jam</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/AGENTS.md</div><div class="proj-meta">Panduan agent persona</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/RUNBOOK.md</div><div class="proj-meta">Runbook operasional</div></div>
+    <div class="project-card"><div class="proj-name">📋 DOX/PLAN.md</div><div class="proj-meta">Rencana kerja agent</div></div>
+  `;
+}
+</script>

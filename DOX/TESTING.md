@@ -39,11 +39,11 @@
 |---|----------|--------|
 | 1 | `/overview` menampilkan 4 widget (gateway, activity, system, token) | ☐ |
 | 2 | `/agents` menampilkan 6 kartu agent + heatmap + pie chart | ☐ |
-| 3 | `/office` menampilkan 3D towers atau CSS fallback | ☐ |
-| 4 | `/chat` bisa kirim pesan ke agent dan dapat response | ☐ |
-| 5 | `/tasks` menampilkan iframe kanban | ☐ |
-| 6 | `/content` menampilkan daftar dokumen dengan filter | ☐ |
-| 7 | `/schedule` menampilkan tabel cron dengan tombol Run/Hapus | ☐ |
+| 3 | `/office` menampilkan 3D towers atau CSS fallback | ✅ |
+| 4 | `/chat` bisa kirim pesan ke agent dan dapat response | ✅ |
+| 5 | `/tasks` menampilkan iframe kanban | ✅ |
+| 6 | `/content` menampilkan daftar dokumen dengan filter | ✅ |
+| 7 | `/schedule` menampilkan tabel cron dengan tombol Run/Hapus | ✅ |
 | 8 | `/projects` menampilkan git health (existing) | ☐ |
 | 9 | `/docs` menampilkan daftar DOX dengan status | ☐ |
 | 10 | Navigasi tab berfungsi (klik → ganti konten) | ☐ |
@@ -55,9 +55,9 @@
 | 1 | Semua endpoint existing return 200 (regression test) | ☐ |
 | 2 | `GET /api/mc/activity` return JSON array | ☐ |
 | 3 | `GET /api/mc/activity/stats` return JSON with counts | ☐ |
-| 4 | `POST /api/mc/chat` dengan body valid return response | ☐ |
-| 5 | `POST /api/mc/chat` dengan agent invalid return 400 | ☐ |
-| 6 | `POST /api/mc/cron/run/{id}` return `{"status":"triggered"}` | ☐ |
+| 4 | `POST /api/mc/chat` dengan body valid return response | ✅ |
+| 5 | `POST /api/mc/chat` dengan agent invalid return 400 | ✅ |
+| 6 | `POST /api/mc/cron/run/{id}` return `{"status":"triggered"}` | ✅ |
 | 7 | `GET /api/mc/tokens` return JSON dengan breakdown | ☐ |
 | 8 | `GET /api/mc/content` return JSON array | ☐ |
 

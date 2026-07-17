@@ -1,11 +1,9 @@
 <!-- Tab Office -->
-<div class="widget-grid-3">
-  <div class="widget">
-    <h3>🏢 Kantor Virtual</h3>
-    <div style="text-align:center;padding:20px;">
-      <div style="font-size:48px;margin-bottom:16px;">🏢</div>
-      <p style="font-size:12px;color:#94a3b8;">Visual 3D Office akan tersedia di <strong>Fase 5</strong>.</p>
-      <p style="font-size:10px;color:#475569;margin-top:8px;">Rencana: Three.js CSS3D atau mockup SVG interaktif</p>
+<div class="widget-grid">
+  <div class="widget" style="grid-column: span 2;">
+    <h3>🏢 Agent Tower Status</h3>
+    <div style="display:flex;gap:12px;align-items:flex-end;padding:20px 0 0;min-height:280px;justify-content:center;" id="tower-container">
+      <div class="loading-el">Memuat tower...</div>
     </div>
   </div>
   <div class="widget">
@@ -16,10 +14,6 @@
       <div id="office-output" style="font-size:10px;color:#64748b;margin-top:8px;"></div>
     </div>
   </div>
-  <div class="widget">
-    <h3>🔋 Status Power</h3>
-    <div id="office-power"><div class="loading-el">Memuat...</div></div>
-  </div>
 </div>
 
 <div class="widget full">
@@ -27,19 +21,60 @@
   <div id="office-ecosystem"><div class="loading-el">Memuat...</div></div>
 </div>
 
+<style>
+.agent-tower { display:flex; flex-direction:column; align-items:center; width:72px; transition:all 0.3s; }
+.tower-body { width:48px; border-radius:6px 6px 2px 2px; transition:height 0.5s ease-in-out, background 0.5s; position:relative; min-height:20px; }
+.tower-base { width:64px; height:10px; border-radius:3px; margin-top:2px; }
+.tower-glow { position:absolute; top:-6px; left:50%; transform:translateX(-50%); width:12px; height:12px; border-radius:50%; }
+.agent-tower .tower-label { font-size:9px; margin-top:6px; text-align:center; color:#94a3b8; font-weight:600; }
+.agent-tower .tower-count { font-size:8px; color:#64748b; }
+.tower-active { animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+</style>
+
 <script>
 window.initTab_office = async function initOffice() {
-  await Promise.allSettled([renderPowerStatus(), renderEcosystem()]);
+  await Promise.allSettled([renderTowers(), renderEcosystem()]);
 };
 
-async function renderPowerStatus() {
-  const el = document.getElementById('office-power');
-  const sys = await fetchJSON(API_BASE + '/api/mc/system');
-  if (sys.error) { el.innerHTML = '<div class="error-state">⚠ ' + sys.error + '</div>'; return; }
-  const mem = sys.memory || {};
-  const disks = sys.disks || [];
-  const mainDisk = disks[0] || {};
-  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">CPU Load</span><span class="value">' + (sys.cpu || sys.load_avg || '?') + '</span></div><div class="row"><span class="label">RAM</span><span class="value">' + (mem.free_gb || '?') + 'GB / ' + (mem.total_gb || '?') + 'GB</span></div><div class="row"><span class="label">Disk</span><span class="value">' + (mainDisk.free_gb || '?') + 'GB free</span></div><div class="row"><span class="label">Uptime</span><span class="value">' + (sys.uptime || '?') + '</span></div></div>';
+async function renderTowers() {
+  const el = document.getElementById('tower-container');
+  
+  const [aggData, statsData] = await Promise.allSettled([
+    fetchJSON(API_BASE + '/api/mc/aggregated'),
+    fetchJSON(API_BASE + '/api/mc/activity/stats')
+  ]);
+  
+  const agg = aggData.value || {};
+  const stats = statsData.value || {};
+  const agentStats = stats.by_agent || {};
+  
+  const agents = [
+    { id: 'builder', name: 'Builder', emoji: '🏗️', color: '#22d3ee', glow: '#22d3ee' },
+    { id: 'pengawas', name: 'Pengawas', emoji: '🔍', color: '#34d399', glow: '#34d399' },
+    { id: 'arsitek', name: 'Arsitek', emoji: '📐', color: '#fbbf24', glow: '#fbbf24' },
+    { id: 'penjaga', name: 'Penjaga', emoji: '🛡️', color: '#a78bfa', glow: '#a78bfa' },
+    { id: 'scribe', name: 'Scribe', emoji: '✍️', color: '#f472b6', glow: '#f472b6' },
+    { id: 'reach', name: 'Reach', emoji: '📡', color: '#fb923c', glow: '#fb923c' },
+  ];
+  
+  const maxCount = Math.max(1, ...agents.map(a => agentStats[a.id] || 1));
+  
+  let html = agents.map(a => {
+    const count = agentStats[a.id] || 0;
+    const height = Math.max(30, Math.round((count / maxCount) * 180));
+    const isActive = count > 0;
+    return '<div class="agent-tower">' +
+      '<div class="tower-body" style="height:' + height + 'px;background:linear-gradient(180deg,' + a.color + '44,' + a.color + '22);border:1px solid ' + a.color + '66;">' +
+      '<div class="tower-glow" style="background:' + a.glow + ';box-shadow:0 0 12px ' + a.glow + '66;' + (isActive ? '' : 'opacity:0.3;') + '"></div>' +
+      '<span style="font-size:16px;display:block;text-align:center;margin-top:' + Math.max(4, height - 40) + 'px;">' + a.emoji + '</span></div>' +
+      '<div class="tower-base" style="background:' + a.color + "44" + ';border:1px solid ' + a.color + "44" + ';"></div>' +
+      '<div class="tower-label" style="color:' + a.color + ';">' + a.name + '</div>' +
+      '<div class="tower-count">' + count + ' tasks</div>' +
+      '</div>';
+  }).join('');
+  
+  el.innerHTML = html;
 }
 
 async function renderEcosystem() {
@@ -62,7 +97,7 @@ async function renderEcosystem() {
     if (entries.length > 5) repoList += ' +' + (entries.length - 5) + ' lainnya';
     repoList += '</div>';
   }
-  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">Total Repos</span><span class="value">' + (p.total_repos || totalRepos || '?') + '</span></div><div class="row"><span class="label">Dirty</span><span class="value">' + (p.dirty_repos || 0) + '</span></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e293b;font-size:10px;">' + repoList + '</div></div>';
+  el.innerHTML = '<div class="card-content"><div class="row"><span class="label">Total Repos</span><span class="value">' + (p.total_repos || totalRepos || '?') + '</span></div><div class="row"><span class="label">Dirty</span><span class="value">' + (p.dirty_repos || 0) + '</span></div><div class="row"><span class="label">Cron Jobs</span><span class="value">' + ((a.cron || {}).cron_count || 0) + '</span></div><div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e293b;font-size:10px;">' + repoList + '</div></div>';
 }
 
 async function runOfficeCmd() {
