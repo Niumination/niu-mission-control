@@ -21,12 +21,302 @@
   <div id="office-ecosystem"><div class="loading-el">Memuat...</div></div>
 </div>
 
+<!-- 3D Model Viewer -->
 <div class="widget full">
-  <h3>🖥️ Terminal Cepat</h3>
-  <p style="font-size:11px;color:#64748b;margin-bottom:8px;">Jalankan perintah shell langsung dari dashboard. Hanya untuk debugging.</p>
-  <div style="display:flex;gap:8px;">
-    <input type="text" id="office-cmd" placeholder="ls -la /" style="flex:1;background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 12px;border-radius:6px;">
-    <button onclick="runOfficeCmd()" style="background:#1e293b;border:1px solid #22d3ee;color:#22d3ee;font-family:'JetBrains Mono',monospace;font-size:11px;padding:8px 16px;border-radius:6px;cursor:pointer;">Jalankan ▶</button>
+  <h3>🎨 3D Model Viewer</h3>
+  <p style="font-size:11px;color:#64748b;margin-bottom:8px;">Visualisasi model Three.js dari Sculptor. Pilih model untuk ditampilkan.</p>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+    <div style="flex:1;min-width:400px;height:400px;background:#0b1120;border:1px solid #1e293b;border-radius:8px;overflow:hidden;position:relative;">
+      <div id="three-container" style="width:100%;height:100%;"></div>
+      <div id="three-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#64748b;font-size:11px;">Memuat Three.js...</div>
+    </div>
+    <div style="width:220px;">
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">📦 Model Tersedia:</div>
+      <div id="model-list" style="font-size:10px;color:#64748b;">
+        <div class="loading-el">Memuat daftar model...</div>
+      </div>
+      <hr style="border-color:#1e293b;margin:12px 0;">
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">📤 Upload Referensi:</div>
+      <input type="file" id="model-upload" accept="image/png,image/jpeg,image/webp" style="font-size:10px;color:#94a3b8;margin-bottom:8px;">
+      <input type="text" id="model-name" placeholder="Nama objek (opsional)" style="width:100%;background:#0f172a;border:1px solid #1e293b;color:#e2e8f0;font-size:10px;padding:6px 10px;border-radius:6px;margin-bottom:8px;">
+      <button onclick="uploadAndSculpt()" style="width:100%;background:#1e293b;border:1px solid #22d3ee;color:#22d3ee;font-size:11px;padding:8px;border-radius:6px;cursor:pointer;">Generate 3D Model ▶</button>
+      <div id="sculpt-status" style="margin-top:8px;font-size:10px;color:#64748b;"></div>
+    </div>
   </div>
-  <div id="office-output" style="margin-top:8px;font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;"></div>
 </div>
+
+<script>
+// ── 3D Scene Setup ──
+let scene, camera, renderer, currentModel;
+let isThreeLoaded = false;
+
+function initThree() {
+  const container = document.getElementById('three-container');
+  if (!container || container.querySelector('canvas')) return;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b1120);
+
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+  camera.position.set(6, 4, 8);
+  camera.lookAt(0, 1.5, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0x404060, 0.5);
+  scene.add(ambient);
+
+  const dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+  dirLight.position.set(5, 10, 7);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.width = 1024;
+  dirLight.shadow.mapSize.height = 1024;
+  scene.add(dirLight);
+
+  const fillLight = new THREE.DirectionalLight(0x4488ff, 0.4);
+  fillLight.position.set(-3, 2, 4);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0x88ffaa, 0.3);
+  rimLight.position.set(0, -2, -5);
+  scene.add(rimLight);
+
+  // Ground grid
+  const gridHelper = new THREE.GridHelper(12, 12, 0x22d3ee, 0x1e293b);
+  gridHelper.position.y = 0;
+  scene.add(gridHelper);
+
+  // OrbitControls
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.target.set(0, 1.5, 0);
+  controls.minDistance = 3;
+  controls.maxDistance = 20;
+
+  // Load default model
+  loadDefaultModel();
+
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // Resize handler
+  window.addEventListener('resize', () => {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+
+  document.getElementById('three-loading').style.display = 'none';
+  isThreeLoaded = true;
+}
+
+function loadDefaultModel() {
+  // Demo tower model (procedural)
+  const model = createDefaultTower();
+  if (currentModel) {
+    scene.remove(currentModel);
+  }
+  currentModel = model;
+  scene.add(model);
+}
+
+function createDefaultTower() {
+  const group = new THREE.Group();
+  const floors = 5;
+  const height = 8;
+  const floorHeight = height / floors;
+
+  for (let i = 0; i < floors; i++) {
+    const width = 2.0 - (i / floors) * 0.4;
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.58 + i * 0.02, 0.6, 0.35 + i * 0.05),
+      roughness: 0.5, metalness: 0.4
+    });
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(width, floorHeight * 0.7, width), wallMat);
+    wall.position.y = 0.4 + i * floorHeight + floorHeight * 0.35;
+    wall.castShadow = true;
+    group.add(wall);
+
+    // Glass
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x85c1e9, roughness: 0.1, metalness: 0.8,
+      transparent: true, opacity: 0.5
+    });
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(width * 0.6, floorHeight * 0.3, 0.05), glassMat);
+    glass.position.set(0, 0.4 + i * floorHeight + floorHeight * 0.35, width / 2);
+    group.add(glass);
+
+    // Trim
+    if (i < floors - 1) {
+      const trimMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(width + 0.1, 0.05, width + 0.1), trimMat);
+      trim.position.y = 0.4 + (i + 1) * floorHeight;
+      group.add(trim);
+    }
+  }
+
+  // Roof
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.6 });
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.8, 8), roofMat);
+  roof.position.y = height + 0.4;
+  roof.castShadow = true;
+  group.add(roof);
+
+  // Antenna
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 6), poleMat);
+  pole.position.y = height + 0.8 + 0.5;
+  group.add(pole);
+
+  return group;
+}
+
+// ── Model Management ──
+function loadModelList() {
+  fetch('/api/mc/models')
+    .then(r => r.json())
+    .then(data => {
+      const list = document.getElementById('model-list');
+      if (data.models.length === 0) {
+        list.innerHTML = '<div style="color:#64748b;">Belum ada model. Upload gambar untuk generate.</div>';
+        return;
+      }
+      list.innerHTML = data.models.map(m =>
+        `<div style="padding:4px 6px;cursor:pointer;border-radius:4px;hover:background:#1e293b;"
+              onclick="loadModelFile('${m.name}')"
+              onmouseover="this.style.background='#1e293b'"
+              onmouseout="this.style.background='transparent'">
+           📄 ${m.name} <span style="color:#475569;font-size:9px;">(${(m.size/1024).toFixed(1)} KB)</span>
+         </div>`
+      ).join('');
+    })
+    .catch(() => {});
+}
+
+function loadModelFile(name) {
+  document.getElementById('sculpt-status').textContent = `Memuat ${name}...`;
+  // Fetch the .ts or .js model file
+  fetch(`/models/${name}`)
+    .then(r => r.text())
+    .then(code => {
+      // For now, just show we loaded it (true integration needs ESM module loading)
+      document.getElementById('sculpt-status').textContent = `✅ Dimuat: ${name}`;
+    })
+    .catch(e => {
+      document.getElementById('sculpt-status').textContent = `❌ Gagal: ${e}`;
+    });
+}
+
+function uploadAndSculpt() {
+  const fileInput = document.getElementById('model-upload');
+  const nameInput = document.getElementById('model-name');
+  const status = document.getElementById('sculpt-status');
+
+  if (!fileInput.files || !fileInput.files[0]) {
+    status.textContent = '❌ Pilih gambar dulu';
+    return;
+  }
+
+  status.textContent = '⏳ Mengupload dan memproses...';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result;
+    const objName = nameInput.value.trim() || null;
+
+    fetch('/api/mc/sculpt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: base64, object_name: objName })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        status.textContent = '✅ Model berhasil diproses! Refresh daftar.';
+        loadModelList();
+      } else {
+        status.textContent = `❌ Gagal: ${data.stderr || data.error || 'Unknown error'}`;
+      }
+    })
+    .catch(e => {
+      status.textContent = `❌ Error: ${e.message}`;
+    });
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+
+function runOfficeCmd() {
+  const cmd = document.getElementById('office-cmd').value;
+  const output = document.getElementById('office-output');
+  output.textContent = '⏳ Menjalankan...';
+  fetch('/api/mc/terminal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd })
+  })
+  .then(r => r.json())
+  .then(data => {
+    output.textContent = data.output || data.stderr || '✅ Selesai';
+  })
+  .catch(e => { output.textContent = `❌ ${e.message}`; });
+}
+
+// Load Three.js from CDN then init
+const threeScript = document.createElement('script');
+threeScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+threeScript.onload = function() {
+  // OrbitControls
+  const orbitScript = document.createElement('script');
+  orbitScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+  orbitScript.onload = function() {
+    initThree();
+    loadModelList();
+  };
+  document.head.appendChild(orbitScript);
+};
+document.head.appendChild(threeScript);
+
+// Load towers
+fetch('/api/mc/activity/stats')
+  .then(r => r.json())
+  .then(data => {
+    const container = document.getElementById('tower-container');
+    if (data.agents) {
+      const maxCount = Math.max(...Object.values(data.agents), 1);
+      container.innerHTML = Object.entries(data.agents).map(([name, count]) =>
+        `<div class="agent-tower">
+           <div class="tower-body" style="height:${Math.max(20, (count/maxCount)*180)}px;background:${getColor(name)};">
+             <div class="tower-glow" style="background:${getColor(name)};opacity:0.6;"></div>
+           </div>
+           <div class="tower-base" style="background:${getColor(name)};opacity:0.3;"></div>
+           <div class="tower-label">${name}</div>
+           <div class="tower-count">${count} tugas</div>
+         </div>`
+      ).join('');
+    }
+  });
+
+function getColor(name) {
+  const colors = {
+    'arsitek': '#22d3ee', 'builder': '#34d399', 'pengawas': '#f59e0b',
+    'scribe': '#a78bfa', 'penjaga': '#f472b6', 'eksekutor': '#fb923c',
+    'general': '#60a5fa'
+  };
+  return colors[name.toLowerCase()] || '#64748b';
+}
+</script>
