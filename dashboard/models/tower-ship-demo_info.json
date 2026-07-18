@@ -1,0 +1,5 @@
+{
+  "name": "Tower Ship",
+  "image": "/Users/zaryu/Desktop/Niumination/projects/niu-mission-control/tools/threejs-sculptor/assets/tower-ship-demo.png",
+  "probe": "{\n  \"path\": \"/private/var/folders/hz/7sm8sxb5579cqwww9l5zst9r0000gn/T/sculptor_4fpn_l5c/tower-ship-demo.png\",\n  \"type\": \"png\",\n  \"bytes\": 2680191,\n  \"width\": 2880,\n  \"height\": 1624,\n  \"aspectRatio\": 1.7733990147783252,\n  \"technicalSuitability\": \"pass\",\n  \"warnings\": [],\n  \"note\": \"This is only technical image probing. Semantic object suitability still requires visual inspection.\"\n}"
+}

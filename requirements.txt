@@ -1,0 +1,5 @@
+requests
+Flask # diasumsikan untuk server dashboard (walaupun SimpleHTTPServer, tapi Flask lebih umum untuk API)
+gunicorn # untuk production server (opsional)
+numpy # untuk beberapa image processing atau ML di masa depan (misal: di sculptor)
+Pillow # untuk image processing

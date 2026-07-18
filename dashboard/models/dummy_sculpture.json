@@ -1,0 +1,9 @@
+{
+  "status": "success",
+  "message": "Object 'dummy_sculpture' sculpted from /Users/zaryu/Desktop/Niumination/projects/niu-mission-control/data/test_image.png",
+  "output_file": "/Users/zaryu/Desktop/Niumination/projects/niu-mission-control/dashboard/models/dummy_sculpture.json",
+  "simulated_data": {
+    "vertex_count": 1000,
+    "material": "dummy_pbr"
+  }
+}
