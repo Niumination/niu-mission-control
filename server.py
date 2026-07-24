@@ -92,6 +92,31 @@ async def logs_feed(agent: str = None, limit: int = 50):
     return {"logs": logs}
 
 
+@app.post("/api/mc/task-update")
+async def task_update(payload: dict):
+    """
+    Endpoint untuk agent Hermes update status task.
+    Agent panggil saat selesai eksekusi:
+    curl -X POST http://localhost:5200/api/mc/task-update \
+      -d '{"task_id":"ac643df3","status":"completed","result":"..."}'
+    """
+    task_id = payload.get("task_id")
+    status = payload.get("status", "completed")
+    result = payload.get("result")
+
+    if not task_id:
+        return {"error": "task_id required"}
+
+    await bus.update_task_status(task_id, status, result={"output": result} if result else None)
+    agent = "chief"
+    level = "INFO" if status == "completed" else "ERROR"
+    await bus.log_event(
+        task_id, agent, level,
+        f"Task {status} via callback: {str(result)[:200] if result else ''}"
+    )
+    return {"status": "updated", "task_id": task_id}
+
+
 @app.post("/api/mc/delegate")
 async def delegate_task(payload: dict):
     """
@@ -104,8 +129,8 @@ async def delegate_task(payload: dict):
     if agent not in AGENT_CONFIG:
         return {"error": f"Unknown agent: {agent}"}
 
-    # Map agent → Telegram topic ID
-    topic_map = {"chief": "1", "research": "1", "programmer": "1", "qa": "1"}
+    # Map agent → Telegram topic ID (IDs dari createForumTopic, auto-generated)
+    topic_map = {"chief": "1", "research": "802", "programmer": "803", "qa": "804"}
 
     task_id = await bus.create_task(
         agent, {"instruction": instruction}, parent_id=payload.get("parent_id")
@@ -114,7 +139,14 @@ async def delegate_task(payload: dict):
     # Kirim instruksi ke Hermes via Telegram bridge (Jalur 1)
     from modules.hermes_bridge import send_chat
 
-    bridge_msg = f"[MC Swarm] Agent {agent}: {instruction} (task_id: {task_id})"
+    # Sertakan callback URL agar agent bisa update status
+    callback = f"http://localhost:5200/api/mc/task-update"
+    bridge_msg = (
+        f"[MC Swarm] Agent {agent} (task_id: {task_id}): {instruction}\n"
+        f"Setelah selesai, update status via: "
+        f"curl -s -X POST {callback} -H 'Content-Type: application/json' "
+        f"-d '{{\"task_id\":\"{task_id}\",\"status\":\"completed\",\"result\":\"<ringkasan>\"}}'"
+    )
     result = send_chat(bridge_msg, topic_id=topic_map.get(agent, "1"))
 
     if result["status"] == "sent":
