@@ -280,3 +280,57 @@ body {
   line-height: 1.6;
 }
 .telemetry-box span { color: var(--emerald); }
+
+/* LAYOUT: SIDEBAR + MAIN */
+.layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.sidebar {
+  width: 180px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+  gap: 0.2rem;
+  overflow-y: auto;
+}
+.nav-item {
+  display: block;
+  padding: 0.6rem 1rem;
+  color: var(--dim);
+  text-decoration: none;
+  font-size: 0.8rem;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+.nav-item:hover { background: var(--panel-2); color: var(--text); }
+.nav-item.active {
+  color: var(--amber);
+  border-left-color: var(--amber);
+  background: var(--panel-2);
+}
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.page { display: none; padding: 1rem; flex: 1; }
+.page.active { display: block; }
+.page h2 {
+  font-size: 1rem;
+  color: var(--amber);
+  margin-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.4rem;
+}
+
+/* FULL-WIDTH VARIANTS */
+.kanban-full { flex-direction: row; }
+.kanban-full .kanban-col { flex: 1; }
+.terminal-full { min-height: 400px; }
+.tg-feed-full { min-height: 300px; max-height: 400px; }
+
