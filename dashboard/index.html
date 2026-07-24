@@ -3,206 +3,587 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hermes Mission Control</title>
+  <title>HERMES // Mission Control v2.5</title>
+  
+  <!-- Fonts: Orbitron for titles, Inter for UI, Fira Code for terminals -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Link Stylesheet -->
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+
+  <!-- TECH BACKGROUND MATRIX GRID GLOWS -->
+  <div class="matrix-grid"></div>
+  <div class="glow-orb glow-orb-1"></div>
+  <div class="glow-orb glow-orb-2"></div>
+
   <!-- HEADER -->
   <header class="topnav">
-    <div class="brand">⚡ HERMES <span class="dim">| Mission Control</span></div>
-    <div class="search">
-      <input type="text" placeholder="[ Global Task Search ] #T-102" id="searchInput">
+    <div class="brand">
+      <div class="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+      <div class="brand-text">
+        <span>HERMES</span>
+        <span class="dim">// MISSION CONTROL v2.5</span>
+      </div>
     </div>
-    <div class="telemetry">
-      <span class="badge ok">System: <strong>WAL OK</strong></span>
-      <span class="badge" id="gwBadge">Gateway: <strong>—</strong></span>
-      <span class="badge" id="usbBadge">USB: <strong>—</strong></span>
-      <span class="badge" id="ramBadge">RAM: <strong>—</strong></span>
-      <span class="badge" id="apiBadge">API Lat: <strong>1.1s</strong></span>
-      <span class="role">Role: <strong>Commander</strong></span>
-      <button class="btn-config">⚙ Config</button>
+    
+    <div class="search-bar">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" placeholder="Global Command Search... (e.g. #T-802)" id="searchInput">
+    </div>
+
+    <div class="header-telemetry">
+      <div class="telemetry-badge badge-cyan" id="gwBadge">
+        <span class="pulse-dot"></span>
+        <span class="label">GATEWAY:</span> <strong id="gwStatusText">SYNCING...</strong>
+      </div>
+      <div class="telemetry-badge badge-purple" id="usbBadge">
+        <i class="fa-solid fa-database"></i>
+        <span class="label">WAL:</span> <strong>USB-SAFE</strong>
+      </div>
+      <div class="telemetry-badge badge-amber" id="ramBadge">
+        <i class="fa-solid fa-memory"></i>
+        <span class="label">RAM DISK:</span> <strong id="ramPctText">0%</strong>
+      </div>
+      <div class="telemetry-badge badge-emerald" id="apiBadge">
+        <i class="fa-solid fa-microchip"></i>
+        <span class="label">LATENCY:</span> <strong>0.8s</strong>
+      </div>
+      <div class="user-role">
+        <div class="avatar"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="role-info">
+          <span class="name">Commander</span>
+          <span class="status">Level 1 Auth</span>
+        </div>
+      </div>
     </div>
   </header>
 
-  <!-- LAYOUT: SIDEBAR + MAIN -->
+  <!-- MAIN CONTAINER LAYOUT -->
   <div class="layout">
+    
     <!-- NAVIGATION SIDEBAR -->
     <nav class="sidebar">
-      <a href="#" class="nav-item active" data-page="dashboard">🏠 Dashboard</a>
-      <a href="#" class="nav-item" data-page="swarm">🤖 Swarm</a>
-      <a href="#" class="nav-item" data-page="taskqueue">📋 Task Queue</a>
-      <a href="#" class="nav-item" data-page="terminal">💻 Terminal</a>
-      <a href="#" class="nav-item" data-page="telegram">📡 Telegram</a>
-      <a href="#" class="nav-item" data-page="storage">💾 Storage</a>
-      <a href="#" class="nav-item" data-page="system">⚙ System</a>
+      <div class="sidebar-header">OPERATIONAL PLANE</div>
+      <a href="#" class="nav-item active" data-page="dashboard">
+        <i class="fa-solid fa-chart-line nav-icon"></i> <span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item" data-page="swarm">
+        <i class="fa-solid fa-network-wired nav-icon"></i> <span>Swarm Topology</span>
+      </a>
+      <a href="#" class="nav-item" data-page="taskqueue">
+        <i class="fa-solid fa-list-check nav-icon"></i> <span>Task Kanban</span>
+      </a>
+      <a href="#" class="nav-item" data-page="terminal">
+        <i class="fa-solid fa-terminal nav-icon"></i> <span>Terminal Hub</span>
+      </a>
+      <a href="#" class="nav-item" data-page="telegram">
+        <i class="fa-solid fa-paper-plane nav-icon"></i> <span>Telegram Bridge</span>
+      </a>
+      <a href="#" class="nav-item" data-page="storage">
+        <i class="fa-solid fa-hard-drive nav-icon"></i> <span>USB &amp; Storage</span>
+      </a>
+      <a href="#" class="nav-item" data-page="system">
+        <i class="fa-solid fa-sliders nav-icon"></i> <span>System Config</span>
+      </a>
+      
+      <div class="sidebar-footer">
+        <div class="health-gauge">
+          <div class="gauge-label">
+            <span>HEALTH EXCEL</span>
+            <span id="healthPct">100%</span>
+          </div>
+          <div class="gauge-bar">
+            <div class="gauge-fill" id="healthFill" style="width: 100%;"></div>
+          </div>
+        </div>
+        <button class="btn-checkpoint" onclick="triggerCheckpoint()"><i class="fa-solid fa-rotate"></i> Checkpoint WAL</button>
+      </div>
     </nav>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN CONTENT DISPLAY VIEWPORTS -->
     <main class="main-content">
-      <!-- PAGE: DASHBOARD -->
+      
+      <!-- 1. PAGE: DASHBOARD (OPERATIONS CENTER) -->
       <section class="page active" id="page-dashboard">
-        <!-- KPI METRICS -->
+        
+        <!-- TOP KPI CARDS -->
         <div class="kpi-row">
-          <div class="kpi">
-            <div class="kpi-label">Swarm Active</div>
-            <div class="kpi-value" id="kpiSwarm">3 / 3 Workers</div>
+          <div class="kpi-card">
+            <div class="kpi-icon icon-blue"><i class="fa-solid fa-robot"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">SWARM NODES</span>
+              <span class="kpi-value" id="kpiSwarm">4 / 4 Active</span>
+            </div>
+            <div class="kpi-status status-up"><i class="fa-solid fa-caret-up"></i> herdr ok</div>
           </div>
-          <div class="kpi">
-            <div class="kpi-label">Tasks Completed</div>
-            <div class="kpi-value" id="kpiTasks">0 Pass / 0 Fail</div>
+          
+          <div class="kpi-card">
+            <div class="kpi-icon icon-emerald"><i class="fa-solid fa-square-check"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">COMPLETED TASKS</span>
+              <span class="kpi-value" id="kpiTasks">0 Pass / 0 Fail</span>
+            </div>
+            <div class="kpi-status status-up"><i class="fa-solid fa-caret-up"></i> AutoSync</div>
           </div>
-          <div class="kpi">
-            <div class="kpi-label">USB &amp; RAM Disk I/O</div>
-            <div class="kpi-value" id="kpiIO">/tmp: 12% | WAL:OK</div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon icon-purple"><i class="fa-solid fa-sd-card"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">USB TEMP I/O</span>
+              <span class="kpi-value" id="kpiIO">/tmp: OK</span>
+            </div>
+            <div class="kpi-status status-up"><i class="fa-solid fa-shield-halved"></i> RAM disk</div>
           </div>
-          <div class="kpi">
-            <div class="kpi-label">LLM API Avg Lat</div>
-            <div class="kpi-value" id="kpiLat">1.2s (DeepSeek)</div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon icon-amber"><i class="fa-solid fa-brain"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">LLM BACKEND</span>
+              <span class="kpi-value" id="kpiLat">DeepSeek-V3</span>
+            </div>
+            <div class="kpi-status status-stable">Active Model</div>
           </div>
         </div>
 
         <!-- 3-COLUMN COMMAND GRID -->
         <div class="grid">
-          <!-- LEFT: Control & Swarm -->
+          
+          <!-- LEFT COL: Agent Swarm & TG Live -->
           <section class="col-left">
-            <h3>🤖 Agent Swarm</h3>
-            <div id="agentCards" class="agent-cards"></div>
-
-            <h3>📡 Telegram Live Bridge</h3>
-            <div class="tg-feed" id="tgFeed">
-              <div class="tg-msg"><span class="tg-user">User:</span> @hermes auth</div>
-              <div class="tg-msg"><span class="tg-hermes">Hermes:</span> Tasks dispatched</div>
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-microchip"></i> AGENT FLEET STATE</span>
+              <span class="status-indicator"></span>
             </div>
-            <div class="tg-input">
-              <input type="text" id="tgInput" placeholder="> Type command...">
-              <button onclick="sendTg()">Send</button>
+            
+            <div id="agentCards" class="agent-cards-container">
+              <!-- Rendered via JS -->
+            </div>
+
+            <div class="col-header" style="margin-top: 1.5rem;">
+              <span class="col-title"><i class="fa-brands fa-telegram"></i> TELEGRAM BRIDGE</span>
+              <span class="badge" id="tgThreadBadge">Topic: General (1)</span>
+            </div>
+            
+            <div class="telegram-box">
+              <div class="tg-topics-tabs">
+                <button class="tg-tab active" data-topic="1" onclick="switchTgTopic('1', 'General (1)')">General</button>
+                <button class="tg-tab" data-topic="802" onclick="switchTgTopic('802', 'Research (802)')">Research</button>
+                <button class="tg-tab" data-topic="803" onclick="switchTgTopic('803', 'Coder (803)')">Coder</button>
+                <button class="tg-tab" data-topic="804" onclick="switchTgTopic('804', 'QA (804)')">QA</button>
+              </div>
+              
+              <div class="tg-feed" id="tgFeed">
+                <!-- Messages feed -->
+              </div>
+              <div class="tg-input-wrapper">
+                <input type="text" id="tgInput" placeholder="Type instruction to send via Telegram..." onkeydown="handleTgKey(event)">
+                <button onclick="sendTgChat()" class="btn-send"><i class="fa-solid fa-paper-plane"></i></button>
+              </div>
             </div>
           </section>
 
-          <!-- CENTER: Execution Matrix -->
+          <!-- CENTER COL: Terminal Execution Grid -->
           <section class="col-center">
-            <div class="center-header">
-              <h3>⚡ Multi-Terminal Execution Matrix</h3>
-              <select id="agentFilter">
-                <option value="all">Filter: ALL</option>
-                <option value="research">Agent 01 - Research</option>
-                <option value="programmer">Agent 02 - Programmer</option>
-                <option value="qa">Agent 03 - QA</option>
-                <option value="chief">Chief</option>
-              </select>
-              <span class="mode">Mode: Async</span>
+            <div class="col-header flex-header">
+              <span class="col-title"><i class="fa-solid fa-terminal"></i> TERMINAL MATRIX STREAM</span>
+              <div class="controls-row">
+                <select id="agentFilter" onchange="filterTerminals()">
+                  <option value="all">STREAM ALL</option>
+                  <option value="research">AG-01: Research</option>
+                  <option value="programmer">AG-02: Coder</option>
+                  <option value="qa">AG-03: QA Tester</option>
+                  <option value="chief">AG-00: Chief</option>
+                </select>
+                <button class="btn-tool-sm" onclick="clearTerminals()" title="Clear terminal logs"><i class="fa-solid fa-trash-can"></i></button>
+              </div>
             </div>
 
+            <!-- Terminal columns -->
             <div class="terminal-matrix" id="terminalMatrix">
-              <div class="term-col" data-agent="research">
-                <div class="term-title">[Agent 01] Research Feed</div>
+              <div class="term-col" id="termCol-research" data-agent="research">
+                <div class="term-title-bar">
+                  <span class="dot-btn red"></span>
+                  <span class="dot-btn yellow"></span>
+                  <span class="dot-btn green"></span>
+                  <span class="term-title-text">[AG-01] Research stream</span>
+                  <span class="status-pill state-idle">idle</span>
+                </div>
                 <div class="term-body" id="termResearch"></div>
               </div>
-              <div class="term-col" data-agent="programmer">
-                <div class="term-title">[Agent 02] Programmer</div>
+              
+              <div class="term-col" id="termCol-programmer" data-agent="programmer">
+                <div class="term-title-bar">
+                  <span class="dot-btn red"></span>
+                  <span class="dot-btn yellow"></span>
+                  <span class="dot-btn green"></span>
+                  <span class="term-title-text">[AG-02] Programmer stream</span>
+                  <span class="status-pill state-idle">idle</span>
+                </div>
                 <div class="term-body" id="termProgrammer"></div>
               </div>
-              <div class="term-col" data-agent="qa">
-                <div class="term-title">[Agent 03] QA Tester</div>
+              
+              <div class="term-col" id="termCol-qa" data-agent="qa">
+                <div class="term-title-bar">
+                  <span class="dot-btn red"></span>
+                  <span class="dot-btn yellow"></span>
+                  <span class="dot-btn green"></span>
+                  <span class="term-title-text">[AG-03] QA execution</span>
+                  <span class="status-pill state-idle">idle</span>
+                </div>
                 <div class="term-body" id="termQA"></div>
               </div>
             </div>
 
-            <div class="quick-actions">
-              <button onclick="delegate('research')">▶ Delegate Research</button>
-              <button onclick="delegate('programmer')">▶ Delegate Programmer</button>
-              <button onclick="delegate('qa')">▶ Delegate QA</button>
-              <button class="danger">⏸ Pause Swarm</button>
+            <!-- Quick manual delegate panel -->
+            <div class="delegate-quick-panel">
+              <span class="panel-subtitle">DIRECT DELEGATION COMPASS</span>
+              <div class="delegate-form">
+                <select id="delegateAgent">
+                  <option value="research">Research - Web scraper / summary brief</option>
+                  <option value="programmer">Programmer - AST code generator</option>
+                  <option value="qa">QA - Test suite and terminal auditor</option>
+                </select>
+                <input type="text" id="delegateInstruct" placeholder="Enter custom agent directives...">
+                <button onclick="delegateQuick()" class="btn-primary-glow"><i class="fa-solid fa-play"></i> Dispatch</button>
+              </div>
             </div>
           </section>
 
-          <!-- RIGHT: Artifact & Tasks -->
+          <!-- RIGHT COL: Kanban board & Artifact inspection -->
           <section class="col-right">
-            <h3>📋 Task Kanban</h3>
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-circle-nodes"></i> ACTIVE MISSION KANBAN</span>
+            </div>
+            
             <div class="kanban" id="kanban">
               <div class="kanban-col" data-status="pending">
-                <div class="kanban-title">Backlog</div>
+                <div class="kanban-title"><i class="fa-solid fa-hourglass-start"></i> Backlog <span class="badge" id="countPending">0</span></div>
                 <div class="kanban-items" id="kbPending"></div>
               </div>
               <div class="kanban-col" data-status="running">
-                <div class="kanban-title">In Progress</div>
+                <div class="kanban-title"><i class="fa-solid fa-spinner fa-spin"></i> Processing <span class="badge" id="countRunning">0</span></div>
                 <div class="kanban-items" id="kbRunning"></div>
               </div>
               <div class="kanban-col" data-status="completed">
-                <div class="kanban-title">Done</div>
+                <div class="kanban-title"><i class="fa-solid fa-clipboard-check"></i> Done <span class="badge" id="countCompleted">0</span></div>
                 <div class="kanban-items" id="kbCompleted"></div>
               </div>
             </div>
 
-            <h3>🔍 Artifact Inspector</h3>
-            <div class="artifact" id="artifact">
-              <div class="artifact-file">active_spec.md</div>
-              <pre>Menunggu output agent...</pre>
+            <div class="col-header" style="margin-top: 1.5rem;">
+              <span class="col-title"><i class="fa-solid fa-file-invoice"></i> ARTIFACT INSPECTOR</span>
             </div>
-
-            <h3>💾 System &amp; USB Telemetry</h3>
-            <div class="telemetry-box" id="telemetryBox">
-              <div>CPU: <span id="cpuVal">—</span></div>
-              <div>RAM: <span id="ramVal">—</span></div>
-              <div>USB Read: <span id="usbR">—</span> Write: <span id="usbW">—</span></div>
-              <div>SQLite WAL: <span id="walVal">0 Uncommitted</span></div>
+            
+            <div class="artifact-panel">
+              <div class="artifact-header-bar">
+                <i class="fa-solid fa-file-code"></i> <span id="activeArtifactName">active_spec.md</span>
+                <button class="btn-tab-link" onclick="loadArtifactsList()"><i class="fa-solid fa-sync"></i> Refresh List</button>
+              </div>
+              <div class="artifact-content-area" id="artifactContent">
+                <pre>Waiting for agent mission outputs...</pre>
+              </div>
             </div>
           </section>
         </div>
       </section>
 
-      <!-- PAGE: SWARM -->
+      <!-- 2. PAGE: SWARM TOPOLOGY -->
       <section class="page" id="page-swarm">
-        <h2>🤖 Swarm Worker Health</h2>
-        <div id="swarmDetail" class="agent-cards"></div>
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-network-wired"></i> SWARM AGENT SYSTEM ORCHESTRATION</h2>
+          <p>Detailed system prompts and modular profile config mapping for the 4-agent swarm topology.</p>
+        </div>
+        
+        <div class="topology-map-visual">
+          <div class="topo-node node-commander">
+            <div class="node-title">Commander (User)</div>
+            <div class="node-subtitle">Web Interface &amp; Telegram</div>
+          </div>
+          <div class="topo-arrow"><i class="fa-solid fa-down-long"></i></div>
+          <div class="topo-node node-chief">
+            <div class="node-title">Hermes Chief (Orchestrator)</div>
+            <div class="node-subtitle">Task Decomposition &amp; Routing</div>
+          </div>
+          <div class="topo-connectors-row">
+            <div class="connect-branch"></div>
+            <div class="connect-branch"></div>
+            <div class="connect-branch"></div>
+          </div>
+          <div class="topo-agents-row">
+            <div class="topo-agent-node border-research">
+              <div class="node-title text-blue">AG-01: Research</div>
+              <div class="node-subtitle">Docs summarizes &amp; spec compilations</div>
+            </div>
+            <div class="topo-agent-node border-programmer">
+              <div class="node-title text-emerald">AG-02: Programmer</div>
+              <div class="node-subtitle">Write, refactor &amp; AST edits</div>
+            </div>
+            <div class="topo-agent-node border-qa">
+              <div class="node-title text-purple">AG-03: QA Tester</div>
+              <div class="node-subtitle">Test runner &amp; crash analyzer</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="swarm-config-panel-row">
+          <div class="config-text-area-box">
+            <h3>Configure System Prompts &amp; Roles</h3>
+            <div class="tabs-container">
+              <button class="tab-btn active" onclick="switchPromptTab('chief')">Hermes Chief</button>
+              <button class="tab-btn" onclick="switchPromptTab('research')">AG-01: Research</button>
+              <button class="tab-btn" onclick="switchPromptTab('programmer')">AG-02: Programmer</button>
+              <button class="tab-btn" onclick="switchPromptTab('qa')">AG-03: QA Tester</button>
+            </div>
+            <div class="prompt-editor-body">
+              <div class="editor-header">SYSTEM PROMPT DEFINITION (READ-ONLY)</div>
+              <textarea id="promptEditorText" readonly class="code-textarea"></textarea>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <!-- PAGE: TASK QUEUE -->
+      <!-- 3. PAGE: TASK KANBAN -->
       <section class="page" id="page-taskqueue">
-        <h2>📋 Task Queue (Kanban)</h2>
-        <div class="kanban kanban-full" id="kanbanFull"></div>
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-list-check"></i> ADVANCED MISSION KANBAN AND TASK DISPATCHER</h2>
+          <p>Full operations control board with custom payload constructor, logs audit, and complete timeline review.</p>
+        </div>
+
+        <div class="task-page-grid">
+          <!-- Dispatch Form -->
+          <div class="dispatch-card-box">
+            <h3><i class="fa-solid fa-circle-plus"></i> MISSION DISPATCH PANEL</h3>
+            <div class="card-body">
+              <div class="form-group">
+                <label for="taskAgentSelect">Target Agent Specialist</label>
+                <select id="taskAgentSelect" class="form-control" onchange="populateTemplateInstruction()">
+                  <option value="research">AG-01 Research &amp; Blueprinting</option>
+                  <option value="programmer">AG-02 Code Implementation</option>
+                  <option value="qa">AG-03 QA Validation Tests</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Quick Templates</label>
+                <div class="templates-shortcut">
+                  <button class="btn-shortcut" onclick="setTemplate('Analyze framework APIs & libraries')">API Analysis</button>
+                  <button class="btn-shortcut" onclick="setTemplate('Implement clean FastAPI schema module')">FastAPI Module</button>
+                  <button class="btn-shortcut" onclick="setTemplate('Execute unit tests & crash telemetry scan')">QA Unit Testing</button>
+                  <button class="btn-shortcut" onclick="setTemplate('Audit database WAL transactions safety')">WAL Audit</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="taskInstruction">Instruction Directive</label>
+                <textarea id="taskInstruction" rows="4" class="form-control" placeholder="Describe the mission details..."></textarea>
+              </div>
+              <button class="btn-submit-glow" onclick="dispatchCustomTask()"><i class="fa-solid fa-rocket"></i> Dispatch Mission Swarm</button>
+            </div>
+          </div>
+
+          <!-- Full Screen Kanban -->
+          <div class="full-kanban-view">
+            <h3><i class="fa-solid fa-diagram-project"></i> ACTIVE WORKFLOW GRID</h3>
+            <div class="kanban kanban-full-row" id="kanbanFullRow">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
       </section>
 
-      <!-- PAGE: TERMINAL -->
+      <!-- 4. PAGE: TERMINAL HUB -->
       <section class="page" id="page-terminal">
-        <h2>💻 Multi-Terminal Execution Matrix</h2>
-        <div class="terminal-matrix terminal-full" id="terminalFull"></div>
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-terminal"></i> INTERACTIVE TERMINAL HUBS &amp; HOST SYSTEM SHELL</h2>
+          <p>Execute diagnostics on macOS host shell, review processes, run script tests, and clear database logs dynamically.</p>
+        </div>
+
+        <div class="terminal-shell-box">
+          <div class="shell-header">
+            <span class="shell-title"><i class="fa-solid fa-microchip"></i> HOST TERMINAL SHELL DIAGNOSTICS</span>
+            <span class="shell-badge">PORTABLE SHELL SECURE</span>
+          </div>
+          <div class="shell-output" id="terminalShellOutput">
+            <div>⚡ SYSTEM INITIALIZED SUCCESSFUL // WECOME TO HERMES MISSION CONTROL TERMINAL</div>
+            <div>⚡ TYPE COMMAND AND PRESS ENTER. TO AUDIT OR RUN SHELL COMMANDS.</div>
+            <div class="text-dim">E.g. "ls -la", "python3 scripts/get-system.py", "df -h", "git status"</div>
+            <br>
+          </div>
+          <div class="shell-input-row">
+            <span class="shell-prompt">zaryu@macbook-pro ~ %</span>
+            <input type="text" id="terminalShellInput" placeholder="Type diagnostic shell command..." onkeydown="handleTerminalCommandKey(event)">
+            <button onclick="executeTerminalShellCommand()" class="btn-exec-terminal">RUN CMD</button>
+          </div>
+        </div>
+
+        <div class="terminal-control-row">
+          <button onclick="runPredefinedCommand('python3 scripts/get-system.py')" class="btn-tool"><i class="fa-solid fa-heart-pulse"></i> Get System Stats</button>
+          <button onclick="runPredefinedCommand('python3 scripts/get-cron.py')" class="btn-tool"><i class="fa-solid fa-clock"></i> List Cron Stats</button>
+          <button onclick="runPredefinedCommand('python3 scripts/get-agents.py')" class="btn-tool"><i class="fa-solid fa-network-wired"></i> List herdr Status</button>
+          <button onclick="runPredefinedCommand('git status -b')" class="btn-tool"><i class="fa-solid fa-code-commit"></i> Git Repository Status</button>
+          <button onclick="clearConsole()" class="btn-tool"><i class="fa-solid fa-eraser"></i> Clear Terminal Monitor</button>
+          <button onclick="clearDatabaseLogs()" class="btn-tool-danger"><i class="fa-solid fa-trash-arrow-up"></i> Clear Database State DB</button>
+        </div>
       </section>
 
-      <!-- PAGE: TELEGRAM -->
+      <!-- 5. PAGE: TELEGRAM BRIDGE -->
       <section class="page" id="page-telegram">
-        <h2>📡 Live Telegram Bridge &amp; Orchestration Log</h2>
-        <div class="tg-feed tg-feed-full" id="tgFeedFull"></div>
-        <div class="tg-input">
-          <input type="text" id="tgInputFull" placeholder="> Type command...">
-          <button onclick="sendTgFull()">Send</button>
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-satellite-dish"></i> TELEGRAM INTEGRATION CONSOLE</h2>
+          <p>Real-time log auditing of messages flowing between user chat, Hermes gateway, and our database.</p>
+        </div>
+
+        <div class="telegram-full-view">
+          <div class="tg-left">
+            <h3><i class="fa-solid fa-circle-info"></i> Telegram Bridge Architecture</h3>
+            <div class="bridge-info-card">
+              <p>The mission control dashboard does not initiate communication with the Telegram bot directly. Instead, it routes calls to the Telegram bridge via the local Hermes Gateway.</p>
+              <div class="info-list">
+                <div class="info-item"><strong>Gateway API Chat ID:</strong> -1004204696417</div>
+                <div class="info-item"><strong>General Topic (General):</strong> ID 1</div>
+                <div class="info-item"><strong>Research Topic (MC-Research):</strong> ID 802</div>
+                <div class="info-item"><strong>Programmer Topic (MC-Programmer):</strong> ID 803</div>
+                <div class="info-item"><strong>QA Topic (MC-QA):</strong> ID 804</div>
+              </div>
+              <p class="text-amber">Status updates are pushed back via standard Webhook callback: <code>POST /api/mc/task-update</code> on port 5200.</p>
+            </div>
+          </div>
+          
+          <div class="tg-right">
+            <h3><i class="fa-solid fa-comments"></i> Direct Telegram Topic Sender</h3>
+            <div class="tg-send-form">
+              <div class="form-group">
+                <label>Select Forum Thread / Topic</label>
+                <select id="tgFullSelectTopic" class="form-control">
+                  <option value="1">General Chat (Topic 1)</option>
+                  <option value="802">Agent 01 Research Chat (Topic 802)</option>
+                  <option value="803">Agent 02 Coder Chat (Topic 803)</option>
+                  <option value="804">Agent 03 QA Chat (Topic 804)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Message Content</label>
+                <textarea id="tgFullMsg" rows="5" class="form-control" placeholder="Type a message to push directly to Telegram topic..."></textarea>
+              </div>
+              <button onclick="sendTelegramFullMessage()" class="btn-primary-glow"><i class="fa-solid fa-paper-plane"></i> Push to Telegram</button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- PAGE: STORAGE -->
+      <!-- 6. PAGE: STORAGE & USB -->
       <section class="page" id="page-storage">
-        <h2>💾 Storage &amp; USB Telemetry</h2>
-        <div class="telemetry-box" id="storageBox">
-          <div>Disk Total: <span id="diskTotal">—</span></div>
-          <div>Disk Free: <span id="diskFree">—</span></div>
-          <div>RAM: <span id="ramVal2">—</span></div>
-          <div>SQLite WAL: <span id="walVal2">Active (USB-safe)</span></div>
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-hard-drive"></i> STORAGE ENVIRONMENT &amp; USB PORTABILITY</h2>
+          <p>Analyze read/write activities, track SQLite journal WAL mode transactions, and check storage volumes health.</p>
+        </div>
+
+        <div class="storage-columns-grid">
+          <div class="storage-card">
+            <h3><i class="fa-solid fa-sd-card"></i> USB / DRIVE VOLUMES</h3>
+            <div class="disk-usage-list" id="diskUsageContainer">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+          
+          <div class="storage-card">
+            <h3><i class="fa-solid fa-shield-halved"></i> RAM DISK STATE (/tmp)</h3>
+            <div class="ramdisk-info">
+              <div class="circle-gauge-wrapper">
+                <svg viewBox="0 0 100 100" class="circle-gauge">
+                  <circle cx="50" cy="50" r="40" class="circle-bg"></circle>
+                  <circle cx="50" cy="50" r="40" class="circle-fill" id="ramDiskCircle" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+                </svg>
+                <div class="circle-value" id="ramDiskValue">/tmp</div>
+              </div>
+              <div class="ramdisk-notes">
+                <p>RAM disk speeds up agent log creation and test sweeps, preventing excess read/write wear and tear on the portable USB hardware.</p>
+                <div class="stat-row"><span>Status:</span> <span class="text-emerald">OPERATIONAL</span></div>
+                <div class="stat-row"><span>Volume:</span> <span>/tmp/hermes_research</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="storage-card">
+            <h3><i class="fa-solid fa-file-shield"></i> SQLITE WAL TRANSACTION METRICS</h3>
+            <div class="wal-details">
+              <div class="metric-row"><span>Journal Mode:</span> <span class="text-cyan">Write-Ahead Log (WAL)</span></div>
+              <div class="metric-row"><span>Sync Protocol:</span> <span class="text-cyan">NORMAL (USB-safe)</span></div>
+              <div class="metric-row"><span>Busy Timeout:</span> <span>5000 ms</span></div>
+              <div class="metric-row"><span>Temp Storage:</span> <span>MEMORY</span></div>
+              <p class="text-dim" style="margin-top: 1rem; font-size: 0.75rem;">WAL mode decreases file write locking and improves USB operations safety under sudden disconnects.</p>
+              <button onclick="triggerCheckpoint()" class="btn-checkpoint-full"><i class="fa-solid fa-rotate"></i> Truncate &amp; Checkpoint DB</button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- PAGE: SYSTEM -->
+      <!-- 7. PAGE: SYSTEM CONFIG -->
       <section class="page" id="page-system">
-        <h2>⚙ System Health</h2>
-        <div class="telemetry-box" id="systemBox">
-          <div>Hostname: <span id="hostVal">—</span></div>
-          <div>CPU: <span id="cpuVal2">—</span></div>
-          <div>RAM: <span id="ramVal3">—</span></div>
-          <div>Gateway: <span id="gwVal">Online</span></div>
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-sliders"></i> DYNAMIC SYSTEM CONFIGURATION</h2>
+          <p>Update environment settings, LLM targets, and browse the active cron schedules executed by Hermes.</p>
+        </div>
+
+        <div class="config-grid">
+          <!-- Swarm config editor -->
+          <div class="config-card">
+            <h3><i class="fa-solid fa-gears"></i> CORE SWARM VARIABLES</h3>
+            <div class="form-group">
+              <label>Default Orchestrator Agent</label>
+              <input type="text" id="cfgOrchestrator" class="form-control">
+            </div>
+            <div class="form-group flex-checkbox">
+              <input type="checkbox" id="cfgUsbSafe">
+              <label for="cfgUsbSafe">Activate USB Safe-Mode (Use /tmp for logging)</label>
+            </div>
+            <div class="form-group">
+              <label>Agent Concurrency Limit</label>
+              <input type="number" id="cfgConcurrency" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>LLM Active Model Target</label>
+              <input type="text" id="cfgLlm" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Telegram Primary Group Chat ID</label>
+              <input type="text" id="cfgTgChatId" class="form-control">
+            </div>
+            <button onclick="saveSystemConfig()" class="btn-primary-glow"><i class="fa-solid fa-floppy-disk"></i> Commit Settings</button>
+          </div>
+
+          <!-- Cron Scheduler List -->
+          <div class="config-card flex-double">
+            <h3><i class="fa-solid fa-clock"></i> SCHEDULER (HERMES ACTIVE CRON)</h3>
+            <div class="table-responsive">
+              <table class="cron-table">
+                <thead>
+                  <tr>
+                    <th>Job ID</th>
+                    <th>Name / Command</th>
+                    <th>Schedule</th>
+                    <th>Status</th>
+                    <th>Next Run</th>
+                  </tr>
+                </thead>
+                <tbody id="cronTableBody">
+                  <!-- Loaded dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
+
     </main>
   </div>
 
+  <!-- Link JavaScript -->
   <script src="/static/app.js"></script>
 </body>
 </html>

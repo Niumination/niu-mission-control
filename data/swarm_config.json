@@ -1,0 +1,7 @@
+{
+  "orchestrator": "chief",
+  "usb_safe_mode": true,
+  "concurrency_limit": 4,
+  "llm_model": "DeepSeek-V3",
+  "tg_chat_id": "-1004204696417"
+}
