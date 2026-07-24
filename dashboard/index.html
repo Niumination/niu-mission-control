@@ -1,209 +1,137 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Niu-MissionControl Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #020617; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; min-height: 100vh; }
-.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; padding: 16px 20px; background: #0f172a; border: 1px solid #1e293b; border-radius: 10px 10px 0 0; }
-.header h1 { font-size: 20px; font-weight: 700; color: #f8fafc; }
-.header .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
-.header .dot.green { background: #34d399; }
-.header .dot.red { background: #ef4444; }
-.header .dot.yellow { background: #fbbf24; }
-.header .status { font-size: 11px; color: #64748b; }
-.header .time { font-size: 11px; color: #475569; }
-.header .actions { display: flex; gap: 8px; }
-.header .actions button { background: #1e293b; border: 1px solid #334155; color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
-.header .actions button:hover { background: #334155; color: #e2e8f0; border-color: #22d3ee; }
-.header .actions button.active { background: #334155; color: #22d3ee; border-color: #22d3ee; }
-
-/* Navigation */
-.nav-bar { display: flex; gap: 4px; padding: 8px 20px; background: #0f172a; border: 1px solid #1e293b; border-top: none; border-radius: 0 0 10px 10px; margin-bottom: 20px; flex-wrap: wrap; }
-.nav-item { padding: 6px 16px; font-size: 11px; font-weight: 500; color: #64748b; background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-family: 'JetBrains Mono', monospace; }
-.nav-item:hover { background: #1e293b; color: #94a3b8; }
-.nav-item.active { background: #1e293b; color: #22d3ee; border-color: #22d3ee; }
-
-/* Content */
-.tab-content { min-height: 60vh; }
-iframe { width: 100%; border: none; border-radius: 8px; background: #0f172a; }
-.widget-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-.widget-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-.widget { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; }
-.widget.full { grid-column: 1 / -1; }
-.widget h3 { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
-.widget h3 .count { color: #f8fafc; font-weight: 700; }
-.widget .card-content { font-size: 11px; line-height: 1.6; }
-.widget .card-content .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #1e293b; }
-.widget .card-content .row:last-child { border-bottom: none; }
-.widget .card-content .label { color: #64748b; }
-.widget .card-content .value { color: #e2e8f0; font-weight: 500; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-.badge.green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-.badge.yellow { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
-.badge.red { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.badge.gray { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
-.badge.cyan { background: rgba(34, 211, 238, 0.15); color: #22d3ee; }
-.agent-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1e293b; font-size: 11px; }
-.agent-row:last-child { border-bottom: none; }
-.agent-row .name { color: #f1f5f9; font-weight: 600; min-width: 100px; }
-.agent-row .emoji { font-size: 14px; }
-.agent-row .status-text { font-size: 10px; }
-.project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-top: 8px; }
-.project-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 10px; }
-.project-card .proj-name { font-size: 11px; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; }
-.project-card .proj-meta { font-size: 9px; color: #64748b; }
-.disk-bar { height: 6px; border-radius: 3px; background: #1e293b; margin: 4px 0; }
-.disk-bar .fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
-.disk-bar .fill.green { background: #34d399; }
-.disk-bar .fill.yellow { background: #fbbf24; }
-.disk-bar .fill.red { background: #ef4444; }
-.error-state { padding: 20px; text-align: center; color: #ef4444; font-size: 12px; }
-.loading-el { padding: 20px; text-align: center; color: #64748b; font-size: 11px; }
-.refreshing .widget-content { opacity: 0.5; transition: opacity 0.2s; }
-.status-bar { display: flex; gap: 16px; align-items: center; }
-.health-ring { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; font-size: 14px; font-weight: 700; }
-.health-ring.good { background: rgba(52, 211, 153, 0.15); border: 2px solid #34d399; color: #34d399; }
-.health-ring.fair { background: rgba(251, 191, 36, 0.15); border: 2px solid #fbbf24; color: #fbbf24; }
-.health-ring.bad { background: rgba(239, 68, 68, 0.15); border: 2px solid #ef4444; color: #ef4444; }
-.fragment-loading { display: none; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hermes Mission Control</title>
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div>
-      <h1>🎮 Niu-MissionControl</h1>
-      <div class="status" id="statusText"><span class="dot yellow"></span> Memuat...</div>
+  <!-- HEADER -->
+  <header class="topnav">
+    <div class="brand">⚡ HERMES <span class="dim">| Mission Control</span></div>
+    <div class="search">
+      <input type="text" placeholder="[ Global Task Search ] #T-102" id="searchInput">
     </div>
-    <div class="status-bar">
-      <div id="healthRing" class="health-ring good">--</div>
-      <div class="status" id="timeDisplay">--:--:--</div>
-      <div class="actions">
-        <button onclick="refreshAll()">⟳ Refresh</button>
+    <div class="telemetry">
+      <span class="badge ok">System: <strong>WAL OK</strong></span>
+      <span class="badge" id="usbBadge">USB: <strong>—</strong></span>
+      <span class="badge" id="ramBadge">RAM: <strong>—</strong></span>
+      <span class="badge" id="apiBadge">API Lat: <strong>1.1s</strong></span>
+      <span class="role">Role: <strong>Commander</strong></span>
+      <button class="btn-config">⚙ Config</button>
+    </div>
+  </header>
+
+  <!-- KPI METRICS -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Swarm Active</div>
+      <div class="kpi-value" id="kpiSwarm">3 / 3 Workers</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Tasks Completed</div>
+      <div class="kpi-value" id="kpiTasks">0 Pass / 0 Fail</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">USB &amp; RAM Disk I/O</div>
+      <div class="kpi-value" id="kpiIO">/tmp: 12% | WAL:OK</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">LLM API Avg Lat</div>
+      <div class="kpi-value" id="kpiLat">1.2s (DeepSeek)</div>
+    </div>
+  </div>
+
+  <!-- 3-COLUMN COMMAND GRID -->
+  <main class="grid">
+    <!-- LEFT: Control & Swarm -->
+    <section class="col-left">
+      <h3>🤖 Agent Swarm</h3>
+      <div id="agentCards" class="agent-cards"></div>
+
+      <h3>📡 Telegram Live Bridge</h3>
+      <div class="tg-feed" id="tgFeed">
+        <div class="tg-msg"><span class="tg-user">User:</span> @hermes auth</div>
+        <div class="tg-msg"><span class="tg-hermes">Hermes:</span> Tasks dispatched</div>
       </div>
-    </div>
-  </div>
+      <div class="tg-input">
+        <input type="text" id="tgInput" placeholder="> Type command...">
+        <button onclick="sendTg()">Send</button>
+      </div>
+    </section>
 
-  <!-- Navigasi -->
-  <div class="nav-bar" id="navBar">
-    <button class="nav-item" data-tab="overview">📊 Ringkasan</button>
-    <button class="nav-item" data-tab="agents">🤖 Agen</button>
-    <button class="nav-item" data-tab="chat">💬 Chat</button>
-    <button class="nav-item" data-tab="schedule">⏰ Jadwal</button>
-    <button class="nav-item" data-tab="content">📝 Konten</button>
-    <button class="nav-item" data-tab="office">🏢 Office</button>
-    <button class="nav-item" data-tab="tasks">📋 Tasks</button>
-    <button class="nav-item" data-tab="projects">📁 Proyek</button>
-    <button class="nav-item" data-tab="docs">📚 Dokumen</button>
-  </div>
+    <!-- CENTER: Execution Matrix -->
+    <section class="col-center">
+      <div class="center-header">
+        <h3>⚡ Multi-Terminal Execution Matrix</h3>
+        <select id="agentFilter">
+          <option value="all">Filter: ALL</option>
+          <option value="research">Agent 01 - Research</option>
+          <option value="programmer">Agent 02 - Programmer</option>
+          <option value="qa">Agent 03 - QA</option>
+          <option value="chief">Chief</option>
+        </select>
+        <span class="mode">Mode: Async</span>
+      </div>
 
-  <!-- Konten Tab -->
-  <div id="tabContent" class="tab-content">
-    <div class="loading-el">Memuat tab...</div>
-  </div>
-</div>
+      <div class="terminal-matrix" id="terminalMatrix">
+        <div class="term-col" data-agent="research">
+          <div class="term-title">[Agent 01] Research Feed</div>
+          <div class="term-body" id="termResearch"></div>
+        </div>
+        <div class="term-col" data-agent="programmer">
+          <div class="term-title">[Agent 02] Programmer</div>
+          <div class="term-body" id="termProgrammer"></div>
+        </div>
+        <div class="term-col" data-agent="qa">
+          <div class="term-title">[Agent 03] QA Tester</div>
+          <div class="term-body" id="termQA"></div>
+        </div>
+      </div>
 
-<script>
-const API_BASE = window.location.origin;
+      <div class="quick-actions">
+        <button onclick="delegate('research')">▶ Delegate Research</button>
+        <button onclick="delegate('programmer')">▶ Delegate Programmer</button>
+        <button onclick="delegate('qa')">▶ Delegate QA</button>
+        <button class="danger">⏸ Pause Swarm</button>
+      </div>
+    </section>
 
-// ── Map tab name → fragment URL ──
-const TAB_FRAGMENTS = {
-  overview: '/tabs/overview',
-  agents: '/tabs/agents',
-  chat: '/tabs/chat',
-  schedule: '/tabs/schedule',
-  content: '/tabs/content',
-  docs: '/tabs/docs',
-  office: '/tabs/office',
-  tasks: '/tabs/tasks',
-  projects: '/tabs/projects',
-};
+    <!-- RIGHT: Artifact & Tasks -->
+    <section class="col-right">
+      <h3>📋 Task Kanban</h3>
+      <div class="kanban" id="kanban">
+        <div class="kanban-col" data-status="pending">
+          <div class="kanban-title">Backlog</div>
+          <div class="kanban-items" id="kbPending"></div>
+        </div>
+        <div class="kanban-col" data-status="running">
+          <div class="kanban-title">In Progress</div>
+          <div class="kanban-items" id="kbRunning"></div>
+        </div>
+        <div class="kanban-col" data-status="completed">
+          <div class="kanban-title">Done</div>
+          <div class="kanban-items" id="kbCompleted"></div>
+        </div>
+      </div>
 
-let currentTab = 'overview';
+      <h3>🔍 Artifact Inspector</h3>
+      <div class="artifact" id="artifact">
+        <div class="artifact-file">active_spec.md</div>
+        <pre>Menunggu output agent...</pre>
+      </div>
 
-// ── Utility ──
-function updateTime() {
-  const now = new Date();
-  document.getElementById('timeDisplay').textContent = 'WIB ' + now.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
-}
+      <h3>💾 System &amp; USB Telemetry</h3>
+      <div class="telemetry-box" id="telemetryBox">
+        <div>CPU: <span id="cpuVal">—</span></div>
+        <div>RAM: <span id="ramVal">—</span></div>
+        <div>USB Read: <span id="usbR">—</span> Write: <span id="usbW">—</span></div>
+        <div>SQLite WAL: <span id="walVal">0 Uncommitted</span></div>
+      </div>
+    </section>
+  </main>
 
-function setStatus(text, ok) {
-  const el = document.getElementById('statusText');
-  if (ok === true) { el.innerHTML = '<span class="dot green"></span> ' + text; }
-  else if (ok === false) { el.innerHTML = '<span class="dot red"></span> ' + text; }
-  else { el.innerHTML = '<span class="dot yellow"></span> ' + text; }
-}
-
-function badge(status) {
-  const map = { idle:'green', running:'green', ok:'green', connected:'green', live:'green', working:'yellow', pending:'yellow', partial:'yellow', warning:'yellow', done:'cyan', completed:'cyan', error:'red', failed:'red', offline:'red', stopped:'red', critical:'red', unknown:'gray', ready:'gray', unavailable:'gray' };
-  const cls = map[status] || 'gray';
-  return '<span class="badge ' + cls + '">' + status + '</span>';
-}
-
-async function fetchJSON(url) {
-  try { const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
-  catch (e) { return { error: e.message }; }
-}
-
-// ── Tab Switching ──
-async function switchTab(tab) {
-  currentTab = tab;
-  history.replaceState(null, '', '/' + tab);
-
-  // Update nav active
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
-
-  // Load fragment
-  const contentEl = document.getElementById('tabContent');
-  contentEl.innerHTML = '<div class="loading-el">Memuat tab...</div>';
-
-  try {
-    const r = await fetch(TAB_FRAGMENTS[tab]);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const html = await r.text();
-    contentEl.innerHTML = html;
-
-    // Panggil init function jika ada
-    const initFn = window['initTab_' + tab];
-    if (typeof initFn === 'function') initFn();
-
-    setStatus('Tab: ' + tab, true);
-  } catch (e) {
-    contentEl.innerHTML = '<div class="error-state">⚠ Gagal memuat tab: ' + e.message + '</div>';
-    setStatus('Error', false);
-  }
-}
-
-// ── Refresh all ──
-async function refreshAll() {
-  document.querySelector('.container').classList.add('refreshing');
-  setStatus('Memuat ulang...', null);
-  const initFn = window['initTab_' + currentTab];
-  if (typeof initFn === 'function') await initFn();
-  document.querySelector('.container').classList.remove('refreshing');
-  setStatus('Semua sistem terpantau', true);
-}
-
-// ── Init ──
-document.querySelectorAll('.nav-item').forEach(el => {
-  el.addEventListener('click', () => switchTab(el.dataset.tab));
-});
-
-// Detect initial tab from URL path
-const pathTab = location.pathname.replace('/', '');
-const initialTab = TAB_FRAGMENTS[pathTab] ? pathTab : 'overview';
-
-updateTime();
-setInterval(updateTime, 1000);
-switchTab(initialTab);
-</script>
-<script src="dashboard.js"></script>
+  <script src="/static/app.js"></script>
 </body>
 </html>
