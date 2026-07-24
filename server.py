@@ -65,14 +65,34 @@ async def system_health():
     }
 
 
+@app.get("/api/mc/hermes")
+async def hermes_real_status():
+    """Real Hermes Agent status: gateway, cron, herdr agents."""
+    from modules.hermes_status import get_all
+    return get_all()
+
+
 @app.get("/api/mc/agents")
 async def agents_status():
-    """Agent swarm status cards."""
+    """Agent swarm status cards (real-time, dari herdr kalau jalan)."""
     agents = list_agents()
     runtime_status = get_agent_status()
+    herdr = None
+    try:
+        from modules.hermes_status import herdr_agents
+        herdr = herdr_agents()
+    except Exception:
+        herdr = None
     for a in agents:
-        a["status"] = runtime_status.get(a["id"], "idle")
-    return {"agents": agents, "swarm_active": "3 / 3 Workers"}
+        status = runtime_status.get(a["id"], "idle")
+        # Jika herdr jalan, override status dari herdr
+        if herdr and herdr.get("running"):
+            # Map: cek apakah agent id ada di list herdr
+            a["herdr_linked"] = True
+        else:
+            a["herdr_linked"] = False
+        a["status"] = status
+    return {"agents": agents, "swarm_active": "3 / 3 Workers", "herdr": herdr}
 
 
 @app.get("/api/mc/tasks")

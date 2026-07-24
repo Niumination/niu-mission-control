@@ -26,7 +26,7 @@ RULES OF ENGAGEMENT:
 """,
     },
     "research": {
-        "name": "Agent 01",
+        "name": "Research",
         "role": "Research & Learn",
         "status": "idle",
         "color": "border-blue-500/50 text-blue-400",
@@ -44,7 +44,7 @@ RULES OF ENGAGEMENT:
 """,
     },
     "programmer": {
-        "name": "Agent 02",
+        "name": "Programmer",
         "role": "Programmer & Coder",
         "status": "idle",
         "color": "border-emerald-500/50 text-emerald-400",
@@ -63,7 +63,7 @@ RULES OF ENGAGEMENT:
 """,
     },
     "qa": {
-        "name": "Agent 03",
+        "name": "QA",
         "role": "Tester & QA",
         "status": "idle",
         "color": "border-slate-700 text-slate-400",

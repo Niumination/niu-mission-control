@@ -7,6 +7,9 @@ let reconnectTimer = null;
 
 // ── WebSocket Connection ──────────────────────────────
 function connect() {
+  if (ws) {
+    try { ws.close(); } catch (e) {}
+  }
   ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
@@ -24,32 +27,26 @@ function connect() {
 
   ws.onclose = () => {
     console.log('WS closed, reconnecting...');
-    reconnectTimer = setInterval(connect, 3000);
+    if (!reconnectTimer) reconnectTimer = setInterval(connect, 3000);
   };
 
   ws.onerror = (err) => console.error('WS error', err);
 }
 
-// ── Render Agents ─────────────────────────────────────
+// ── Render Agents (data REAL dari API) ─────────────────
 function renderAgents(agents) {
   const container = document.getElementById('agentCards');
   if (!container) return;
   container.innerHTML = '';
-  for (const [id, status] of Object.entries(agents)) {
-    const names = {
-      chief: { name: 'Hermes Chief', role: 'Orchestrator' },
-      research: { name: 'Agent 01', role: 'Research & Learn' },
-      programmer: { name: 'Agent 02', role: 'Programmer' },
-      qa: { name: 'Agent 03', role: 'Tester & QA' },
-    };
-    const info = names[id] || { name: id, role: '' };
+  for (const a of agents) {
     const card = document.createElement('div');
     card.className = 'agent-card';
+    const linked = a.herdr_linked ? '🔗' : '';
     card.innerHTML = `
-      <div class="name">${info.name}</div>
-      <div class="role">${info.role}</div>
-      <div class="status ${status}">${status}</div>
-      <div class="cpu">CPU: ${Math.floor(Math.random() * 10)}%</div>
+      <div class="name">${a.name} ${linked}</div>
+      <div class="role">${a.role}</div>
+      <div class="status ${a.status}">${a.status}</div>
+      <div class="cpu">${a.herdr_linked ? 'Linked to Hermes' : 'Local swarm'}</div>
     `;
     container.appendChild(card);
   }
@@ -277,13 +274,51 @@ async function loadStorage() {
 
 async function loadSystem() {
   try {
-    const res = await fetch('/api/mc/system');
-    const data = await res.json();
+    const [sysRes, hermesRes] = await Promise.all([
+      fetch('/api/mc/system'),
+      fetch('/api/mc/hermes'),
+    ]);
+    const data = await sysRes.json();
+    const hermes = await hermesRes.json();
     document.getElementById('hostVal').textContent = data.hostname;
     document.getElementById('cpuVal2').textContent = data.cpu_percent + '%';
     document.getElementById('ramVal3').textContent =
       data.memory.used_gb + ' / ' + data.memory.total_gb + ' GB';
+    // Gateway real status
+    const gw = hermes.gateway;
+    const gwEl = document.getElementById('gwVal');
+    if (gw) {
+      gwEl.textContent = gw.online ? `Online (PID ${gw.pid})` : 'Offline';
+      gwEl.style.color = gw.online ? 'var(--emerald)' : 'var(--red)';
+    }
+    // Cron real
+    const cron = hermes.cron;
+    if (cron) {
+      const sysBox = document.getElementById('systemBox');
+      const cronInfo = cron.jobs.map(j => `${j.name} [${j.schedule}]`).join('<br>') || 'No jobs';
+      let cronEl = document.getElementById('cronVal');
+      if (!cronEl) {
+        cronEl = document.createElement('div');
+        cronEl.id = 'cronVal';
+        sysBox.appendChild(cronEl);
+      }
+      cronEl.innerHTML = `Cron: <span>${cron.count} active</span><br><small>${cronInfo}</small>`;
+    }
   } catch (e) { console.error('System failed', e); }
+}
+
+async function loadHermesStatus() {
+  // Dipanggil berkala untuk badge gateway di header
+  try {
+    const res = await fetch('/api/mc/hermes');
+    const data = await res.json();
+    const gwBadge = document.getElementById('gwBadge');
+    if (gwBadge && data.gateway) {
+      gwBadge.innerHTML = data.gateway.online
+        ? 'Gateway: <strong style="color:var(--emerald)">ONLINE</strong>'
+        : 'Gateway: <strong style="color:var(--red)">OFFLINE</strong>';
+    }
+  } catch (e) { console.error('Hermes status failed', e); }
 }
 
 // ── Init ───────────────────────────────────────────────
@@ -291,5 +326,7 @@ initNav();
 connect();
 loadTelemetry();
 loadKanban();
+loadHermesStatus();
 setInterval(loadTelemetry, 5000);
 setInterval(loadKanban, 3000);
+setInterval(loadHermesStatus, 10000);
