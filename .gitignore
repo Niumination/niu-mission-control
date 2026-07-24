@@ -15,3 +15,4 @@ data/*.db-wal
 # Temp
 /tmp/hermes_*
 *.log
+cookies.txt

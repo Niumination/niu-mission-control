@@ -23,114 +23,184 @@
     </div>
   </header>
 
-  <!-- KPI METRICS -->
-  <div class="kpi-row">
-    <div class="kpi">
-      <div class="kpi-label">Swarm Active</div>
-      <div class="kpi-value" id="kpiSwarm">3 / 3 Workers</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Tasks Completed</div>
-      <div class="kpi-value" id="kpiTasks">0 Pass / 0 Fail</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">USB &amp; RAM Disk I/O</div>
-      <div class="kpi-value" id="kpiIO">/tmp: 12% | WAL:OK</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">LLM API Avg Lat</div>
-      <div class="kpi-value" id="kpiLat">1.2s (DeepSeek)</div>
-    </div>
+  <!-- LAYOUT: SIDEBAR + MAIN -->
+  <div class="layout">
+    <!-- NAVIGATION SIDEBAR -->
+    <nav class="sidebar">
+      <a href="#" class="nav-item active" data-page="dashboard">🏠 Dashboard</a>
+      <a href="#" class="nav-item" data-page="swarm">🤖 Swarm</a>
+      <a href="#" class="nav-item" data-page="taskqueue">📋 Task Queue</a>
+      <a href="#" class="nav-item" data-page="terminal">💻 Terminal</a>
+      <a href="#" class="nav-item" data-page="telegram">📡 Telegram</a>
+      <a href="#" class="nav-item" data-page="storage">💾 Storage</a>
+      <a href="#" class="nav-item" data-page="system">⚙ System</a>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- PAGE: DASHBOARD -->
+      <section class="page active" id="page-dashboard">
+        <!-- KPI METRICS -->
+        <div class="kpi-row">
+          <div class="kpi">
+            <div class="kpi-label">Swarm Active</div>
+            <div class="kpi-value" id="kpiSwarm">3 / 3 Workers</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Tasks Completed</div>
+            <div class="kpi-value" id="kpiTasks">0 Pass / 0 Fail</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">USB &amp; RAM Disk I/O</div>
+            <div class="kpi-value" id="kpiIO">/tmp: 12% | WAL:OK</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">LLM API Avg Lat</div>
+            <div class="kpi-value" id="kpiLat">1.2s (DeepSeek)</div>
+          </div>
+        </div>
+
+        <!-- 3-COLUMN COMMAND GRID -->
+        <div class="grid">
+          <!-- LEFT: Control & Swarm -->
+          <section class="col-left">
+            <h3>🤖 Agent Swarm</h3>
+            <div id="agentCards" class="agent-cards"></div>
+
+            <h3>📡 Telegram Live Bridge</h3>
+            <div class="tg-feed" id="tgFeed">
+              <div class="tg-msg"><span class="tg-user">User:</span> @hermes auth</div>
+              <div class="tg-msg"><span class="tg-hermes">Hermes:</span> Tasks dispatched</div>
+            </div>
+            <div class="tg-input">
+              <input type="text" id="tgInput" placeholder="> Type command...">
+              <button onclick="sendTg()">Send</button>
+            </div>
+          </section>
+
+          <!-- CENTER: Execution Matrix -->
+          <section class="col-center">
+            <div class="center-header">
+              <h3>⚡ Multi-Terminal Execution Matrix</h3>
+              <select id="agentFilter">
+                <option value="all">Filter: ALL</option>
+                <option value="research">Agent 01 - Research</option>
+                <option value="programmer">Agent 02 - Programmer</option>
+                <option value="qa">Agent 03 - QA</option>
+                <option value="chief">Chief</option>
+              </select>
+              <span class="mode">Mode: Async</span>
+            </div>
+
+            <div class="terminal-matrix" id="terminalMatrix">
+              <div class="term-col" data-agent="research">
+                <div class="term-title">[Agent 01] Research Feed</div>
+                <div class="term-body" id="termResearch"></div>
+              </div>
+              <div class="term-col" data-agent="programmer">
+                <div class="term-title">[Agent 02] Programmer</div>
+                <div class="term-body" id="termProgrammer"></div>
+              </div>
+              <div class="term-col" data-agent="qa">
+                <div class="term-title">[Agent 03] QA Tester</div>
+                <div class="term-body" id="termQA"></div>
+              </div>
+            </div>
+
+            <div class="quick-actions">
+              <button onclick="delegate('research')">▶ Delegate Research</button>
+              <button onclick="delegate('programmer')">▶ Delegate Programmer</button>
+              <button onclick="delegate('qa')">▶ Delegate QA</button>
+              <button class="danger">⏸ Pause Swarm</button>
+            </div>
+          </section>
+
+          <!-- RIGHT: Artifact & Tasks -->
+          <section class="col-right">
+            <h3>📋 Task Kanban</h3>
+            <div class="kanban" id="kanban">
+              <div class="kanban-col" data-status="pending">
+                <div class="kanban-title">Backlog</div>
+                <div class="kanban-items" id="kbPending"></div>
+              </div>
+              <div class="kanban-col" data-status="running">
+                <div class="kanban-title">In Progress</div>
+                <div class="kanban-items" id="kbRunning"></div>
+              </div>
+              <div class="kanban-col" data-status="completed">
+                <div class="kanban-title">Done</div>
+                <div class="kanban-items" id="kbCompleted"></div>
+              </div>
+            </div>
+
+            <h3>🔍 Artifact Inspector</h3>
+            <div class="artifact" id="artifact">
+              <div class="artifact-file">active_spec.md</div>
+              <pre>Menunggu output agent...</pre>
+            </div>
+
+            <h3>💾 System &amp; USB Telemetry</h3>
+            <div class="telemetry-box" id="telemetryBox">
+              <div>CPU: <span id="cpuVal">—</span></div>
+              <div>RAM: <span id="ramVal">—</span></div>
+              <div>USB Read: <span id="usbR">—</span> Write: <span id="usbW">—</span></div>
+              <div>SQLite WAL: <span id="walVal">0 Uncommitted</span></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- PAGE: SWARM -->
+      <section class="page" id="page-swarm">
+        <h2>🤖 Swarm Worker Health</h2>
+        <div id="swarmDetail" class="agent-cards"></div>
+      </section>
+
+      <!-- PAGE: TASK QUEUE -->
+      <section class="page" id="page-taskqueue">
+        <h2>📋 Task Queue (Kanban)</h2>
+        <div class="kanban kanban-full" id="kanbanFull"></div>
+      </section>
+
+      <!-- PAGE: TERMINAL -->
+      <section class="page" id="page-terminal">
+        <h2>💻 Multi-Terminal Execution Matrix</h2>
+        <div class="terminal-matrix terminal-full" id="terminalFull"></div>
+      </section>
+
+      <!-- PAGE: TELEGRAM -->
+      <section class="page" id="page-telegram">
+        <h2>📡 Live Telegram Bridge &amp; Orchestration Log</h2>
+        <div class="tg-feed tg-feed-full" id="tgFeedFull"></div>
+        <div class="tg-input">
+          <input type="text" id="tgInputFull" placeholder="> Type command...">
+          <button onclick="sendTgFull()">Send</button>
+        </div>
+      </section>
+
+      <!-- PAGE: STORAGE -->
+      <section class="page" id="page-storage">
+        <h2>💾 Storage &amp; USB Telemetry</h2>
+        <div class="telemetry-box" id="storageBox">
+          <div>Disk Total: <span id="diskTotal">—</span></div>
+          <div>Disk Free: <span id="diskFree">—</span></div>
+          <div>RAM: <span id="ramVal2">—</span></div>
+          <div>SQLite WAL: <span id="walVal2">Active (USB-safe)</span></div>
+        </div>
+      </section>
+
+      <!-- PAGE: SYSTEM -->
+      <section class="page" id="page-system">
+        <h2>⚙ System Health</h2>
+        <div class="telemetry-box" id="systemBox">
+          <div>Hostname: <span id="hostVal">—</span></div>
+          <div>CPU: <span id="cpuVal2">—</span></div>
+          <div>RAM: <span id="ramVal3">—</span></div>
+          <div>Gateway: <span id="gwVal">Online</span></div>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <!-- 3-COLUMN COMMAND GRID -->
-  <main class="grid">
-    <!-- LEFT: Control & Swarm -->
-    <section class="col-left">
-      <h3>🤖 Agent Swarm</h3>
-      <div id="agentCards" class="agent-cards"></div>
-
-      <h3>📡 Telegram Live Bridge</h3>
-      <div class="tg-feed" id="tgFeed">
-        <div class="tg-msg"><span class="tg-user">User:</span> @hermes auth</div>
-        <div class="tg-msg"><span class="tg-hermes">Hermes:</span> Tasks dispatched</div>
-      </div>
-      <div class="tg-input">
-        <input type="text" id="tgInput" placeholder="> Type command...">
-        <button onclick="sendTg()">Send</button>
-      </div>
-    </section>
-
-    <!-- CENTER: Execution Matrix -->
-    <section class="col-center">
-      <div class="center-header">
-        <h3>⚡ Multi-Terminal Execution Matrix</h3>
-        <select id="agentFilter">
-          <option value="all">Filter: ALL</option>
-          <option value="research">Agent 01 - Research</option>
-          <option value="programmer">Agent 02 - Programmer</option>
-          <option value="qa">Agent 03 - QA</option>
-          <option value="chief">Chief</option>
-        </select>
-        <span class="mode">Mode: Async</span>
-      </div>
-
-      <div class="terminal-matrix" id="terminalMatrix">
-        <div class="term-col" data-agent="research">
-          <div class="term-title">[Agent 01] Research Feed</div>
-          <div class="term-body" id="termResearch"></div>
-        </div>
-        <div class="term-col" data-agent="programmer">
-          <div class="term-title">[Agent 02] Programmer</div>
-          <div class="term-body" id="termProgrammer"></div>
-        </div>
-        <div class="term-col" data-agent="qa">
-          <div class="term-title">[Agent 03] QA Tester</div>
-          <div class="term-body" id="termQA"></div>
-        </div>
-      </div>
-
-      <div class="quick-actions">
-        <button onclick="delegate('research')">▶ Delegate Research</button>
-        <button onclick="delegate('programmer')">▶ Delegate Programmer</button>
-        <button onclick="delegate('qa')">▶ Delegate QA</button>
-        <button class="danger">⏸ Pause Swarm</button>
-      </div>
-    </section>
-
-    <!-- RIGHT: Artifact & Tasks -->
-    <section class="col-right">
-      <h3>📋 Task Kanban</h3>
-      <div class="kanban" id="kanban">
-        <div class="kanban-col" data-status="pending">
-          <div class="kanban-title">Backlog</div>
-          <div class="kanban-items" id="kbPending"></div>
-        </div>
-        <div class="kanban-col" data-status="running">
-          <div class="kanban-title">In Progress</div>
-          <div class="kanban-items" id="kbRunning"></div>
-        </div>
-        <div class="kanban-col" data-status="completed">
-          <div class="kanban-title">Done</div>
-          <div class="kanban-items" id="kbCompleted"></div>
-        </div>
-      </div>
-
-      <h3>🔍 Artifact Inspector</h3>
-      <div class="artifact" id="artifact">
-        <div class="artifact-file">active_spec.md</div>
-        <pre>Menunggu output agent...</pre>
-      </div>
-
-      <h3>💾 System &amp; USB Telemetry</h3>
-      <div class="telemetry-box" id="telemetryBox">
-        <div>CPU: <span id="cpuVal">—</span></div>
-        <div>RAM: <span id="ramVal">—</span></div>
-        <div>USB Read: <span id="usbR">—</span> Write: <span id="usbW">—</span></div>
-        <div>SQLite WAL: <span id="walVal">0 Uncommitted</span></div>
-      </div>
-    </section>
-  </main>
 
   <script src="/static/app.js"></script>
 </body>
