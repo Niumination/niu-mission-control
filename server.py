@@ -97,17 +97,43 @@ async def delegate_task(payload: dict):
     """
     Chief mendelegasikan task ke agent.
     Body: {"agent": "research", "instruction": "...", "parent_id": null}
+    Jalur 1: Kirim ke Telegram → Hermes Gateway → Agent execute → report balik.
     """
     agent = payload.get("agent", "research")
     instruction = payload.get("instruction", "")
     if agent not in AGENT_CONFIG:
         return {"error": f"Unknown agent: {agent}"}
 
+    # Map agent → Telegram topic ID
+    topic_map = {"chief": "1", "research": "1", "programmer": "1", "qa": "1"}
+
     task_id = await bus.create_task(
         agent, {"instruction": instruction}, parent_id=payload.get("parent_id")
     )
-    await bus.log_event(task_id, "chief", "INFO", f"Delegasi ke {agent}: {instruction}")
-    return {"task_id": task_id, "status": "dispatched"}
+
+    # Kirim instruksi ke Hermes via Telegram bridge (Jalur 1)
+    from modules.hermes_bridge import send_chat
+
+    bridge_msg = f"[MC Swarm] Agent {agent}: {instruction} (task_id: {task_id})"
+    result = send_chat(bridge_msg, topic_id=topic_map.get(agent, "1"))
+
+    if result["status"] == "sent":
+        await bus.log_event(
+            task_id, "chief", "INFO",
+            f"Delegasi ke {agent} via Telegram: {instruction}"
+        )
+        await bus.update_task_status(task_id, "running")
+    else:
+        await bus.log_event(
+            task_id, "chief", "ERROR",
+            f"Gagal kirim ke Telegram: {result.get('message')}"
+        )
+
+    return {
+        "task_id": task_id,
+        "status": "dispatched" if result["status"] == "sent" else "failed",
+        "bridge": result,
+    }
 
 
 # ── WebSocket: Live Multi-Terminal Feed ──────────────────
