@@ -23,12 +23,36 @@ from typing import Any, Optional
 
 logger = logging.getLogger("hermes_bridge")
 
-HERMES_CLI = "hermes"  # hermes CLI di PATH
+HERMES_CLI = "/Users/zaryu/.hermes-portable/venv/bin/hermes"  # absolute path
+HERMES_HOME = os.environ.get(
+    "HERMES_HOME",
+    "/Volumes/HermesAgent/HermesAgentUSB/data",  # lokasi .env + config.yaml
+)
 TELEGRAM_CHAT_ID = os.environ.get(
     "HERMES_TELEGRAM_CHAT_ID",
     "-REDACTED_CHAT_ID",  # Niu-MissionControl group chat ID
 )
 TELEGRAM_TOPIC_PREFIX = "thread:"
+
+
+def _run_hermes_send(text: str, topic_id: str = "1") -> dict:
+    """Kirim pesan ke Telegram via hermes send CLI (reuse gateway credential)."""
+    try:
+        target = f"telegram:{TELEGRAM_CHAT_ID}:{topic_id}"
+        env = dict(os.environ)
+        env["HERMES_HOME"] = HERMES_HOME
+        r = subprocess.run(
+            [HERMES_CLI, "send", "-t", target, text],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=env,
+        )
+        if r.returncode == 0 and "sent" in r.stdout.lower():
+            return {"status": "sent", "message": "Pesan terkirim ke Telegram"}
+        return {"status": "error", "message": r.stderr[:200] or r.stdout[:200]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 def _find_hermes_home() -> Optional[str]:
@@ -79,46 +103,20 @@ def send_chat(
     }
     persona = persona_map.get(topic_id, "general")
 
-    # Kirim via send_message tool (Hermes akan menangani routing)
-    # Metode 1: Panggil hermes CLI
-    try:
-        target = f"telegram:{TELEGRAM_CHAT_ID}:{topic_id}"
-        cmd = [
-            HERMES_CLI, "send",
-            "-t", target,
-            text,
-        ]
-        r = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if r.returncode == 0:
-            return {
-                "status": "sent",
-                "persona": persona,
-                "topic_id": topic_id,
-                "message": "Pesan terkirim",
-            }
-        else:
-            return {
-                "status": "error",
-                "persona": persona,
-                "message": f"Gagal kirim: {r.stderr[:200] or r.stdout[:200]}",
-            }
-    except FileNotFoundError:
-        # hermes CLI tidak ada — fallback log
-        logger.warning("hermes CLI tidak ditemukan; chat tidak terkirim")
+    # Kirim via hermes send CLI (reuse gateway credential)
+    result = _run_hermes_send(text, topic_id)
+    if result["status"] == "sent":
         return {
-            "status": "not_available",
+            "status": "sent",
             "persona": persona,
-            "message": "Hermes CLI tidak tersedia di PATH",
+            "topic_id": topic_id,
+            "message": "Pesan terkirim",
         }
-    except subprocess.TimeoutExpired:
-        return {"status": "error", "message": "Timeout mengirim pesan"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    return {
+        "status": "error",
+        "persona": persona,
+        "message": result["message"],
+    }
 
 
 def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
