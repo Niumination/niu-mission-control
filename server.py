@@ -308,16 +308,62 @@ def _get_uptime() -> str:
 
 @app.get("/api/mc/system", tags=["system"])
 async def system_health():
-    """System health: RAM, CPU, disk, and platform details."""
+    """System health: RAM, CPU, disk, top processes, network, uptime."""
     try:
         cpu_pct = psutil.cpu_percent(interval=None)
+        cpu_freq = psutil.cpu_freq()
+        cpu_count = psutil.cpu_count()
         mem = psutil.virtual_memory()
+        swap = psutil.swap_memory()
         disk = psutil.disk_usage("/")
+        boot_time = psutil.boot_time()
+        uptime_sec = time.time() - boot_time
+        net = psutil.net_io_counters()
     except Exception as e:
         logger.warning("psutil fallback: %s", e)
         cpu_pct = 5.0
-        mem = type("obj", (object,), {"total": 8e9, "used": 2e9, "percent": 25.0})()
+        cpu_freq = None
+        cpu_count = 1
+        mem = type("obj", (object,), {"total": 8e9, "used": 2e9, "percent": 25.0, "available": 6e9})()
+        swap = type("obj", (object,), {"total": 0, "used": 0, "percent": 0})()
         disk = type("obj", (object,), {"total": 100e9, "free": 80e9, "percent": 20.0})()
+        uptime_sec = 0
+        net = type("obj", (object,), {"bytes_sent": 0, "bytes_recv": 0, "packets_sent": 0, "packets_recv": 0})()
+
+    # Top 8 processes by memory
+    top_procs = []
+    try:
+        procs = []
+        for p in psutil.process_iter(["pid", "name", "memory_percent", "cpu_percent"]):
+            try:
+                info = p.info
+                if info["memory_percent"] and info["memory_percent"] > 0.1:
+                    procs.append({
+                        "pid": info["pid"],
+                        "name": info["name"][:30],
+                        "mem_pct": round(info["memory_percent"], 1),
+                        "cpu_pct": info.get("cpu_percent", 0) or 0,
+                    })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        procs.sort(key=lambda x: x["mem_pct"], reverse=True)
+        top_procs = procs[:8]
+    except Exception:
+        pass
+
+    # Uptime formatting
+    days = int(uptime_sec // 86400)
+    hours = int((uptime_sec % 86400) // 3600)
+    mins = int((uptime_sec % 3600) // 60)
+    uptime_str = f"{days}d {hours}h {mins}m" if days else f"{hours}h {mins}m"
+
+    # Network formatting
+    def _fmt_bytes(b):
+        for unit in ["B", "KB", "MB", "GB"]:
+            if b < 1024:
+                return f"{b:.1f} {unit}"
+            b /= 1024
+        return f"{b:.1f} TB"
 
     health_score = 100
     if cpu_pct > 80:
@@ -343,16 +389,34 @@ async def system_health():
         "platform": platform.system(),
         "os_release": platform.release(),
         "cpu_percent": cpu_pct,
+        "cpu_count": cpu_count,
+        "cpu_freq_mhz": round(cpu_freq.current, 0) if cpu_freq else None,
         "memory": {
             "total_gb": round(mem.total / 1e9, 1),
             "used_gb": round(mem.used / 1e9, 1),
+            "available_gb": round(getattr(mem, "available", 0) / 1e9, 1),
             "percent": mem.percent,
+        },
+        "swap": {
+            "total_gb": round(swap.total / 1e9, 1),
+            "used_gb": round(swap.used / 1e9, 1),
+            "percent": swap.percent,
         },
         "disk": {
             "total_gb": round(disk.total / 1e9, 1),
             "free_gb": round(disk.free / 1e9, 1),
             "percent": disk.percent,
         },
+        "network": {
+            "sent": _fmt_bytes(net.bytes_sent),
+            "recv": _fmt_bytes(net.bytes_recv),
+            "packets_sent": net.packets_sent,
+            "packets_recv": net.packets_recv,
+        },
+        "uptime": uptime_str,
+        "uptime_seconds": int(uptime_sec),
+        "boot_time": datetime.fromtimestamp(boot_time).isoformat(),
+        "top_processes": top_procs,
         "llm_model": _llm_model,
         "health_score": health_score,
         "wal_mode": True,
@@ -374,6 +438,35 @@ async def hermes_real_status():
             "gateway": {"online": False, "raw": str(e), "pid": None},
             "cron": {"count": 0, "jobs": []},
         }
+
+
+# ── Ecosystem Overview ────────────────────────────────────
+
+@app.get("/api/mc/ecosystem", tags=["ecosystem"])
+async def ecosystem_overview(type: str = "all"):
+    """
+    Niumination ecosystem data.
+    type: 'all' (default), 'projects', 'cron', 'git', 'backlog'
+    """
+    from modules.ecosystem_scanner import (
+        scan_projects, scan_launchd_cron, get_git_activity, get_backlog_summary,
+        get_full_ecosystem,
+    )
+
+    try:
+        if type == "projects":
+            return {"projects": scan_projects()}
+        elif type == "cron":
+            return {"cron_jobs": scan_launchd_cron()}
+        elif type == "git":
+            return {"git_activity": get_git_activity()}
+        elif type == "backlog":
+            return {"backlog": get_backlog_summary()}
+        else:
+            return get_full_ecosystem()
+    except Exception as e:
+        logger.error("Error scanning ecosystem: %s", e)
+        return {"error": str(e), "projects": [], "cron_jobs": [], "git_activity": []}
 
 
 # ── Agents ───────────────────────────────────────────────
