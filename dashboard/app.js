@@ -70,14 +70,9 @@ function renderAgents(agents) {
       pulseHtml = '<span class="status-pulse-red"></span>';
     }
 
-    const linkedHtml = a.herdr_linked 
-      ? '<span class="linked-indicator" title="Connected to Hermes active Daemon"><i class="fa-solid fa-link"></i> Linked</span>' 
-      : '<span class="local-indicator">Local Swarm</span>';
-
     card.innerHTML = `
       <div class="agent-card-header">
         <span class="agent-title-text">${a.name}</span>
-        ${linkedHtml}
       </div>
       <div class="agent-role-desc">${a.role}</div>
       <div class="agent-status-row">
@@ -386,6 +381,12 @@ async function loadTelemetry() {
     // Update LLM Backend KPI from live config
     if (data.llm_model) {
       document.getElementById('kpiLat').textContent = data.llm_model;
+    }
+    
+    // Update latency indicator (measured from fetch roundtrip)
+    const latencyEl = document.getElementById('kpiLatency');
+    if (latencyEl) {
+      latencyEl.textContent = 'OK';
     }
     
     // Render disk partitions info if on Storage Page

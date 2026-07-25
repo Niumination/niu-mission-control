@@ -53,7 +53,7 @@
       </div>
       <div class="telemetry-badge badge-emerald" id="apiBadge">
         <i class="fa-solid fa-microchip"></i>
-        <span class="label">LATENCY:</span> <strong>0.8s</strong>
+        <span class="label">LATENCY:</span> <span class="kpi-value" id="kpiLatency">--</span>
       </div>
       <div class="user-role">
         <div class="avatar"><i class="fa-solid fa-shield-halved"></i></div>
@@ -121,7 +121,7 @@
               <span class="kpi-label">SWARM NODES</span>
               <span class="kpi-value" id="kpiSwarm">4 / 4 Active</span>
             </div>
-            <div class="kpi-status status-up"><i class="fa-solid fa-caret-up"></i> herdr ok</div>
+
           </div>
           
           <div class="kpi-card">
@@ -424,7 +424,6 @@
         <div class="terminal-control-row">
           <button onclick="runPredefinedCommand('python3 scripts/get-system.py')" class="btn-tool"><i class="fa-solid fa-heart-pulse"></i> Get System Stats</button>
           <button onclick="runPredefinedCommand('python3 scripts/get-cron.py')" class="btn-tool"><i class="fa-solid fa-clock"></i> List Cron Stats</button>
-          <button onclick="runPredefinedCommand('python3 scripts/get-agents.py')" class="btn-tool"><i class="fa-solid fa-network-wired"></i> List herdr Status</button>
           <button onclick="runPredefinedCommand('git status -b')" class="btn-tool"><i class="fa-solid fa-code-commit"></i> Git Repository Status</button>
           <button onclick="clearConsole()" class="btn-tool"><i class="fa-solid fa-eraser"></i> Clear Terminal Monitor</button>
           <button onclick="clearDatabaseLogs()" class="btn-tool-danger"><i class="fa-solid fa-trash-arrow-up"></i> Clear Database State DB</button>

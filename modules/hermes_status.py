@@ -1,4 +1,4 @@
-"""Hermes Status — baca data REAL dari Hermes Agent (gateway, cron, herdr).
+"""Hermes Status — baca data REAL dari Hermes Agent (gateway, cron).
 
 Internal connection: MC server → hermes_bridge → hermes CLI → gateway.
 External connection: hermes CLI → Telegram gateway → Hermes Agent.
@@ -177,47 +177,8 @@ def cron_jobs() -> dict:
     return data
 
 
-def herdr_agents() -> dict:
-    """Status agent herdr (jika herdr server jalan)."""
-    cached = _cached("herdr")
-    if cached:
-        return cached
-        
-    if not _is_cli_available():
-        # Fallback Mock Data
-        data = {
-            "running": True,
-            "agents": [
-                {"name": "builder", "status": "active", "tab": "Builder Pane", "pane": "0"},
-                {"name": "pengawas", "status": "idle", "tab": "Monitor Pane", "pane": "1"},
-                {"name": "arsitek", "status": "active", "tab": "Architect Pane", "pane": "2"},
-                {"name": "penjaga", "status": "idle", "tab": "Security Pane", "pane": "3"}
-            ],
-            "simulated": True
-        }
-    else:
-        res = _run(["agent", "list"], timeout=5)
-        if res["rc"] != 0 or "refused" in res["err"].lower():
-            data = {"running": False, "agents": [], "error": "herdr server not running", "simulated": False}
-        else:
-            agents = []
-            for ln in res["out"].split("\n"):
-                if ln.strip():
-                    # Parse name, status, etc
-                    parts = ln.strip().split()
-                    name = parts[0] if len(parts) > 0 else "agent"
-                    status = parts[1] if len(parts) > 1 else "unknown"
-                    agents.append({"name": name, "status": status})
-            data = {"running": True, "agents": agents, "simulated": False}
-            
-    _cache["herdr"] = data
-    _cache_ttl["herdr"] = time.time()
-    return data
-
-
 def get_all() -> dict:
     return {
         "gateway": gateway_status(),
         "cron": cron_jobs(),
-        "herdr": herdr_agents(),
     }
