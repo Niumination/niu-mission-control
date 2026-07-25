@@ -36,7 +36,20 @@ logger = logging.getLogger("mission-control")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DASHBOARD_DIR = os.path.join(BASE_DIR, "dashboard")
 
-app = FastAPI(title="Hermes Mission Control", version="2.5.0")
+app = FastAPI(
+    title="Hermes Mission Control",
+    version="2.5.0",
+    description="Orchestrator, Agent Swarm, Telegram Bridge, WebSocket Live Feed, Artifact Explorer, USB-Safe WAL",
+    openapi_tags=[
+        {"name":"system","description":"Health & system info"},
+        {"name":"agents","description":"Agent swarm status"},
+        {"name":"tasks","description":"Task kanban & logs"},
+        {"name":"terminal","description":"Secure command execution"},
+        {"name":"telegram","description":"Bridge to Telegram"},
+        {"name":"artifacts","description":"Artifact file explorer"},
+        {"name":"config","description":"Dynamic swarm config"},
+    ],
+)
 
 # WebSocket connections untuk broadcast live feed
 active_connections: list[WebSocket] = []
@@ -62,8 +75,6 @@ class ConfigPayload(BaseModel):
 @app.on_event("startup")
 async def startup():
     await start_swarm_workers()
-    # Inisialisasi file dummy untuk Artifact Explorer agar dashboard terlihat live & premium
-    init_dummy_artifacts()
     logger.info("Mission Control server started on port 5200")
 
 
