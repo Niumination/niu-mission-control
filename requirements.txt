@@ -9,3 +9,6 @@ gunicorn
 numpy
 Pillow
 Jinja2
+httpx
+pytest
+pytest-asyncio
