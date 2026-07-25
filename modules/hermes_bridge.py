@@ -145,13 +145,17 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
     if not cmd:
         return {"status": "error", "output": "Perintah kosong"}
 
-    try:
-        # Menolak perintah berbahaya
-        forbidden = ["rm -rf /", "mkfs", "dd if=", ":(){:|:&};:"]
-        for f in forbidden:
-            if f in cmd:
-                return {"status": "error", "output": "Command blocked: Security policy restriction.", "exit_code": -1}
+    # Menolak perintah berbahaya
+    ALLOWED_COMMANDS = ["ls", "cat", "pwd", "echo", "grep", "find", "python", "pytest", "head", "tail", "ps", "top -b -n1"]
+    if not any(cmd.startswith(a) for a in ALLOWED_COMMANDS):
+        return {"status":"error","output":"Command blocked: Not in allowlist.","exit_code":-1}
 
+    forbidden = ["rm -rf /", "mkfs", "dd if=", ":(){:|:&};:", "curl", "wget", "bash -i", "> /dev", "| bash"]
+    for f in forbidden:
+        if f in cmd:
+            return {"status": "error", "output": "Command blocked: Security policy restriction.", "exit_code": -1}
+
+    try:
         r = subprocess.run(
             cmd,
             shell=True,
