@@ -1084,6 +1084,12 @@ async function pollHeaderBadges() {
   }
 }
 
+// ── Sidebar Toggle ─────────────────────────────────
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  sidebar.classList.toggle('collapsed');
+}
+
 // ── Initialize App ───────────────────────────────────
 initNav();
 connect();
