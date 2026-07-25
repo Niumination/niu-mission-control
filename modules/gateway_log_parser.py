@@ -1,32 +1,38 @@
 """
-Gateway Log Parser — Parse Hermes gateway.log for Telegram messages
-==================================================================
+Telegram Feed Parser — Read real Telegram conversations from Hermes state.db
+=============================================================================
 
-Membaca gateway.log dan mengekstrak pesan inbound/outbound Telegram.
-Ini menggantikan SQLite agent_logs sebagai sumber data Telegram Feed
-karena agent_logs hanya berisi log internal MC server, bukan pesan
-Telegram nyata dari grup.
+Membaca database SQLite Hermes (state.db) untuk menampilkan percakapan
+Telegram nyata di dashboard MC. Sebelumnya gateway.log hanya punya metadata
+(char count, timing), tapi isi pesan aktual ada di state.db messages table.
 
 Alur data:
-  gateway.log → parser → list of message events → /api/mc/telegram-feed
+  Hermes state.db (sessions + messages) → parser → /api/mc/telegram-feed
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import re
+import sqlite3
 from datetime import datetime
 from typing import Any, Optional
 
 logger = logging.getLogger("gateway_log_parser")
 
-# Default path ke Hermes gateway.log
-HERMES_LOG_DIR = os.environ.get(
-    "HERMES_LOG_DIR",
-    "/Volumes/HermesAgent/HermesAgentUSB/data/logs",
+# Default path ke Hermes state.db
+HERMES_DATA_DIR = os.environ.get(
+    "HERMES_DATA_DIR",
+    "/Volumes/HermesAgent/HermesAgentUSB/data",
 )
-GATEWAY_LOG = os.path.join(HERMES_LOG_DIR, "gateway.log")
+STATE_DB = os.path.join(HERMES_DATA_DIR, "state.db")
+
+# Fallback: coba path lain
+STATE_DB_CANDIDATES = [
+    STATE_DB,
+    os.path.expanduser("~/.hermes/state.db"),
+    os.path.expanduser("~/.hermes-portable/state.db"),
+]
 
 # Chat ID Telegram group
 TG_GROUP_CHAT_ID = "-REDACTED_CHAT_ID"
@@ -35,215 +41,175 @@ TG_GROUP_CHAT_ID = "-REDACTED_CHAT_ID"
 TOPIC_AGENT_MAP = {
     None: "general",
     "": "general",
+    "None": "general",
     "1": "general",
     "802": "research",
     "803": "programmer",
     "804": "qa",
 }
 
-# Regex patterns untuk gateway.log
-# Format timestamp: 2026-07-25 18:07:57,684
-_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})")
 
-# Inbound message pattern
-# gateway.run: inbound message: platform=telegram user=X chat=ID msg='...' reply_to_id=802 reply_to_text=''
-_INBOUND_RE = re.compile(
-    r"inbound message: "
-    r"platform=(\S+) "
-    r"user=(.+?) "
-    r"chat=(\S+) "
-    r"msg='(.*?)' "
-    r"reply_to_id=(\S+)"
-)
-
-# Response ready pattern
-# gateway.run: response ready: platform=telegram chat=ID time=28.1s api_calls=1 response=38 chars
-_RESPONSE_RE = re.compile(
-    r"response ready: "
-    r"platform=(\S+) "
-    r"chat=(\S+) "
-    r"time=(\S+) "
-    r"api_calls=(\d+) "
-    r"response=(\d+) chars"
-)
-
-# Sending response pattern
-# gateway.platforms.base: [Telegram] Sending response (38 chars) to -REDACTED_CHAT_ID
-_SENDING_RE = re.compile(
-    r"Sending response \((\d+) chars\) to (\S+)"
-)
-
-# Flush batch pattern — untuk match response ke topic
-# hermes_plugins.telegram_platform.adapter: [Telegram] Flushing text batch ...:-REDACTED_CHAT_ID:802 (4 chars)
-_FLUSH_RE = re.compile(
-    r"Flushing text batch .+:(-?\d+):(\d+) \((\d+) chars\)"
-)
-
-
-def _parse_timestamp(ts_str: str) -> str:
-    """Convert gateway.log timestamp ke ISO format."""
-    try:
-        # "2026-07-25 18:07:57,684" → "2026-07-25T18:07:57"
-        dt = datetime.strptime(ts_str.replace(",", "."), "%Y-%m-%d %H:%M:%S.%f")
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
-        return ts_str
-
-
-def _parse_time_seconds(time_str: str) -> float:
-    """Convert '28.1s' ke float seconds."""
-    try:
-        return float(time_str.replace("s", ""))
-    except Exception:
-        return 0.0
+def _find_state_db() -> Optional[str]:
+    """Cari state.db di beberapa lokasi."""
+    for path in STATE_DB_CANDIDATES:
+        if os.path.exists(path):
+            return path
+    return None
 
 
 def _truncate(text: str, max_len: int = 500) -> str:
-    """Truncate panjang pesan."""
+    """Truncate panjang pesan untuk display."""
+    if not text:
+        return ""
+    # Hapus whitespace berlebih
+    text = " ".join(text.split())
     if len(text) <= max_len:
         return text
     return text[:max_len] + "..."
 
 
-def parse_gateway_log(
-    log_path: Optional[str] = None,
+def _clean_user_message(content: str) -> str:
+    """Bersihkan user message dari prefix [Afrizal Munthe] jika ada."""
+    if content.startswith("[") and "] " in content:
+        # "[Afrizal Munthe] halo" → "halo"
+        return content.split("] ", 1)[1]
+    return content
+
+
+def _is_useful_message(role: str, content: str) -> bool:
+    """Filter pesan yang berguna (skip tool calls, context compaction, dll)."""
+    if not content or not content.strip():
+        return False
+    if role == "tool":
+        return False
+    if "[CONTEXT COMPACTION" in content:
+        return False
+    if content.startswith("<untrusted_tool_result"):
+        return False
+    if role == "assistant" and len(content.strip()) < 3:
+        return False
+    return True
+
+
+def parse_telegram_feed(
+    db_path: Optional[str] = None,
     limit: int = 50,
     topic_filter: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """
-    Parse gateway.log dan return list pesan Telegram.
+    Baca percakapan Telegram dari Hermes state.db.
 
     Args:
-        log_path: Path ke gateway.log (default: GATEWAY_LOG)
+        db_path: Path ke state.db (default: auto-detect)
         limit: Jumlah pesan maksimal
-        topic_filter: Filter by topic ID ("1", "802", "803", "804") atau None untuk semua
+        topic_filter: Filter by topic/thread ID ("1", "802", "803", "804") atau None
 
     Returns:
         List of message dicts:
         {
-            "timestamp": "2026-07-25 18:07:57",
-            "type": "inbound" | "response",
-            "user": "Afrizal Munthe",  # hanya untuk inbound
-            "message": "halo",
-            "topic_id": "802",
-            "topic_label": "Research",
-            "agent": "research",
-            "response_time": "28.1s",  # hanya untuk response
-            "response_chars": 38,      # hanya untuk response
+            "timestamp": "2026-07-25 18:13:07",
+            "type": "user" | "assistant",
+            "user": "Afrizal Munthe",
+            "message": "periksa kondisi ekosistem proyek saat ini",
+            "topic_id": "1",
+            "topic_label": "General",
+            "agent": "general",
         }
     """
-    path = log_path or GATEWAY_LOG
-    if not os.path.exists(path):
-        logger.warning("Gateway log not found: %s", path)
+    path = db_path or _find_state_db()
+    if not path or not os.path.exists(path):
+        logger.warning("Hermes state.db not found")
         return []
 
     events: list[dict[str, Any]] = []
-    last_topic: str = "1"  # Track topic terakhir untuk match response
 
     try:
-        # Baca dari belakang (tail) untuk ambil pesan terbaru
-        # Baca max 200KB dari akhir file (cukup untuk ~50 pesan terakhir)
-        file_size = os.path.getsize(path)
-        read_size = min(file_size, 200 * 1024)  # 200KB max
-        start_pos = max(0, file_size - read_size)
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
 
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            if start_pos > 0:
-                f.seek(start_pos)
-                f.readline()  # Skip partial line
+        # Query: ambil user dan assistant messages dari group chat
+        # Join messages dengan sessions untuk dapat thread_id (topic)
+        query = """
+            SELECT
+                m.role,
+                m.content,
+                m.timestamp,
+                s.thread_id,
+                s.title as session_title
+            FROM messages m
+            JOIN sessions s ON m.session_id = s.id
+            WHERE s.chat_id = ?
+              AND m.role IN ('user', 'assistant')
+              AND m.content IS NOT NULL
+              AND m.compacted = 0
+            ORDER BY m.timestamp DESC
+            LIMIT ?
+        """
 
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
+        # Ambil lebih banyak karena kita filter di Python
+        fetch_limit = limit * 3
+        cursor = conn.execute(query, (TG_GROUP_CHAT_ID, fetch_limit))
+        rows = cursor.fetchall()
 
-                # Extract timestamp
-                ts_match = _TS_RE.match(line)
-                if not ts_match:
-                    continue
-                timestamp = _parse_timestamp(ts_match.group(1))
+        for row in rows:
+            role = row["role"]
+            content = row["content"]
+            timestamp_unix = row["timestamp"]
+            thread_id = row["thread_id"]
 
-                # Only process Telegram-related lines
-                if "telegram" not in line.lower() and "gateway.run" not in line:
-                    continue
+            # Filter pesan yang tidak berguna
+            if not _is_useful_message(role, content):
+                continue
 
-                # Inbound message
-                inbound_match = _INBOUND_RE.search(line)
-                if inbound_match:
-                    platform = inbound_match.group(1)
-                    user = inbound_match.group(2)
-                    chat = inbound_match.group(3)
-                    message = inbound_match.group(4)
-                    reply_to_id = inbound_match.group(5)
+            # Convert timestamp
+            try:
+                dt = datetime.fromtimestamp(timestamp_unix)
+                timestamp = dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                timestamp = str(timestamp_unix)
 
-                    # Skip non-group messages
-                    if chat != TG_GROUP_CHAT_ID:
+            # Determine topic
+            topic_id = str(thread_id) if thread_id else "1"
+            agent = TOPIC_AGENT_MAP.get(topic_id, "general")
+
+            # Apply topic filter
+            if topic_filter:
+                if topic_filter == "1":
+                    if topic_id not in ("1", "None", "NoneType", ""):
                         continue
-
-                    topic_id = reply_to_id if reply_to_id and reply_to_id != "None" else "1"
-                    agent = TOPIC_AGENT_MAP.get(topic_id, "general")
-                    last_topic = topic_id
-
-                    events.append({
-                        "timestamp": timestamp,
-                        "type": "inbound",
-                        "user": user,
-                        "message": _truncate(message),
-                        "topic_id": topic_id,
-                        "topic_label": agent.title(),
-                        "agent": agent,
-                    })
+                elif topic_id != topic_filter:
                     continue
 
-                # Response ready
-                response_match = _RESPONSE_RE.search(line)
-                if response_match:
-                    platform = response_match.group(1)
-                    chat = response_match.group(2)
-                    time_taken = response_match.group(3)
-                    api_calls = int(response_match.group(4))
-                    response_chars = int(response_match.group(5))
+            # Extract user name for user messages
+            user = ""
+            message = content
+            if role == "user":
+                # "[Afrizal Munthe] halo" → user="Afrizal Munthe", message="halo"
+                if content.startswith("[") and "] " in content:
+                    user = content[1:content.index("]")]
+                    message = _clean_user_message(content)
+                else:
+                    user = "User"
 
-                    # Only for Telegram group
-                    if chat != TG_GROUP_CHAT_ID:
-                        continue
+            events.append({
+                "timestamp": timestamp,
+                "type": role,
+                "user": user,
+                "message": _truncate(message),
+                "topic_id": topic_id,
+                "topic_label": agent.title(),
+                "agent": agent,
+                "session_title": row["session_title"] or "",
+            })
 
-                    agent = TOPIC_AGENT_MAP.get(last_topic, "general")
-
-                    events.append({
-                        "timestamp": timestamp,
-                        "type": "response",
-                        "message": f"Agent {agent.upper()} merespons ({response_chars} chars, {time_taken}, {api_calls} API call(s))",
-                        "topic_id": last_topic,
-                        "topic_label": agent.title(),
-                        "agent": agent,
-                        "response_time": time_taken,
-                        "response_chars": response_chars,
-                        "api_calls": api_calls,
-                    })
-                    continue
-
-                # Flush batch — update last_topic tracking
-                flush_match = _FLUSH_RE.search(line)
-                if flush_match:
-                    chat_id = flush_match.group(1)
-                    if chat_id == TG_GROUP_CHAT_ID:
-                        topic_id = flush_match.group(2)
-                        if topic_id in TOPIC_AGENT_MAP:
-                            last_topic = topic_id
+        conn.close()
 
     except Exception as e:
-        logger.error("Error parsing gateway.log: %s", e)
+        logger.error("Error reading Hermes state.db: %s", e)
         return []
 
-    # Apply topic filter
-    if topic_filter and topic_filter != "1":
-        events = [e for e in events if e["topic_id"] == topic_filter]
-    elif topic_filter == "1":
-        # "1" = General = topic 1 or None
-        events = [e for e in events if e.get("topic_id") in ("1", None, "")]
-
-    # Reverse untuk oldest-first (karena kita baca dari belakang)
+    # Kita sudah ORDER BY timestamp DESC, tapi events terisi dari belakang
+    # Reverse untuk chronological order (oldest first)
     events.reverse()
 
     # Apply limit
@@ -254,18 +220,36 @@ def parse_gateway_log(
 
 
 def get_gateway_status() -> dict[str, Any]:
-    """Return info tentang gateway.log untuk debugging."""
-    path = GATEWAY_LOG
-    exists = os.path.exists(path)
+    """Return info tentang data source untuk debugging."""
+    db_path = _find_state_db()
+    exists = db_path is not None
     size_kb = 0
-    if exists:
+    if exists and db_path:
         try:
-            size_kb = round(os.path.getsize(path) / 1024, 1)
+            size_kb = round(os.path.getsize(db_path) / 1024, 1)
         except Exception:
             pass
+
+    # Count total messages in group chat
+    total_messages = 0
+    if exists and db_path:
+        try:
+            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            cursor = conn.execute(
+                "SELECT COUNT(*) FROM messages m JOIN sessions s ON m.session_id = s.id "
+                "WHERE s.chat_id = ? AND m.role IN ('user', 'assistant') AND m.compacted = 0",
+                (TG_GROUP_CHAT_ID,),
+            )
+            total_messages = cursor.fetchone()[0]
+            conn.close()
+        except Exception:
+            pass
+
     return {
-        "log_path": path,
+        "source": "hermes_state_db",
+        "db_path": db_path or "not found",
         "exists": exists,
         "size_kb": size_kb,
-        "log_dir": HERMES_LOG_DIR,
+        "group_chat_id": TG_GROUP_CHAT_ID,
+        "total_group_messages": total_messages,
     }
