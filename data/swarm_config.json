@@ -2,6 +2,6 @@
   "orchestrator": "chief",
   "usb_safe_mode": true,
   "concurrency_limit": 4,
-  "llm_model": "DeepSeek-V3",
+  "llm_model": "opencode/big-pickle",
   "tg_chat_id": "-1004204696417"
 }

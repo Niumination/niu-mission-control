@@ -383,6 +383,11 @@ async function loadTelemetry() {
     document.getElementById('healthPct').textContent = data.health_score + '%';
     document.getElementById('healthFill').style.width = data.health_score + '%';
     
+    // Update LLM Backend KPI from live config
+    if (data.llm_model) {
+      document.getElementById('kpiLat').textContent = data.llm_model;
+    }
+    
     // Render disk partitions info if on Storage Page
     if (document.getElementById('page-storage').classList.contains('active')) {
       renderDiskUsage(data.disks);
@@ -679,7 +684,7 @@ async function loadSystemSettings() {
     document.getElementById('cfgOrchestrator').value = cfg.orchestrator || 'chief';
     document.getElementById('cfgUsbSafe').checked = cfg.usb_safe_mode ?? true;
     document.getElementById('cfgConcurrency').value = cfg.concurrency_limit || 4;
-    document.getElementById('cfgLlm').value = cfg.llm_model || 'DeepSeek-V3';
+    document.getElementById('cfgLlm').value = cfg.llm_model || 'opencode/big-pickle';
     document.getElementById('cfgTgChatId').value = cfg.tg_chat_id || '-1004204696417';
     
     // Populate cron table
