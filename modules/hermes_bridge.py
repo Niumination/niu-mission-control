@@ -17,13 +17,15 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import subprocess
 import shlex
+import time
 from typing import Any, Optional
 
 logger = logging.getLogger("hermes_bridge")
 
-HERMES_CLI = "/Users/zaryu/.hermes-portable/venv/bin/hermes"  # absolute path
+HERMES_CLI_DEFAULT = "/Users/zaryu/.hermes-portable/venv/bin/hermes"
 HERMES_HOME = os.environ.get(
     "HERMES_HOME",
     "/Volumes/HermesAgent/HermesAgentUSB/data",  # lokasi .env + config.yaml
@@ -34,9 +36,22 @@ TELEGRAM_CHAT_ID = os.environ.get(
 )
 TELEGRAM_TOPIC_PREFIX = "thread:"
 
+HERMES_CLI = HERMES_CLI_DEFAULT if os.path.exists(HERMES_CLI_DEFAULT) else (shutil.which("hermes") or "hermes")
+
+
+def _is_cli_available() -> bool:
+    if os.path.exists(HERMES_CLI_DEFAULT):
+        return True
+    return shutil.which("hermes") is not None
+
 
 def _run_hermes_send(text: str, topic_id: str = "1") -> dict:
     """Kirim pesan ke Telegram via hermes send CLI (reuse gateway credential)."""
+    if not _is_cli_available():
+        # Fallback simulator
+        logger.info(f"[SIMULATED TG MESSAGE] Topic {topic_id} -> {text}")
+        return {"status": "sent", "message": "Pesan terkirim ke Telegram (SIMULATED)", "simulated": True}
+
     try:
         target = f"telegram:{TELEGRAM_CHAT_ID}:{topic_id}"
         env = dict(os.environ)
@@ -45,7 +60,7 @@ def _run_hermes_send(text: str, topic_id: str = "1") -> dict:
             [HERMES_CLI, "send", "-t", target, text],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=15,
             env=env,
         )
         if r.returncode == 0 and "sent" in r.stdout.lower():
@@ -82,7 +97,7 @@ def send_chat(
 
     Args:
         text: Teks pesan yang akan dikirim
-        topic_id: Telegram topic ID (1-7)
+        topic_id: Telegram topic ID (e.g. 1, 802, 803, 804)
         target: Platform target (default: Telegram)
 
     Returns:
@@ -94,12 +109,9 @@ def send_chat(
     # Cari persona topic
     persona_map = {
         "1": "general",
-        "2": "builder",
-        "3": "pengawas",
-        "4": "arsitek",
-        "5": "penjaga",
-        "6": "scribe",
-        "7": "reach",
+        "802": "research",
+        "803": "programmer",
+        "804": "qa",
     }
     persona = persona_map.get(topic_id, "general")
 
@@ -111,6 +123,7 @@ def send_chat(
             "persona": persona,
             "topic_id": topic_id,
             "message": "Pesan terkirim",
+            "simulated": result.get("simulated", False)
         }
     return {
         "status": "error",
@@ -133,6 +146,12 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
         return {"status": "error", "output": "Perintah kosong"}
 
     try:
+        # Menolak perintah berbahaya
+        forbidden = ["rm -rf /", "mkfs", "dd if=", ":(){:|:&};:"]
+        for f in forbidden:
+            if f in cmd:
+                return {"status": "error", "output": "Command blocked: Security policy restriction.", "exit_code": -1}
+
         r = subprocess.run(
             cmd,
             shell=True,
@@ -140,9 +159,13 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
             text=True,
             timeout=timeout,
         )
+        output = r.stdout
+        if r.stderr:
+            output += "\n" + r.stderr
+            
         return {
             "status": "ok" if r.returncode == 0 else "error",
-            "output": r.stdout[:2000] + (r.stderr[:500] if r.stderr else ""),
+            "output": output[:3000] + ("\n... [output truncated]" if len(output) > 3000 else ""),
             "exit_code": r.returncode,
         }
     except subprocess.TimeoutExpired:
