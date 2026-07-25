@@ -574,6 +574,35 @@ async def run_terminal_command(req: CommandRequest):
     return run_terminal(req.command, timeout=req.timeout)
 
 
+# ── Telegram Feed (from gateway.log) ────────────────────
+
+@app.get("/api/mc/telegram-feed", tags=["telegram"])
+async def telegram_feed(limit: int = 50, topic: str = None):
+    """
+    Real Telegram messages dari Hermes gateway.log.
+    Menggantikan /api/mc/logs untuk Telegram Feed karena
+    agent_logs hanya berisi log internal MC server.
+    """
+    from modules.gateway_log_parser import parse_gateway_log, get_gateway_status
+
+    try:
+        messages = parse_gateway_log(limit=limit, topic_filter=topic)
+        return {
+            "messages": messages,
+            "count": len(messages),
+            "source": "gateway.log",
+            "gateway": get_gateway_status(),
+        }
+    except Exception as e:
+        logger.error("Error parsing gateway log: %s", e)
+        return {
+            "messages": [],
+            "count": 0,
+            "source": "gateway.log",
+            "error": str(e),
+        }
+
+
 # ── Telegram ─────────────────────────────────────────────
 
 @app.post("/api/mc/send-telegram", tags=["telegram"])
