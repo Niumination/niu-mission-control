@@ -268,7 +268,7 @@ System state: HEALTHY
                 "orchestrator": "chief",
                 "usb_safe_mode": True,
                 "concurrency_limit": 4,
-                "llm_model": "DeepSeek-V3",
+                "llm_model": "opencode/big-pickle",
                 "tg_chat_id": "-REDACTED_CHAT_ID",
             }, f, indent=2)
 
@@ -327,6 +327,17 @@ async def system_health():
     if disk.percent > 85:
         health_score -= 20
 
+    # Read llm_model from swarm config
+    _cfg_path = os.path.join(BASE_DIR, "data", "swarm_config.json")
+    _llm_model = "unknown"
+    try:
+        if os.path.exists(_cfg_path):
+            with open(_cfg_path, "r") as _f:
+                _cfg = json.load(_f)
+                _llm_model = _cfg.get("llm_model", "unknown")
+    except Exception:
+        pass
+
     return {
         "hostname": platform.node(),
         "platform": platform.system(),
@@ -342,6 +353,7 @@ async def system_health():
             "free_gb": round(disk.free / 1e9, 1),
             "percent": disk.percent,
         },
+        "llm_model": _llm_model,
         "health_score": health_score,
         "wal_mode": True,
         "status": "OK",
