@@ -74,6 +74,9 @@
       <a href="#" class="nav-item active" data-page="dashboard">
         <i class="fa-solid fa-chart-line nav-icon"></i> <span>Dashboard</span>
       </a>
+      <a href="#" class="nav-item" data-page="ecosystem">
+        <i class="fa-solid fa-globe nav-icon"></i> <span>Ecosystem</span>
+      </a>
       <a href="#" class="nav-item" data-page="swarm">
         <i class="fa-solid fa-network-wired nav-icon"></i> <span>Swarm Topology</span>
       </a>
@@ -294,7 +297,69 @@
         </div>
       </section>
 
-      <!-- 2. PAGE: SWARM TOPOLOGY -->
+      <!-- 2. PAGE: ECOSYSTEM OVERVIEW -->
+      <section class="page" id="page-ecosystem">
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-globe"></i> Niumination Ecosystem Overview</h2>
+          <p>Semua proyek, cron jobs, git activity, dan system health dalam satu halaman.</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="eco-tabs">
+          <button class="eco-tab active" data-eco-tab="projects" onclick="switchEcoTab('projects')">
+            <i class="fa-solid fa-diagram-project"></i> Projects <span class="eco-badge" id="ecoProjectCount">0</span>
+          </button>
+          <button class="eco-tab" data-eco-tab="mac" onclick="switchEcoTab('mac')">
+            <i class="fa-solid fa-laptop"></i> Mac System
+          </button>
+          <button class="eco-tab" data-eco-tab="cron" onclick="switchEcoTab('cron')">
+            <i class="fa-solid fa-clock"></i> Cron Jobs <span class="eco-badge" id="ecoCronCount">0</span>
+          </button>
+          <button class="eco-tab" data-eco-tab="git" onclick="switchEcoTab('git')">
+            <i class="fa-solid fa-code-commit"></i> Git Activity
+          </button>
+        </div>
+
+        <!-- Tab: Projects -->
+        <div class="eco-tab-content active" id="eco-tab-projects">
+          <div class="eco-filter-row">
+            <select id="ecoProjectFilter" onchange="filterEcoProjects()">
+              <option value="all">All Projects</option>
+              <option value="Production">Production (12)</option>
+              <option value="projects">Projects (18)</option>
+              <option value="dirty">Needs Commit</option>
+              <option value="unpushed">Needs Push</option>
+            </select>
+            <button class="btn-refresh-eco" onclick="loadEcosystem()"><i class="fa-solid fa-sync"></i> Refresh</button>
+          </div>
+          <div class="eco-project-grid" id="ecoProjectGrid">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Tab: Mac System -->
+        <div class="eco-tab-content" id="eco-tab-mac">
+          <div class="eco-mac-grid" id="ecoMacGrid">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Tab: Cron Jobs -->
+        <div class="eco-tab-content" id="eco-tab-cron">
+          <div class="eco-cron-grid" id="ecoCronGrid">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Tab: Git Activity -->
+        <div class="eco-tab-content" id="eco-tab-git">
+          <div class="eco-git-grid" id="ecoGitGrid">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. PAGE: SWARM TOPOLOGY -->
       <section class="page" id="page-swarm">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-network-wired"></i> SWARM AGENT SYSTEM ORCHESTRATION</h2>

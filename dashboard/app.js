@@ -836,6 +836,228 @@ function filterTerminals() {
 // ── Global Badge Updater ─────────────────────────────
 let gwLastKnownOnline = null; // Track last confirmed gateway state
 
+// ── Ecosystem Overview ──────────────────────────────
+let ecoData = null;
+let ecoActiveTab = 'projects';
+
+async function loadEcosystem() {
+  try {
+    const res = await fetch('/api/mc/ecosystem');
+    ecoData = await res.json();
+    renderEcoProjects();
+    renderEcoCron();
+    renderEcoGit();
+  } catch (e) {
+    console.error('Failed to load ecosystem:', e);
+  }
+}
+
+function switchEcoTab(tab) {
+  ecoActiveTab = tab;
+  document.querySelectorAll('.eco-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.eco-tab[data-eco-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.eco-tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`eco-tab-${tab}`).classList.add('active');
+  
+  // Load mac data on demand
+  if (tab === 'mac' && !document.getElementById('ecoMacGrid').children.length) {
+    loadEcoMacSystem();
+  }
+}
+
+async function loadEcoMacSystem() {
+  try {
+    const res = await fetch('/api/mc/system');
+    const d = await res.json();
+    renderEcoMac(d);
+  } catch (e) {
+    console.error('Failed to load mac system:', e);
+  }
+}
+
+function renderEcoProjects() {
+  const grid = document.getElementById('ecoProjectGrid');
+  const countBadge = document.getElementById('ecoProjectCount');
+  if (!grid || !ecoData) return;
+  
+  const projects = ecoData.projects || [];
+  countBadge.textContent = projects.length;
+  
+  const filter = document.getElementById('ecoProjectFilter').value;
+  let filtered = projects;
+  if (filter === 'Production') filtered = projects.filter(p => p.category === 'Production');
+  else if (filter === 'projects') filtered = projects.filter(p => p.category === 'projects');
+  else if (filter === 'dirty') filtered = projects.filter(p => p.dirty);
+  else if (filter === 'unpushed') filtered = projects.filter(p => p.unpushed_count > 0);
+  
+  grid.innerHTML = filtered.map(p => {
+    const catClass = p.category === 'Production' ? 'cat-production' : 'cat-projects';
+    const catBadge = p.category === 'Production' ? '<span class="eco-card-category eco-cat-prod">PROD</span>' : '<span class="eco-card-category eco-cat-projects">DEV</span>';
+    
+    let tags = '';
+    if (p.dirty) tags += '<span class="eco-meta-tag tag-dirty"><i class="fa-solid fa-circle-exclamation"></i> dirty</span>';
+    if (p.unpushed_count > 0) tags += `<span class="eco-meta-tag tag-unpushed"><i class="fa-solid fa-arrow-up"></i> ${p.unpushed_count} unpushed</span>`;
+    if (p.deploy_url) tags += '<span class="eco-meta-tag tag-deploy"><i class="fa-solid fa-cloud"></i> deployed</span>';
+    if (p.has_dox) tags += '<span class="eco-meta-tag tag-dox"><i class="fa-solid fa-book"></i> dox</span>';
+    if (p.is_git) tags += `<span class="eco-meta-tag"><i class="fa-solid fa-code-branch"></i> ${p.branch || '?'}</span>`;
+    
+    const commit = p.last_commit;
+    const commitHtml = commit && commit.date ? `
+      <div class="eco-card-commit">
+        <div class="commit-msg">${commit.hash} ${escapeHtml(commit.message)}</div>
+        <div class="commit-date">${formatDateShort(commit.date)}</div>
+      </div>` : '';
+    
+    return `
+      <div class="eco-project-card ${catClass}">
+        <div class="eco-card-header">
+          <span class="eco-card-name">${escapeHtml(p.name)}</span>
+          ${catBadge}
+        </div>
+        <div class="eco-card-meta">${tags}</div>
+        ${commitHtml}
+      </div>`;
+  }).join('');
+}
+
+function filterEcoProjects() {
+  renderEcoProjects();
+}
+
+function renderEcoMac(d) {
+  const grid = document.getElementById('ecoMacGrid');
+  if (!grid || !d) return;
+  
+  const barColor = (pct) => pct > 80 ? 'var(--red)' : pct > 60 ? 'var(--amber)' : 'var(--emerald)';
+  
+  let html = `
+    <div class="eco-mac-card">
+      <h4><i class="fa-solid fa-microchip"></i> CPU</h4>
+      <div class="eco-mac-value text-cyan">${d.cpu_percent}%</div>
+      <div class="eco-mac-sub">${d.cpu_count} cores${d.cpu_freq_mhz ? ' @ ' + d.cpu_freq_mhz + ' MHz' : ''}</div>
+      <div class="eco-mac-bar"><div class="eco-mac-bar-fill" style="width:${d.cpu_percent}%;background:${barColor(d.cpu_percent)}"></div></div>
+    </div>
+    <div class="eco-mac-card">
+      <h4><i class="fa-solid fa-memory"></i> Memory</h4>
+      <div class="eco-mac-value text-emerald">${d.memory.percent}%</div>
+      <div class="eco-mac-sub">${d.memory.used_gb} / ${d.memory.total_gb} GB</div>
+      <div class="eco-mac-bar"><div class="eco-mac-bar-fill" style="width:${d.memory.percent}%;background:${barColor(d.memory.percent)}"></div></div>
+    </div>
+    <div class="eco-mac-card">
+      <h4><i class="fa-solid fa-hard-drive"></i> Disk</h4>
+      <div class="eco-mac-value text-amber">${d.disk.percent}%</div>
+      <div class="eco-mac-sub">${d.disk.free_gb} GB free / ${d.disk.total_gb} GB total</div>
+      <div class="eco-mac-bar"><div class="eco-mac-bar-fill" style="width:${d.disk.percent}%;background:${barColor(d.disk.percent)}"></div></div>
+    </div>
+    <div class="eco-mac-card">
+      <h4><i class="fa-solid fa-clock"></i> Uptime</h4>
+      <div class="eco-mac-value text-purple">${d.uptime}</div>
+      <div class="eco-mac-sub">Boot: ${d.boot_time ? d.boot_time.split('T')[0] : 'N/A'}</div>
+    </div>
+    <div class="eco-mac-card">
+      <h4><i class="fa-solid fa-network-wired"></i> Network</h4>
+      <div class="eco-mac-value text-cyan" style="font-size:1rem">${d.network.sent} sent</div>
+      <div class="eco-mac-sub">Received: ${d.network.recv}</div>
+    </div>
+    <div class="eco-mac-card">
+      <h4><i class="fa-solid fa-brain"></i> LLM</h4>
+      <div class="eco-mac-value text-purple" style="font-size:0.9rem">${d.llm_model}</div>
+      <div class="eco-mac-sub">Health: ${d.health_score}%</div>
+    </div>`;
+  
+  // Top processes
+  if (d.top_processes && d.top_processes.length) {
+    html += `
+      <div class="eco-mac-card eco-mac-wide">
+        <h4><i class="fa-solid fa-list"></i> Top Processes (by memory)</h4>
+        <table class="eco-proc-table">
+          <thead><tr><th>PID</th><th>Name</th><th>Memory</th><th>CPU</th></tr></thead>
+          <tbody>
+            ${d.top_processes.map(p => `
+              <tr>
+                <td>${p.pid}</td>
+                <td>${escapeHtml(p.name)}</td>
+                <td>${p.mem_pct}%</td>
+                <td>${p.cpu_pct}%</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+  
+  grid.innerHTML = html;
+}
+
+function renderEcoCron() {
+  const grid = document.getElementById('ecoCronGrid');
+  const countBadge = document.getElementById('ecoCronCount');
+  if (!grid || !ecoData) return;
+  
+  const jobs = ecoData.cron_jobs || [];
+  countBadge.textContent = jobs.length;
+  
+  grid.innerHTML = jobs.map(j => {
+    const statusClass = j.status === 'running' ? 'status-running' : j.status === 'error' ? 'status-error' : 'status-scheduled';
+    const statusColor = j.status === 'running' ? 'var(--emerald)' : j.status === 'error' ? 'var(--red)' : 'var(--cyan)';
+    
+    const detailParts = [];
+    if (j.args) detailParts.push(`<i class="fa-solid fa-terminal"></i> ${escapeHtml(j.args.substring(0, 80))}`);
+    if (j.keep_alive) detailParts.push('<i class="fa-solid fa-infinity"></i> KeepAlive');
+    if (j.last_run) detailParts.push(`<i class="fa-solid fa-clock"></i> Last: ${formatDateShort(j.last_run)}`);
+    
+    return `
+      <div class="eco-cron-card ${statusClass}">
+        <div class="eco-cron-name">${escapeHtml(j.label)}</div>
+        <div class="eco-cron-schedule"><i class="fa-solid fa-clock"></i> ${escapeHtml(j.schedule)}</div>
+        <div class="eco-cron-status" style="color:${statusColor}">${j.status.toUpperCase()}</div>
+        ${detailParts.length ? `<div class="eco-cron-detail">${detailParts.join(' &middot; ')}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderEcoGit() {
+  const grid = document.getElementById('ecoGitGrid');
+  if (!grid || !ecoData) return;
+  
+  const repos = ecoData.git_activity || [];
+  
+  grid.innerHTML = repos.map(r => `
+    <div class="eco-git-repo">
+      <div class="eco-git-repo-name"><i class="fa-solid fa-folder"></i> ${escapeHtml(r.name)} <span style="color:var(--text-muted);font-size:0.55rem;font-weight:400">${r.category}</span></div>
+      ${r.commits.map(c => `
+        <div class="eco-git-commit-item">
+          <span class="eco-git-hash">${c.hash}</span>
+          <span class="eco-git-msg">${escapeHtml(c.message)}</span>
+          <span class="eco-git-date">${formatDateShort(c.date)}</span>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr.substring(0, 16);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return `${diffDay}d ago`;
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  } catch {
+    return dateStr.substring(0, 16);
+  }
+}
+
 async function pollHeaderBadges() {
   try {
     const res = await fetch('/api/mc/hermes');
@@ -869,6 +1091,7 @@ loadTelemetry();
 loadKanban();
 loadTelegramFeed();
 loadArtifactsList();
+loadEcosystem();
 
 // Keep metrics rolling
 setInterval(loadTelemetry, 5000);
