@@ -26,7 +26,7 @@ HERMES_CLI = HERMES_CLI_DEFAULT if os.path.exists(HERMES_CLI_DEFAULT) else (shut
 # Simple in-memory cache (hindari spam CLI tiap poll)
 _cache: dict[str, Any] = {}
 _cache_ttl: dict[str, float] = {}
-CACHE_SECONDS = 5
+CACHE_SECONDS = 8
 
 
 def _is_cli_available() -> bool:
@@ -42,7 +42,7 @@ def _cached(key: str) -> Optional[dict]:
     return None
 
 
-def _run(cmd: list[str], timeout: int = 5) -> dict:
+def _run(cmd: list[str], timeout: int = 10) -> dict:
     if not _is_cli_available():
         return {"rc": -2, "out": "", "err": "Hermes CLI not found"}
         
