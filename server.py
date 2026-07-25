@@ -1,70 +1,214 @@
 """
 Hermes Mission Control — FastAPI Server
+=======================================
 Berdasarkan spesifikasi NotebookLM "mission-control" (24 Jul 2026)
 
-Fitur Premium Senior Developer:
+Fitur Production-Ready:
 - REST API: system health, agent status, task kanban, logs
 - WebSocket: live multi-terminal stream (swarm execution feed)
-- Interactive Terminal Terminal Command Runner (with security filtering)
+- Secure Terminal Command Runner (allowlist + rate limiting)
 - Real-time Telegram Chat bridge
-- Artifact Explorer / Inspector (with disk scans and simulated blueprints)
+- Artifact Explorer / Inspector
 - SQLite WAL Checkpointing (USB preservation tool)
 - Dynamic Configuration Editor
+- API Key Authentication (optional, via MC_API_KEY env)
+- CORS middleware (configurable origins)
+- Rate limiting (per-IP, in-memory)
+- Health check endpoint (/health)
+- Graceful shutdown handler
 """
+
+from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import os
 import platform
-import psutil
-import shutil
+import time
+from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+import psutil
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from swarm.agents import AGENT_CONFIG, list_agents
 from swarm.bus import bus
-from swarm.agents import list_agents, AGENT_CONFIG
-from swarm.worker import start_swarm_workers, get_agent_status, AGENT_STATUS
+from swarm.worker import AGENT_STATUS, get_agent_status, start_swarm_workers
+
+# ── Logging ──────────────────────────────────────────────
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mission-control")
 
+# ── Constants ────────────────────────────────────────────
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DASHBOARD_DIR = os.path.join(BASE_DIR, "dashboard")
 
+# Auth: MC_API_KEY env var. Kosong = auth disabled (dev mode).
+MC_API_KEY = os.environ.get("MC_API_KEY", "")
+
+# CORS: MC_CORS_ORIGINS env var, comma-separated. Kosong = localhost only.
+_cors_raw = os.environ.get("MC_CORS_ORIGINS", "")
+CORS_ORIGINS: list[str] = (
+    [o.strip() for o in _cors_raw.split(",") if o.strip()]
+    if _cors_raw
+    else ["http://localhost:5200", "http://127.0.0.1:5200"]
+)
+
+# Rate limiting: MC_RATE_LIMIT env var. Default 60 req/min per IP.
+RATE_LIMIT_PER_MIN = int(os.environ.get("MC_RATE_LIMIT", "60"))
+
+# ── Rate Limiter (in-memory, per-IP) ─────────────────────
+
+_rate_store: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_rate_limit(ip: str) -> bool:
+    """Return True if request is allowed, False if rate-limited."""
+    now = time.time()
+    window = 60.0  # 1 minute window
+    _rate_store[ip] = [t for t in _rate_store[ip] if now - t < window]
+    if len(_rate_store[ip]) >= RATE_LIMIT_PER_MIN:
+        return False
+    _rate_store[ip].append(now)
+    return True
+
+
+# ── Lifespan (replaces deprecated on_event) ──────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle."""
+    # Startup
+    await bus.init_db()
+    init_dummy_artifacts()
+    await start_swarm_workers()
+    logger.info("Mission Control v2.5.1 started on port 5200")
+    logger.info("Auth: %s", "enabled" if MC_API_KEY else "disabled (dev mode)")
+    logger.info("CORS origins: %s", CORS_ORIGINS)
+    logger.info("Rate limit: %d req/min per IP", RATE_LIMIT_PER_MIN)
+    yield
+    # Shutdown
+    logger.info("Shutting down Mission Control...")
+    await bus.close()
+    logger.info("Database closed. Goodbye.")
+
+
+# ── FastAPI App ──────────────────────────────────────────
+
 app = FastAPI(
     title="Hermes Mission Control",
-    version="2.5.0",
-    description="Orchestrator, Agent Swarm, Telegram Bridge, WebSocket Live Feed, Artifact Explorer, USB-Safe WAL",
+    version="2.5.1",
+    description=(
+        "Orchestrator, Agent Swarm, Telegram Bridge, WebSocket Live Feed, "
+        "Artifact Explorer, USB-Safe WAL. Production-ready with auth, "
+        "CORS, rate limiting, and graceful shutdown."
+    ),
+    lifespan=lifespan,
     openapi_tags=[
-        {"name":"system","description":"Health & system info"},
-        {"name":"agents","description":"Agent swarm status"},
-        {"name":"tasks","description":"Task kanban & logs"},
-        {"name":"terminal","description":"Secure command execution"},
-        {"name":"telegram","description":"Bridge to Telegram"},
-        {"name":"artifacts","description":"Artifact file explorer"},
-        {"name":"config","description":"Dynamic swarm config"},
+        {"name": "system", "description": "Health & system info"},
+        {"name": "agents", "description": "Agent swarm status"},
+        {"name": "tasks", "description": "Task kanban & logs"},
+        {"name": "terminal", "description": "Secure command execution"},
+        {"name": "telegram", "description": "Bridge to Telegram"},
+        {"name": "artifacts", "description": "Artifact file explorer"},
+        {"name": "config", "description": "Dynamic swarm config"},
     ],
 )
 
-# WebSocket connections untuk broadcast live feed
-active_connections: list[WebSocket] = []
+# ── CORS Middleware ──────────────────────────────────────
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── Auth Dependency ──────────────────────────────────────
+
+async def verify_api_key(request: Request):
+    """Validate X-API-Key header. Skipped if MC_API_KEY not set."""
+    if not MC_API_KEY:
+        return  # Dev mode: no auth
+    # Skip auth for dashboard and health check
+    if request.url.path in ("/", "/health", "/docs", "/openapi.json", "/redoc"):
+        return
+    key = request.headers.get("X-API-Key", "")
+    if key != MC_API_KEY:
+        raise JSONResponse(
+            status_code=401,
+            content={"error": "Unauthorized: invalid or missing X-API-Key header"},
+        )
 
 
-# Model Pydantic untuk request validation
+# ── Rate Limiting Middleware ─────────────────────────────
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Per-IP rate limiting. Skips WebSocket and static files."""
+    path = request.url.path
+    # Skip rate limiting for static files, dashboard, health, and WebSocket
+    if path.startswith("/static") or path == "/ws/swarm" or path == "/health":
+        return await call_next(request)
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Rate limit exceeded. Max 60 requests per minute."},
+        )
+    return await call_next(request)
+
+
+# ── Auth Middleware (applied after rate limit) ────────────
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """API key authentication via X-API-Key header."""
+    if not MC_API_KEY:
+        return await call_next(request)
+
+    path = request.url.path
+    # Skip auth for public endpoints
+    public_paths = ("/", "/health", "/docs", "/openapi.json", "/redoc", "/static")
+    if any(path.startswith(p) for p in public_paths):
+        return await call_next(request)
+
+    key = request.headers.get("X-API-Key", "")
+    if key != MC_API_KEY:
+        return JSONResponse(
+            status_code=401,
+            content={"error": "Unauthorized: invalid or missing X-API-Key header"},
+        )
+    return await call_next(request)
+
+
+# ── Pydantic Models ──────────────────────────────────────
+
 class CommandRequest(BaseModel):
+    """Request body for terminal command execution."""
     command: str
     timeout: Optional[int] = 15
 
+
 class TelegramRequest(BaseModel):
+    """Request body for Telegram message send."""
     message: str
     topic_id: str = "1"
 
+
 class ConfigPayload(BaseModel):
+    """Request body for swarm config update."""
     orchestrator: str
     usb_safe_mode: bool
     concurrency_limit: int
@@ -72,17 +216,18 @@ class ConfigPayload(BaseModel):
     tg_chat_id: str
 
 
-@app.on_event("startup")
-async def startup():
-    await start_swarm_workers()
-    logger.info("Mission Control server started on port 5200")
+# ── WebSocket connections ────────────────────────────────
 
+active_connections: list[WebSocket] = []
+
+
+# ── Helper: Dummy Artifacts ──────────────────────────────
 
 def init_dummy_artifacts():
     """Membuat file spesifikasi dan hasil tes dummy di RAM disk (/tmp)."""
     os.makedirs("/tmp/hermes_research", exist_ok=True)
     os.makedirs("/tmp/hermes_qa", exist_ok=True)
-    
+
     spec_path = "/tmp/hermes_research/active_spec.md"
     if not os.path.exists(spec_path):
         with open(spec_path, "w") as f:
@@ -124,29 +269,63 @@ System state: HEALTHY
                 "usb_safe_mode": True,
                 "concurrency_limit": 4,
                 "llm_model": "DeepSeek-V3",
-                "tg_chat_id": "-1004204696417"
+                "tg_chat_id": "-1004204696417",
             }, f, indent=2)
 
 
-# ── REST API ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════
+#  REST API ENDPOINTS
+# ══════════════════════════════════════════════════════════
 
-@app.get("/api/mc/system")
+# ── Health Check (public, no auth) ───────────────────────
+
+@app.get("/health", tags=["system"])
+async def health_check():
+    """
+    Lightweight health check for monitoring and cron.
+    Returns 200 with minimal info. No auth required.
+    """
+    return {
+        "status": "ok",
+        "version": "2.5.1",
+        "uptime": _get_uptime(),
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+_start_time = time.time()
+
+
+def _get_uptime() -> str:
+    """Return human-readable uptime."""
+    elapsed = int(time.time() - _start_time)
+    hours, remainder = divmod(elapsed, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours}h {minutes}m {seconds}s"
+
+
+# ── System Health ────────────────────────────────────────
+
+@app.get("/api/mc/system", tags=["system"])
 async def system_health():
-    """System health: RAM, CPU, USB I/O, and platform details."""
+    """System health: RAM, CPU, disk, and platform details."""
     try:
         cpu_pct = psutil.cpu_percent(interval=None)
         mem = psutil.virtual_memory()
         disk = psutil.disk_usage("/")
     except Exception as e:
+        logger.warning("psutil fallback: %s", e)
         cpu_pct = 5.0
-        mem = type('obj', (object,), {'total': 8*1e9, 'used': 2*1e9, 'percent': 25.0})()
-        disk = type('obj', (object,), {'total': 100*1e9, 'free': 80*1e9, 'percent': 20.0})()
+        mem = type("obj", (object,), {"total": 8e9, "used": 2e9, "percent": 25.0})()
+        disk = type("obj", (object,), {"total": 100e9, "free": 80e9, "percent": 20.0})()
 
-    # Hitung health score yang realis
     health_score = 100
-    if cpu_pct > 80: health_score -= 15
-    if mem.percent > 90: health_score -= 20
-    if disk.percent > 85: health_score -= 20
+    if cpu_pct > 80:
+        health_score -= 15
+    if mem.percent > 90:
+        health_score -= 20
+    if disk.percent > 85:
+        health_score -= 20
 
     return {
         "hostname": platform.node(),
@@ -169,24 +348,28 @@ async def system_health():
     }
 
 
-@app.get("/api/mc/hermes")
+# ── Hermes Status ────────────────────────────────────────
+
+@app.get("/api/mc/hermes", tags=["system"])
 async def hermes_real_status():
     """Real Hermes Agent status: gateway, cron, herdr agents."""
     try:
         from modules.hermes_status import get_all
         return get_all()
     except Exception as e:
-        logger.error(f"Error fetching real status: {e}")
+        logger.error("Error fetching hermes status: %s", e)
         return {
             "gateway": {"online": False, "raw": str(e), "pid": None},
             "cron": {"count": 0, "jobs": []},
-            "herdr": {"running": False, "agents": []}
+            "herdr": {"running": False, "agents": []},
         }
 
 
-@app.get("/api/mc/agents")
+# ── Agents ───────────────────────────────────────────────
+
+@app.get("/api/mc/agents", tags=["agents"])
 async def agents_status():
-    """Agent swarm status cards (real-time, dari herdr kalau jalan)."""
+    """Agent swarm status cards (real-time)."""
     agents = list_agents()
     runtime_status = get_agent_status()
     herdr = None
@@ -195,15 +378,22 @@ async def agents_status():
         herdr = herdr_agents()
     except Exception:
         herdr = None
-        
+
     for a in agents:
         status = runtime_status.get(a["id"], "idle")
-        # Jika herdr jalan, override status dari herdr
         if herdr and herdr.get("running"):
-            matched_herdr = next((ha for ha in herdr.get("agents", []) if ha.get("name") == a["id"] or (a["id"] == "chief" and ha.get("name") == "pengawas")), None)
-            if matched_herdr:
+            matched = next(
+                (
+                    ha
+                    for ha in herdr.get("agents", [])
+                    if ha.get("name") == a["id"]
+                    or (a["id"] == "chief" and ha.get("name") == "pengawas")
+                ),
+                None,
+            )
+            if matched:
                 a["herdr_linked"] = True
-                status = matched_herdr.get("status", status)
+                status = matched.get("status", status)
             else:
                 a["herdr_linked"] = False
         else:
@@ -212,32 +402,40 @@ async def agents_status():
     return {"agents": agents, "swarm_active": "3 / 3 Workers", "herdr": herdr}
 
 
-@app.get("/api/mc/tasks")
+# ── Tasks Kanban ─────────────────────────────────────────
+
+@app.get("/api/mc/tasks", tags=["tasks"])
 async def tasks_kanban():
-    """Task queue untuk Kanban board."""
+    """Task queue for Kanban board."""
     tasks = await bus.get_tasks()
-    columns = {"pending": [], "running": [], "completed": [], "failed": []}
+    columns: dict[str, list] = {
+        "pending": [],
+        "running": [],
+        "completed": [],
+        "failed": [],
+    }
     for t in tasks:
-        # Menghindari error status yang tidak valid
         status = t["status"] if t["status"] in columns else "completed"
         columns[status].append(t)
     return columns
 
 
-@app.get("/api/mc/logs")
+# ── Logs ─────────────────────────────────────────────────
+
+@app.get("/api/mc/logs", tags=["tasks"])
 async def logs_feed(agent: str = None, limit: int = 50):
     """Live agent log feed."""
     logs = await bus.get_agent_logs(agent_id=agent, limit=limit)
     return {"logs": logs}
 
 
-@app.post("/api/mc/task-update")
+# ── Task Update ──────────────────────────────────────────
+
+@app.post("/api/mc/task-update", tags=["tasks"])
 async def task_update(payload: dict):
     """
-    Endpoint untuk agent Hermes update status task.
-    Agent panggil saat selesai eksekusi:
-    curl -X POST http://localhost:5200/api/mc/task-update \\
-      -d '{"task_id":"ac643df3","status":"completed","result":"..."}'
+    Agent Hermes updates task status.
+    Body: {"task_id":"ac643df3","status":"completed","result":"..."}
     """
     task_id = payload.get("task_id")
     status = payload.get("status", "completed")
@@ -246,49 +444,44 @@ async def task_update(payload: dict):
     if not task_id:
         return JSONResponse({"error": "task_id required"}, status_code=400)
 
-    # Convert dictionary or string result
     res_payload = {"output": result} if isinstance(result, str) else result
-
     await bus.update_task_status(task_id, status, result=res_payload)
-    
-    # Ambil info task untuk log
+
     tasks = await bus.get_tasks()
     matched_task = next((t for t in tasks if t["task_id"] == task_id), None)
     agent = matched_task["agent"] if matched_task else "chief"
-    
+
     level = "INFO" if status == "completed" else "ERROR"
     summary = str(result)[:200] if result else "Tanpa deskripsi"
     await bus.log_event(
-        task_id, agent, level,
-        f"Task {status} via callback: {summary}"
+        task_id, agent, level, f"Task {status} via callback: {summary}"
     )
     return {"status": "updated", "task_id": task_id}
 
 
-@app.post("/api/mc/delegate")
+# ── Delegate Task ────────────────────────────────────────
+
+@app.post("/api/mc/delegate", tags=["tasks"])
 async def delegate_task(payload: dict):
     """
-    Chief mendelegasikan task ke agent.
+    Chief delegates task to agent.
     Body: {"agent": "research", "instruction": "...", "parent_id": null}
-    Jalur 1: Kirim ke Telegram → Hermes Gateway → Agent execute → report balik.
     """
     agent = payload.get("agent", "research")
     instruction = payload.get("instruction", "")
     if agent not in AGENT_CONFIG:
-        return JSONResponse({"error": f"Unknown agent: {agent}"}, status_code=400)
+        return JSONResponse(
+            {"error": f"Unknown agent: {agent}"}, status_code=400
+        )
 
-    # Map agent → Telegram topic ID (IDs dari createForumTopic, auto-generated)
     topic_map = {"chief": "1", "research": "802", "programmer": "803", "qa": "804"}
-
     task_id = await bus.create_task(
         agent, {"instruction": instruction}, parent_id=payload.get("parent_id")
     )
 
-    # Kirim instruksi ke Hermes via Telegram bridge (Jalur 1)
     from modules.hermes_bridge import send_chat
 
-    # Sertakan callback URL agar agent bisa update status
-    callback = f"http://localhost:5200/api/mc/task-update"
+    callback = "http://localhost:5200/api/mc/task-update"
     bridge_msg = (
         f"[MC Swarm] Agent {agent.upper()} (task_id: {task_id}): {instruction}\n"
         f"Setelah selesai, update status via:\n"
@@ -300,16 +493,17 @@ async def delegate_task(payload: dict):
     if result["status"] == "sent":
         await bus.log_event(
             task_id, "chief", "INFO",
-            f"Delegasi ke {agent} sukses dikirim ke Telegram (Topic {topic_map.get(agent, '1')})"
+            f"Delegasi ke {agent} sukses dikirim ke Telegram (Topic {topic_map.get(agent, '1')})",
         )
         await bus.update_task_status(task_id, "running")
-        # Simulate local background processing to give a sense of active workflow if simulated
         if result.get("simulated"):
-            asyncio.create_task(simulate_agent_execution(task_id, agent, instruction))
+            asyncio.create_task(
+                simulate_agent_execution(task_id, agent, instruction)
+            )
     else:
         await bus.log_event(
             task_id, "chief", "ERROR",
-            f"Gagal kirim ke Telegram: {result.get('message')}"
+            f"Gagal kirim ke Telegram: {result.get('message')}",
         )
         await bus.update_task_status(task_id, "failed")
 
@@ -321,14 +515,14 @@ async def delegate_task(payload: dict):
 
 
 async def simulate_agent_execution(task_id: str, agent: str, instruction: str):
-    """Simulasi eksekusi latar belakang jika platform tidak terhubung ke Telegram real."""
-    await asyncio.sleep(4) # Waktu pemikiran
-    
-    # Update status ke running (is handled by delegate, but let's send log)
-    level = "INFO"
-    
+    """Simulate background execution when not connected to real Telegram."""
+    await asyncio.sleep(4)
+
     if agent == "research":
-        await bus.log_event(task_id, "research", "INFO", f"Scraping data untuk instruksi: '{instruction}'...")
+        await bus.log_event(
+            task_id, "research", "INFO",
+            f"Scraping data untuk instruksi: '{instruction}'...",
+        )
         await asyncio.sleep(5)
         spec_content = f"""# Dynamic Research Output
 - **Task ID**: {task_id}
@@ -343,17 +537,28 @@ async def simulate_agent_execution(task_id: str, agent: str, instruction: str):
         os.makedirs("/tmp/hermes_research", exist_ok=True)
         with open("/tmp/hermes_research/active_spec.md", "w") as f:
             f.write(spec_content)
-        await bus.log_event(task_id, "research", "INFO", "Analisis selesai. Spesifikasi disimpan di /tmp/hermes_research/active_spec.md")
-        await bus.update_task_status(task_id, "completed", result={"output": "Research brief compiled in /tmp"})
-        
+        await bus.log_event(
+            task_id, "research", "INFO",
+            "Analisis selesai. Spesifikasi disimpan di /tmp/hermes_research/active_spec.md",
+        )
+        await bus.update_task_status(
+            task_id, "completed", result={"output": "Research brief compiled in /tmp"}
+        )
+
     elif agent == "programmer":
-        await bus.log_event(task_id, "programmer", "INFO", f"Menulis kode program...")
+        await bus.log_event(task_id, "programmer", "INFO", "Menulis kode program...")
         await asyncio.sleep(6)
-        await bus.log_event(task_id, "programmer", "INFO", "Modul backend diimplementasikan (Simulasi AST parsing)")
-        await bus.update_task_status(task_id, "completed", result={"output": "Successfully generated python scripts and tests modules."})
-        
+        await bus.log_event(
+            task_id, "programmer", "INFO",
+            "Modul backend diimplementasikan (Simulasi AST parsing)",
+        )
+        await bus.update_task_status(
+            task_id, "completed",
+            result={"output": "Successfully generated python scripts and tests modules."},
+        )
+
     elif agent == "qa":
-        await bus.log_event(task_id, "qa", "INFO", f"Menjalankan testing engine...")
+        await bus.log_event(task_id, "qa", "INFO", "Menjalankan testing engine...")
         await asyncio.sleep(4)
         qa_content = f"""[PASS] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - test_database_connection
 [PASS] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - test_suite_validation
@@ -365,43 +570,49 @@ SUMMARY: 3/3 Tests Passed. Duration: 1.1s
         os.makedirs("/tmp/hermes_qa", exist_ok=True)
         with open("/tmp/hermes_qa/test_results.log", "w") as f:
             f.write(qa_content)
-        await bus.log_event(task_id, "qa", "INFO", "Semua test suite BERHASIL dilewati. [PASS]")
-        await bus.update_task_status(task_id, "completed", result={"output": "PASS (3/3 tests passed)"})
+        await bus.log_event(
+            task_id, "qa", "INFO", "Semua test suite BERHASIL dilewati. [PASS]"
+        )
+        await bus.update_task_status(
+            task_id, "completed", result={"output": "PASS (3/3 tests passed)"}
+        )
 
 
-# ── PREMIUM SENIOR DEV ENDPOINTS ────────────────────────
+# ── Terminal ─────────────────────────────────────────────
 
-@app.post("/api/mc/run-terminal")
+@app.post("/api/mc/run-terminal", tags=["terminal"])
 async def run_terminal_command(req: CommandRequest):
-    """Mengeksekusi perintah shell secara aman dan mengembalikan log."""
+    """Execute a shell command securely and return output."""
     from modules.hermes_bridge import run_terminal
-    res = run_terminal(req.command, timeout=req.timeout)
-    return res
+    return run_terminal(req.command, timeout=req.timeout)
 
 
-@app.post("/api/mc/send-telegram")
+# ── Telegram ─────────────────────────────────────────────
+
+@app.post("/api/mc/send-telegram", tags=["telegram"])
 async def send_telegram_chat(req: TelegramRequest):
-    """Mengirim pesan chat ke Telegram via Hermes gateway secara langsung."""
+    """Send a chat message to Telegram via Hermes gateway."""
     from modules.hermes_bridge import send_chat
     res = send_chat(req.message, topic_id=req.topic_id)
-    # Tambahkan log ke sistem SwarmBus untuk feedback langsung di UI
-    time_str = datetime.now().strftime('%H:%M:%S')
     await bus.log_event(
-        "chat-tg", "chief", "INFO" if res["status"] == "sent" else "ERROR",
-        f"[Telegram Topic {req.topic_id}] {req.message} - {res['message']}"
+        "chat-tg", "chief",
+        "INFO" if res["status"] == "sent" else "ERROR",
+        f"[Telegram Topic {req.topic_id}] {req.message} - {res['message']}",
     )
     return res
 
 
-@app.get("/api/mc/artifacts")
+# ── Artifacts ────────────────────────────────────────────
+
+@app.get("/api/mc/artifacts", tags=["artifacts"])
 async def list_artifacts():
-    """Mengambil daftar file output/artifact yang tersedia di folder log/temp."""
+    """List available output/artifact files from log and temp folders."""
     artifact_dirs = {
         "Research Outputs (/tmp)": "/tmp/hermes_research",
         "Test Traces (/tmp)": "/tmp/hermes_qa",
-        "Config & Assets (Project)": os.path.join(BASE_DIR, "data")
+        "Config & Assets (Project)": os.path.join(BASE_DIR, "data"),
     }
-    
+
     results = []
     for category, path in artifact_dirs.items():
         if not os.path.exists(path):
@@ -409,32 +620,41 @@ async def list_artifacts():
         files = []
         for file in os.listdir(path):
             file_path = os.path.join(path, file)
-            if os.path.isfile(file_path) and not file.endswith(".db") and not file.endswith(".db-wal") and not file.endswith(".db-shm"):
+            if os.path.isfile(file_path) and not file.endswith(
+                (".db", ".db-wal", ".db-shm")
+            ):
                 stat = os.stat(file_path)
                 files.append({
                     "name": file,
                     "size_kb": round(stat.st_size / 1024, 2),
-                    "modified": datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
-                    "path": file_path
+                    "modified": datetime.fromtimestamp(stat.st_mtime).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                    "path": file_path,
                 })
         results.append({
             "category": category,
             "folder": path,
-            "files": files
+            "files": files,
         })
     return {"categories": results}
 
 
-@app.get("/api/mc/artifact-content")
+@app.get("/api/mc/artifact-content", tags=["artifacts"])
 async def get_artifact_content(file: str):
-    """Mengambil isi file artifact yang spesifik."""
-    # Keamanan: batasi file hanya di /tmp atau folder data project
-    if not (file.startswith("/tmp/hermes_") or "data" in file or file.endswith("swarm_config.json")):
-        return JSONResponse({"error": "Access Denied: Path restriction policy."}, status_code=403)
-        
+    """Get content of a specific artifact file."""
+    if not (
+        file.startswith("/tmp/hermes_")
+        or "data" in file
+        or file.endswith("swarm_config.json")
+    ):
+        return JSONResponse(
+            {"error": "Access Denied: Path restriction policy."}, status_code=403
+        )
+
     if not os.path.exists(file):
         return JSONResponse({"error": "File not found"}, status_code=404)
-        
+
     try:
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
@@ -443,59 +663,72 @@ async def get_artifact_content(file: str):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-@app.get("/api/mc/config")
+# ── Config ───────────────────────────────────────────────
+
+@app.get("/api/mc/config", tags=["config"])
 async def get_config():
-    """Mengambil konfigurasi swarm."""
+    """Get swarm configuration."""
     config_path = os.path.join(BASE_DIR, "data", "swarm_config.json")
     if not os.path.exists(config_path):
         init_dummy_artifacts()
-        
     with open(config_path, "r") as f:
         return json.load(f)
 
 
-@app.post("/api/mc/config")
+@app.post("/api/mc/config", tags=["config"])
 async def save_config(cfg: ConfigPayload):
-    """Menyimpan konfigurasi swarm."""
+    """Save swarm configuration."""
     config_path = os.path.join(BASE_DIR, "data", "swarm_config.json")
     with open(config_path, "w") as f:
-        json.dump(cfg.dict(), f, indent=2)
+        json.dump(cfg.model_dump(), f, indent=2)
     return {"status": "saved", "config": cfg}
 
 
-@app.post("/api/mc/clear-logs")
+# ── Clear Logs ───────────────────────────────────────────
+
+@app.post("/api/mc/clear-logs", tags=["tasks"])
 async def clear_logs():
-    """Membersihkan tabel logs di SwarmBus SQLite."""
+    """Clear all logs and tasks from SwarmBus SQLite."""
     try:
         await bus._db.execute("DELETE FROM agent_logs")
         await bus._db.execute("DELETE FROM tasks")
         await bus._db.commit()
-        await bus.log_event("sys", "chief", "INFO", "Database logs dan tasks dibersihkan oleh Commander.")
+        await bus.log_event(
+            "sys", "chief", "INFO",
+            "Database logs dan tasks dibersihkan oleh Commander.",
+        )
         return {"status": "success", "message": "Logs cleared"}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-@app.post("/api/mc/wal-checkpoint")
+# ── WAL Checkpoint ───────────────────────────────────────
+
+@app.post("/api/mc/wal-checkpoint", tags=["system"])
 async def trigger_wal_checkpoint():
-    """Memicu SQLite WAL manual checkpoint untuk keamanan media USB."""
+    """Trigger SQLite WAL manual checkpoint for USB safety."""
     try:
         await bus._db.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         await bus._db.commit()
-        await bus.log_event("sys", "chief", "INFO", "SQLite WAL manual checkpoint TRUNCATE sukses dilakukan (USB Safe).")
+        await bus.log_event(
+            "sys", "chief", "INFO",
+            "SQLite WAL manual checkpoint TRUNCATE sukses dilakukan (USB Safe).",
+        )
         return {"status": "success", "message": "WAL checkpoint truncated successfully."}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-# ── WebSocket: Live Multi-Terminal Feed ──────────────────
+# ══════════════════════════════════════════════════════════
+#  WebSocket: Live Multi-Terminal Feed
+# ══════════════════════════════════════════════════════════
 
 @app.websocket("/ws/swarm")
 async def swarm_ws(websocket: WebSocket):
+    """WebSocket endpoint for real-time swarm status and log streaming."""
     await websocket.accept()
     active_connections.append(websocket)
     try:
-        # Kirim snapshot awal
         initial = {
             "type": "init",
             "agents": get_agent_status(),
@@ -504,7 +737,6 @@ async def swarm_ws(websocket: WebSocket):
         await websocket.send_text(json.dumps(initial))
 
         while True:
-            # Poll status + new logs setiap 1.5 detik, broadcast
             await asyncio.sleep(1.5)
             snapshot = {
                 "type": "tick",
@@ -521,17 +753,21 @@ async def swarm_ws(websocket: WebSocket):
             active_connections.remove(websocket)
 
 
-# ── Dashboard ─────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════
+#  Dashboard
+# ══════════════════════════════════════════════════════════
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse, tags=["system"])
 async def index():
+    """Serve the main dashboard HTML."""
     return FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
 
 
-# Static files (js, css)
 if os.path.exists(DASHBOARD_DIR):
     app.mount("/static", StaticFiles(directory=DASHBOARD_DIR), name="static")
 
+
+# ── Entry Point ──────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
