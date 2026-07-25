@@ -259,39 +259,54 @@ async function loadTelegramFeed() {
   if (!feed) return;
   
   try {
-    const res = await fetch('/api/mc/logs?limit=30');
+    const res = await fetch(`/api/mc/telegram-feed?limit=30&topic=${currentTgTopic}`);
     const data = await res.json();
     
     feed.innerHTML = '';
     
-    // If empty logs, show welcoming instructions
-    if (data.logs.length === 0) {
-      feed.innerHTML = '<div class="text-dim text-center" style="margin: auto; font-size:0.75rem;">No active logs in SQLite WAL. Send a directive to see updates.</div>';
+    // If no messages, show welcoming instructions
+    if (!data.messages || data.messages.length === 0) {
+      feed.innerHTML = '<div class="text-dim text-center" style="margin: auto; font-size:0.75rem;">No Telegram messages yet. Send a directive to see updates.</div>';
       return;
     }
     
-    data.logs.forEach(l => {
+    data.messages.forEach(m => {
       const msgDiv = document.createElement('div');
-      const isChief = l.agent_id === 'chief' || l.agent_id === 'sys';
-      msgDiv.className = isChief ? 'tg-message-row system-reply' : 'tg-message-row agent-update';
       
-      const time = new Date(l.timestamp).toLocaleTimeString('id-ID', { hour12: false });
-      const avatarIcon = isChief ? 'fa-robot' : 'fa-network-wired';
-      const authorName = l.agent_id.toUpperCase();
+      if (m.type === 'inbound') {
+        // User message — show as user-sent
+        msgDiv.className = 'tg-message-row user-sent';
+        const time = m.timestamp ? m.timestamp.split(' ')[1] || '' : '';
+        msgDiv.innerHTML = `
+          <div class="tg-avatar-user"><i class="fa-solid fa-circle-user"></i></div>
+          <div class="tg-msg-bubble">
+            <div class="tg-msg-author">${m.user || 'User'} <span class="time">${time}</span></div>
+            <div class="tg-msg-text">${m.message}</div>
+          </div>
+        `;
+      } else {
+        // Agent response — show as system-reply
+        msgDiv.className = 'tg-message-row system-reply';
+        const time = m.timestamp ? m.timestamp.split(' ')[1] || '' : '';
+        const agentLabel = (m.agent || 'agent').toUpperCase();
+        const agentIcon = m.agent === 'general' ? 'fa-robot' : 'fa-network-wired';
+        const avatarClass = m.agent === 'general' ? 'tg-avatar-hermes' : 'tg-avatar-agent';
+        msgDiv.innerHTML = `
+          <div class="${avatarClass}"><i class="fa-solid ${agentIcon}"></i></div>
+          <div class="tg-msg-bubble">
+            <div class="tg-msg-author">${agentLabel} <span class="time">${time}</span></div>
+            <div class="tg-msg-text">${m.message}</div>
+          </div>
+        `;
+      }
       
-      msgDiv.innerHTML = `
-        <div class="${isChief ? 'tg-avatar-hermes' : 'tg-avatar-agent'}"><i class="fa-solid ${avatarIcon}"></i></div>
-        <div class="tg-msg-bubble">
-          <div class="tg-msg-author">${authorName} <span class="time">${time}</span></div>
-          <div class="tg-msg-text">${l.message}</div>
-        </div>
-      `;
       feed.appendChild(msgDiv);
     });
     
     feed.scrollTop = feed.scrollHeight;
   } catch (e) {
-    console.error('Failed to fetch Telegram logs:', e);
+    console.error('Failed to fetch Telegram feed:', e);
+    feed.innerHTML = '<div class="text-dim text-center" style="margin: auto; font-size:0.75rem;">Failed to load Telegram feed.</div>';
   }
 }
 
