@@ -834,21 +834,29 @@ function filterTerminals() {
 }
 
 // ── Global Badge Updater ─────────────────────────────
+let gwLastKnownOnline = null; // Track last confirmed gateway state
+
 async function pollHeaderBadges() {
   try {
     const res = await fetch('/api/mc/hermes');
+    if (!res.ok) return; // Don't override on HTTP errors
     const data = await res.json();
     
     const gwBadge = document.getElementById('gwBadge');
     const gwText = document.getElementById('gwStatusText');
     
-    if (data.gateway.online) {
-      gwBadge.className = 'telemetry-badge badge-emerald';
-      gwText.textContent = `ONLINE (PID ${data.gateway.pid || 'Active'})`;
-    } else {
-      gwBadge.className = 'telemetry-badge badge-red';
-      gwText.textContent = 'OFFLINE';
+    if (data.gateway && !data.gateway.simulated) {
+      // Only override with REAL (non-simulated) subprocess data
+      gwLastKnownOnline = data.gateway.online;
+      if (data.gateway.online) {
+        gwBadge.className = 'telemetry-badge badge-emerald';
+        gwText.textContent = `ONLINE (PID ${data.gateway.pid || 'Active'})`;
+      } else {
+        gwBadge.className = 'telemetry-badge badge-red';
+        gwText.textContent = 'OFFLINE';
+      }
     }
+    // If simulated, don't touch — rely on WebSocket status
   } catch (e) {
     console.error('Failed to poll headers:', e);
   }
