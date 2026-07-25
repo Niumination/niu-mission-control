@@ -16,7 +16,9 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
@@ -32,6 +34,11 @@ SCAN_DIRS = {
 
 # Ignore patterns
 IGNORE_DIRS = {".git", "node_modules", "__pycache__", ".next", ".DS_Store"}
+
+# ── Cache (avoid re-scanning on every request) ──────────
+_cache: dict[str, Any] = {}
+_cache_time: dict[str, float] = {}
+CACHE_TTL = 30  # seconds
 
 # Deploy URL patterns (detected from directory name)
 DEPLOY_MAP = {
@@ -63,80 +70,121 @@ def _git_cmd(cwd: str, *args: str) -> str:
 
 
 def _get_git_info(project_path: str) -> dict[str, Any]:
-    """Extract git metadata from a project directory."""
+    """ all git commands in one subprocess for speed."""
     if not os.path.isdir(os.path.join(project_path, ".git")):
         return {"is_git": False}
 
-    branch = _git_cmd(project_path, "branch", "--show-current")
-    last_commit_msg = _git_cmd(project_path, "log", "-1", "--pretty=%s")
-    last_commit_date = _git_cmd(project_path, "log", "-1", "--pretty=%ci")
-    last_commit_hash = _git_cmd(project_path, "log", "-1", "--pretty=%h")
-    dirty = bool(_git_cmd(project_path, "status", "--porcelain"))
-    unpushed = _git_cmd(project_path, "log", f"origin/{branch}..HEAD", "--oneline") if branch else ""
-    unpushed_count = len(unpushed.splitlines()) if unpushed else 0
-    remote_url = _git_cmd(project_path, "remote", "get-url", "origin")
+    try:
+        # Single shell command with cd for cwd
+        cmd = f'cd {project_path} && git log -1 --pretty="%D|%h|%s|%ci" 2>/dev/null; echo "---"; git status --porcelain 2>/dev/null; echo "---"; git remote get-url origin 2>/dev/null'
+        output = os.popen(cmd).read()
+    except Exception:
+        return {"is_git": True, "branch": "unknown", "last_commit": {"hash": "", "message": "", "date": ""}, "dirty": False, "remote_url": ""}
 
-    # Parse date
-    last_commit_dt = None
-    if last_commit_date:
-        try:
-            last_commit_dt = datetime.fromisoformat(last_commit_date.replace(" ", "T", 1)).isoformat()
-        except Exception:
-            last_commit_dt = last_commit_date
+    sections = output.split("---\n")
+    log_line = sections[0].strip() if sections else ""
+    status_lines = sections[1].strip() if len(sections) > 1 else ""
+    remote_url = sections[2].strip() if len(sections) > 2 else ""
+
+    dirty = bool(status_lines)
+    branch = ""
+    last_commit = {"hash": "", "message": "", "date": ""}
+
+    if log_line:
+        parts = log_line.split("|", 3)
+        if len(parts) >= 4:
+            refs = parts[0].strip()
+            short_hash = parts[1]
+            message = parts[2]
+            date_str = parts[3].strip()
+
+            branch_match = re.search(r"HEAD -> (\S+)", refs)
+            if branch_match:
+                branch = branch_match.group(1).rstrip(",")
+            elif "origin/" in refs:
+                om = re.search(r"origin/(\S+)", refs)
+                if om:
+                    branch = om.group(1).rstrip(",")
+
+            try:
+                last_commit_dt = datetime.fromisoformat(date_str.replace(" ", "T", 1)).isoformat()
+            except Exception:
+                last_commit_dt = date_str
+
+            last_commit = {
+                "hash": short_hash,
+                "message": message[:100],
+                "date": last_commit_dt,
+            }
 
     return {
         "is_git": True,
         "branch": branch or "unknown",
-        "last_commit": {
-            "hash": last_commit_hash,
-            "message": last_commit_msg[:100],
-            "date": last_commit_dt,
-        },
+        "last_commit": last_commit,
         "dirty": dirty,
-        "unpushed_count": unpushed_count,
         "remote_url": remote_url,
     }
 
 
-def scan_projects() -> list[dict[str, Any]]:
-    """Scan Production/ and projects/ directories for all projects."""
-    projects = []
+def _scan_single_project(category: str, name: str, project_path: str) -> dict[str, Any]:
+    """Scan a single project — runs in thread pool."""
+    git_info = _get_git_info(project_path)
+    deploy_url = DEPLOY_MAP.get(name)
+    has_agents_md = os.path.isfile(os.path.join(project_path, "AGENTS.md"))
 
+    if category == "Production":
+        status_label = "production"
+    elif git_info.get("dirty"):
+        status_label = "active"
+    else:
+        status_label = "stable"
+
+    return {
+        "name": name,
+        "category": category,
+        "status": status_label,
+        "deploy_url": deploy_url,
+        "has_dox": has_agents_md,
+        **git_info,
+    }
+
+
+def scan_projects() -> list[dict[str, Any]]:
+    """Scan Production/ and projects/ directories — parallelized."""
+    now = time.time()
+    if "projects" in _cache and (now - _cache_time.get("projects", 0)) < CACHE_TTL:
+        return _cache["projects"]
+
+    tasks = []
     for category, base_path in SCAN_DIRS.items():
         if not os.path.isdir(base_path):
             continue
-
         for name in sorted(os.listdir(base_path)):
             if name.startswith(".") or name in IGNORE_DIRS:
                 continue
-
             project_path = os.path.join(base_path, name)
             if not os.path.isdir(project_path):
                 continue
+            tasks.append((category, name, project_path))
 
-            git_info = _get_git_info(project_path)
-            deploy_url = DEPLOY_MAP.get(name)
-            has_agents_md = os.path.isfile(os.path.join(project_path, "AGENTS.md"))
+    # Parallel git scans (30 repos concurrently)
+    projects = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(_scan_single_project, cat, name, path): name
+            for cat, name, path in tasks
+        }
+        for future in as_completed(futures):
+            try:
+                projects.append(future.result())
+            except Exception:
+                pass
 
-            # Determine status
-            if category == "Production":
-                status_label = "production"
-            elif git_info.get("dirty"):
-                status_label = "active"
-            elif git_info.get("unpushed_count", 0) > 0:
-                status_label = "needs_push"
-            else:
-                status_label = "stable"
+    # Sort: Production first, then alphabetical
+    projects.sort(key=lambda p: (0 if p["category"] == "Production" else 1, p["name"]))
 
-            projects.append({
-                "name": name,
-                "category": category,
-                "status": status_label,
-                "deploy_url": deploy_url,
-                "has_dox": has_agents_md,
-                **git_info,
-            })
-
+    _cache["projects"] = projects
+    _cache_time["projects"] = now
     return projects
 
 
@@ -313,54 +361,72 @@ def _get_last_launchd_run(label: str) -> str | None:
     return None
 
 
-def get_git_activity(limit_per_repo: int = 3) -> list[dict[str, Any]]:
-    """Get recent git commits across all repos."""
-    repos = []
+def _scan_single_repo_git(name: str, category: str, project_path: str, limit: int) -> dict[str, Any] | None:
+    """Get git activity for a single repo — runs in thread pool."""
+    if not os.path.isdir(os.path.join(project_path, ".git")):
+        return None
 
+    try:
+        cmd = f'cd {project_path} && git log -{limit} --pretty="%h|%s|%ci|%an" 2>/dev/null'
+        output = os.popen(cmd).read()
+    except Exception:
+        return None
+
+    commits = []
+    if output:
+        for line in output.splitlines():
+            parts = line.split("|", 3)
+            if len(parts) >= 3:
+                commits.append({
+                    "hash": parts[0],
+                    "message": parts[1][:100],
+                    "date": parts[2].strip(),
+                    "author": parts[3] if len(parts) > 3 else "unknown",
+                })
+
+    if commits:
+        return {"name": name, "category": category, "commits": commits}
+    return None
+
+
+def get_git_activity(limit_per_repo: int = 3) -> list[dict[str, Any]]:
+    """Get recent git commits across all repos — parallelized."""
+    now = time.time()
+    if "git" in _cache and (now - _cache_time.get("git", 0)) < CACHE_TTL:
+        return _cache["git"]
+
+    tasks = []
     for category, base_path in SCAN_DIRS.items():
         if not os.path.isdir(base_path):
             continue
-
         for name in sorted(os.listdir(base_path)):
             if name.startswith(".") or name in IGNORE_DIRS:
                 continue
-
             project_path = os.path.join(base_path, name)
-            if not os.path.isdir(os.path.join(project_path, ".git")):
-                continue
+            if os.path.isdir(os.path.join(project_path, ".git")):
+                tasks.append((name, category, project_path))
 
-            # Recent commits
-            log_output = _git_cmd(
-                project_path, "log",
-                f"--max-count={limit_per_repo}",
-                "--pretty=format:%h|%s|%ci|%an",
-            )
+    repos = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(_scan_single_repo_git, name, cat, path, limit_per_repo): name
+            for name, cat, path in tasks
+        }
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                if result:
+                    repos.append(result)
+            except Exception:
+                pass
 
-            commits = []
-            if log_output:
-                for line in log_output.splitlines():
-                    parts = line.split("|", 3)
-                    if len(parts) >= 3:
-                        commits.append({
-                            "hash": parts[0],
-                            "message": parts[1][:100],
-                            "date": parts[2].strip(),
-                            "author": parts[3] if len(parts) > 3 else "unknown",
-                        })
-
-            if commits:
-                repos.append({
-                    "name": name,
-                    "category": category,
-                    "commits": commits,
-                })
-
-    # Sort by most recent commit date
     repos.sort(
         key=lambda r: r["commits"][0]["date"] if r["commits"] else "",
         reverse=True,
     )
 
+    _cache["git"] = repos
+    _cache_time["git"] = now
     return repos
 
 
