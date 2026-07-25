@@ -583,14 +583,14 @@ async def telegram_feed(limit: int = 50, topic: str = None):
     Menggantikan /api/mc/logs untuk Telegram Feed karena
     agent_logs hanya berisi log internal MC server.
     """
-    from modules.gateway_log_parser import parse_gateway_log, get_gateway_status
+    from modules.gateway_log_parser import parse_telegram_feed, get_gateway_status
 
     try:
-        messages = parse_gateway_log(limit=limit, topic_filter=topic)
+        messages = parse_telegram_feed(limit=limit, topic_filter=topic)
         return {
             "messages": messages,
             "count": len(messages),
-            "source": "gateway.log",
+            "source": "hermes_state_db",
             "gateway": get_gateway_status(),
         }
     except Exception as e:
@@ -598,7 +598,7 @@ async def telegram_feed(limit: int = 50, topic: str = None):
         return {
             "messages": [],
             "count": 0,
-            "source": "gateway.log",
+            "source": "hermes_state_db",
             "error": str(e),
         }
 
