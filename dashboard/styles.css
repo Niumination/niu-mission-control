@@ -135,6 +135,12 @@ body {
   color: var(--bg-deep);
   font-size: 0.95rem;
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.brand .logo-icon:hover {
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.6);
+  transform: scale(1.08);
 }
 .brand-text {
   display: flex;
@@ -494,7 +500,7 @@ body {
 .kpi-value {
   font-family: 'Orbitron', sans-serif;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   margin-top: 0.15rem;
 }
 .kpi-status {
@@ -579,7 +585,7 @@ body {
 }
 .agent-title-text {
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   letter-spacing: 0.5px;
 }
 .linked-indicator {
@@ -599,7 +605,7 @@ body {
 }
 
 .agent-role-desc {
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   color: var(--text-secondary);
   margin-bottom: 0.3rem;
 }

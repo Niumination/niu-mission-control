@@ -26,7 +26,7 @@
   <!-- HEADER -->
   <header class="topnav">
     <div class="brand">
-      <div class="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+      <div class="logo-icon" onclick="toggleSidebar()" title="Toggle sidebar"><i class="fa-solid fa-bolt"></i></div>
       <div class="brand-text">
         <span>HERMES</span>
         <span class="dim">// MISSION CONTROL v2.5</span>
@@ -56,9 +56,6 @@
         <span class="label">LATENCY:</span> <span class="kpi-value" id="kpiLatency">--</span>
       </div>
       <div class="user-role">
-        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
-          <i class="fa-solid fa-bars"></i>
-        </button>
         <div class="avatar"><i class="fa-solid fa-shield-halved"></i></div>
         <div class="role-info">
           <span class="name">Commander</span>
