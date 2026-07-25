@@ -637,6 +637,7 @@ function initNav() {
       if (target) target.classList.add('active');
       
       // Lazy page load initializers
+      if (page === 'ecosystem') loadEcosystem();
       if (page === 'swarm') loadTopologyPrompts();
       if (page === 'taskqueue') loadKanban();
       if (page === 'terminal') clearConsole();
