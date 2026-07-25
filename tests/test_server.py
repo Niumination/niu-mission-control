@@ -61,13 +61,12 @@ def test_system_health(client):
 # ── 3. Hermes Status ─────────────────────────────────────
 
 def test_hermes_status(client):
-    """GET /api/mc/hermes returns gateway info."""
+    """GET /api/mc/hermes returns gateway and cron info."""
     r = client.get("/api/mc/hermes")
     assert r.status_code == 200
     data = r.json()
     assert "gateway" in data
     assert "cron" in data
-    assert "herdr" in data
     assert isinstance(data["gateway"], dict)
     assert "online" in data["gateway"]
 

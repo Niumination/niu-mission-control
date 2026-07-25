@@ -83,7 +83,7 @@ def get_launchd_services():
     """Check key services."""
     out, _ = run(["launchctl", "list"])
     services = {}
-    for key in ["hermes", "gateway", "herdr"]:
+    for key in ["hermes", "gateway"]:
         services[key] = key in out.lower()
     return services
 
@@ -113,8 +113,6 @@ def main():
         health_score -= 10
     if not services.get("hermes") and not services.get("gateway"):
         health_score -= 15
-    if not services.get("herdr"):
-        health_score -= 10
 
     print(json.dumps({
         "health_score": max(0, health_score),

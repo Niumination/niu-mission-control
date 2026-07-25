@@ -65,23 +65,6 @@ def check_kanban():
     if code != 0 or out != "200":
         ISSUES.append("🔴 Kanban Dashboard (port 5199) not responding")
 
-def check_agents():
-    """Check agent fleet status."""
-    out, code = run(["herdr", "agent", "list"])
-    if code != 0:
-        ISSUES.append("⚠️ herdr not accessible")
-        return
-    try:
-        data = json.loads(out)
-        agents = data.get("result", {}).get("agents", [])
-        expected = {"builder", "pengawas", "arsitek", "penjaga"}
-        found = {a.get("name") for a in agents}
-        missing = expected - found
-        if missing:
-            ISSUES.append(f"⚠️ Agents missing: {', '.join(sorted(missing))}")
-    except json.JSONDecodeError:
-        ISSUES.append("⚠️ herdr agent list unparseable")
-
 def check_cron():
     """Check if MC-specific cron jobs exist and state."""
     out, code = run(["cronjob", "action=list"], timeout=10)
@@ -107,7 +90,6 @@ def main():
     check_gateway()
     check_mc_server()
     check_kanban()
-    check_agents()
     check_cron()
 
     if not ISSUES:

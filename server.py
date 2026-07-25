@@ -364,7 +364,7 @@ async def system_health():
 
 @app.get("/api/mc/hermes", tags=["system"])
 async def hermes_real_status():
-    """Real Hermes Agent status: gateway, cron, herdr agents."""
+    """Real Hermes Agent status: gateway and cron jobs."""
     try:
         from modules.hermes_status import get_all
         return get_all()
@@ -373,7 +373,6 @@ async def hermes_real_status():
         return {
             "gateway": {"online": False, "raw": str(e), "pid": None},
             "cron": {"count": 0, "jobs": []},
-            "herdr": {"running": False, "agents": []},
         }
 
 
@@ -384,34 +383,10 @@ async def agents_status():
     """Agent swarm status cards (real-time)."""
     agents = list_agents()
     runtime_status = get_agent_status()
-    herdr = None
-    try:
-        from modules.hermes_status import herdr_agents
-        herdr = herdr_agents()
-    except Exception:
-        herdr = None
 
     for a in agents:
-        status = runtime_status.get(a["id"], "idle")
-        if herdr and herdr.get("running"):
-            matched = next(
-                (
-                    ha
-                    for ha in herdr.get("agents", [])
-                    if ha.get("name") == a["id"]
-                    or (a["id"] == "chief" and ha.get("name") == "pengawas")
-                ),
-                None,
-            )
-            if matched:
-                a["herdr_linked"] = True
-                status = matched.get("status", status)
-            else:
-                a["herdr_linked"] = False
-        else:
-            a["herdr_linked"] = False
-        a["status"] = status
-    return {"agents": agents, "swarm_active": "3 / 3 Workers", "herdr": herdr}
+        a["status"] = runtime_status.get(a["id"], "idle")
+    return {"agents": agents, "swarm_active": "3 / 3 Workers"}
 
 
 # ── Tasks Kanban ─────────────────────────────────────────
