@@ -280,6 +280,15 @@ body {
   padding: 1rem 0.4rem;
   justify-content: space-between;
   backdrop-filter: blur(10px);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s;
+  overflow: hidden;
+}
+.sidebar.collapsed {
+  width: 0;
+  padding: 0;
+  border-right: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar-header {
@@ -375,6 +384,26 @@ body {
   border-color: var(--cyan);
   box-shadow: 0 0 8px var(--border-glow);
   background: var(--bg-surface-elevated);
+}
+
+.sidebar-toggle {
+  background: none;
+  border: 1px solid var(--border-muted);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+}
+.sidebar-toggle:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--cyan);
+  border-color: var(--cyan);
 }
 
 /* MAIN CONTENT BOX */
