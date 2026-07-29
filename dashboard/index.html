@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HERMES // Mission Control v2.5</title>
+  <title>HERMES // Mission Control v2.6</title>
   
   <!-- Fonts: Orbitron for titles, DM Sans for UI, JetBrains Mono for terminals -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +29,7 @@
       <div class="logo-icon" onclick="toggleSidebar()" title="Toggle sidebar"><i class="fa-solid fa-bolt"></i></div>
       <div class="brand-text">
         <span>HERMES</span>
-        <span class="dim">// MISSION CONTROL v2.5</span>
+        <span class="dim">// MISSION CONTROL v2.6</span>
       </div>
     </div>
     
@@ -91,6 +91,9 @@
       </a>
       <a href="#" class="nav-item" data-page="storage">
         <i class="fa-solid fa-hard-drive nav-icon"></i> <span>USB &amp; Storage</span>
+      </a>
+      <a href="#" class="nav-item" data-page="skills">
+        <i class="fa-solid fa-brain nav-icon"></i> <span>Skill Monitor</span>
       </a>
       <a href="#" class="nav-item" data-page="system">
         <i class="fa-solid fa-sliders nav-icon"></i> <span>System Config</span>
@@ -641,6 +644,96 @@
               </table>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- 8. PAGE: SKILL MONITOR -->
+      <section class="page" id="page-skills">
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-brain"></i> SKILL MONITOR — LAYER 4</h2>
+          <p>Live skill usage tracking, stale detection, conflict warnings &mdash; Bank Pusat Niumination.</p>
+        </div>
+
+        <!-- KPI Row -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-icon icon-blue"><i class="fa-solid fa-layer-group"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">TOTAL SKILLS</span>
+              <span class="kpi-value" id="skTotalSkills">0</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon icon-emerald"><i class="fa-solid fa-power-off"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">ACTIVE NOW</span>
+              <span class="kpi-value" id="skActiveNow">0</span>
+            </div>
+            <div class="kpi-status status-up"><i class="fa-solid fa-circle"></i> Loaded</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon icon-purple"><i class="fa-solid fa-clock"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">LOADED TODAY</span>
+              <span class="kpi-value" id="skLoadedToday">0</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon icon-amber"><i class="fa-solid fa-exclamation-triangle"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">STALE (&gt;30d)</span>
+              <span class="kpi-value" id="skStaleCount">0</span>
+            </div>
+            <div class="kpi-status" id="skConflictBadge"></div>
+          </div>
+        </div>
+
+        <!-- Three-column layout -->
+        <div class="grid">
+          <!-- Left: Active Skills Table -->
+          <section class="col-left">
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-microchip"></i> ACTIVE SKILLS &amp; USAGE</span>
+              <button class="btn-refresh-eco" onclick="loadSkills()" style="font-size:0.55rem;padding:0.2rem 0.5rem;"><i class="fa-solid fa-sync"></i> Refresh</button>
+            </div>
+            <div id="skActiveList" class="agent-cards-container">
+              <!-- Rendered via JS -->
+            </div>
+          </section>
+
+          <!-- Center: Stats & Usage Chart -->
+          <section class="col-center">
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-chart-simple"></i> USAGE FREQUENCY</span>
+            </div>
+            <div id="skStatsGrid" class="skill-stats-grid">
+              <!-- Rendered via JS -->
+            </div>
+
+            <div class="col-header" style="margin-top: 1.5rem;">
+              <span class="col-title"><i class="fa-solid fa-skull"></i> STALE SKILLS (&gt;30d)</span>
+            </div>
+            <div id="skStaleList" class="skill-stale-list" style="padding:0.5rem;overflow-y:auto;">
+              <!-- Rendered via JS -->
+            </div>
+          </section>
+
+          <!-- Right: Conflicts & Events -->
+          <section class="col-right">
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-bolt"></i> CONFLICT DETECTION</span>
+            </div>
+            <div id="skConflicts" class="skill-stale-list" style="padding:0.5rem;overflow-y:auto;">
+              <!-- Rendered via JS -->
+            </div>
+
+            <div class="col-header" style="margin-top: 1.5rem;">
+              <span class="col-title"><i class="fa-solid fa-timeline"></i> LIVE EVENT FEED</span>
+            </div>
+            <div id="skEventFeed" class="skill-event-feed" style="padding:0.5rem;overflow-y:auto;max-height:200px;">
+              <div class="text-dim">Waiting for skill events...</div>
+            </div>
+          </section>
         </div>
       </section>
 
