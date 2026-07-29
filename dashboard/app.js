@@ -27,6 +27,15 @@ function connect() {
       if (data.type === 'init' || data.type === 'tick') {
         renderAgents(data.agents);
         renderTerminalsAndLogs(data.logs);
+        // Cache skill data from WS if available
+        if (data.skills) {
+          skillCache = data.skills;
+        }
+      }
+      if (data.type === 'skill_event') {
+        addSkillEventToFeed(data);
+        // Auto-refresh stats on event
+        loadSkills();
       }
     } catch (e) {
       console.error('WebSocket payload parsing error:', e);
@@ -643,6 +652,7 @@ function initNav() {
       if (page === 'terminal') clearConsole();
       if (page === 'telegram') loadTelegramFeed();
       if (page === 'storage') loadTelemetry();
+      if (page === 'skills') loadSkills();
       if (page === 'system') loadSystemSettings();
     });
   });
@@ -1091,6 +1101,165 @@ function toggleSidebar() {
   sidebar.classList.toggle('collapsed');
 }
 
+// ── Skill Monitor (Layer 4) ────────────────────────
+
+let skillCache = null;
+let skillStatsCache = null;
+let skillStaleCache = null;
+let skillConflictCache = null;
+
+async function loadSkills() {
+  try {
+    const [res, statsRes, staleRes, confRes] = await Promise.all([
+      fetch('/api/mc/skills'),
+      fetch('/api/mc/skills/stats'),
+      fetch('/api/mc/skills/stale'),
+      fetch('/api/mc/skills/conflicts'),
+    ]);
+    skillCache = await res.json();
+    skillStatsCache = await statsRes.json();
+    skillStaleCache = await staleRes.json();
+    skillConflictCache = await confRes.json();
+  } catch (e) {
+    console.error('Failed to load skill data:', e);
+    return;
+  }
+  renderSkillKPI();
+  renderSkillActiveList();
+  renderSkillStats();
+  renderSkillStale();
+  renderSkillConflicts();
+}
+
+function renderSkillKPI() {
+  const stats = skillStatsCache?.stats || [];
+  const loadedToday = stats.reduce((sum, s) => sum + (s.today || 0), 0);
+  document.getElementById('skTotalSkills').textContent = skillCache?.total ?? 0;
+  document.getElementById('skActiveNow').textContent = skillCache?.active ?? 0;
+  document.getElementById('skLoadedToday').textContent = loadedToday;
+  document.getElementById('skStaleCount').textContent = skillStaleCache?.count ?? 0;
+
+  // Conflict badge
+  const badge = document.getElementById('skConflictBadge');
+  const confCount = skillConflictCache?.count ?? 0;
+  if (confCount > 0) {
+    badge.className = 'kpi-status status-error';
+    badge.innerHTML = `<i class="fa-solid fa-bolt"></i> ${confCount} conflict${confCount > 1 ? 's' : ''}`;
+  } else {
+    badge.className = 'kpi-status status-up';
+    badge.innerHTML = `<i class="fa-solid fa-check"></i> Clean`;
+  }
+}
+
+function renderSkillActiveList() {
+  const container = document.getElementById('skActiveList');
+  if (!container) return;
+  const skills = skillCache?.skills || [];
+  
+  if (skills.length === 0) {
+    container.innerHTML = '<div class="text-dim" style="padding:1rem;">No skills in bank pusat.</div>';
+    return;
+  }
+
+  container.innerHTML = skills.map(sk => {
+    const activeClass = sk.active ? 'state-executing' : 'state-idle';
+    const activeLabel = sk.active ? 'ACTIVE' : 'IDLE';
+    const ts = sk.last_timestamp ? formatDateShort(new Date(sk.last_timestamp * 1000).toISOString()) : 'never';
+    const icon = sk.active ? '<span class="status-pulse-emerald"></span>' : '';
+    return `
+      <div class="agent-card-premium" style="margin-bottom:0.3rem;padding:0.4rem 0.6rem;">
+        <div class="agent-card-header" style="font-size:0.7rem;">
+          <span class="agent-title-text">${escapeHtml(sk.name)}</span>
+          <span class="badge" style="font-size:0.5rem;padding:0.1rem 0.4rem;">${escapeHtml(sk.domain)}</span>
+        </div>
+        <div class="agent-status-row" style="margin-top:0.2rem;">
+          <span class="status-badge ${activeClass}">${icon}${activeLabel}</span>
+          <span class="text-dim" style="font-size:0.55rem;margin-left:0.5rem;">
+            Last: ${ts} &middot; Loads: ${sk.load_count}
+          </span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderSkillStats() {
+  const grid = document.getElementById('skStatsGrid');
+  if (!grid) return;
+  const stats = skillStatsCache?.stats || [];
+  
+  grid.innerHTML = stats.map(s => {
+    const pct = s.this_week > 0 ? Math.min(s.this_week * 20, 100) : 0;
+    return `
+      <div class="skill-stat-item">
+        <div class="skill-stat-name">${escapeHtml(s.name)}</div>
+        <div class="skill-stat-bar-bg">
+          <div class="skill-stat-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="skill-stat-nums">
+          <span class="text-emerald">${s.today}d</span>
+          <span class="text-dim">${s.this_week}w</span>
+          <span class="text-muted">${s.total}t</span>
+        </div>
+      </div>`;
+  }).join('') || '<div class="text-dim" style="padding:0.5rem;">No stats yet.</div>';
+}
+
+function renderSkillStale() {
+  const list = document.getElementById('skStaleList');
+  if (!list) return;
+  const stale = skillStaleCache?.stale || [];
+  
+  if (stale.length === 0) {
+    list.innerHTML = '<div class="text-emerald" style="padding:0.5rem;font-size:0.65rem;"><i class="fa-solid fa-check-circle"></i> No stale skills — all skills loaded within 30 days.</div>';
+    return;
+  }
+
+  list.innerHTML = stale.map(s => `
+    <div class="skill-stale-item">
+      <i class="fa-solid fa-skull" style="color:var(--amber);"></i>
+      <span class="skill-stale-name">${escapeHtml(s.name)}</span>
+      <span class="skill-stale-domain">${escapeHtml(s.domain)}</span>
+      <span class="skill-stale-days" style="color:var(--red);">${s.days_since_last_load}d ago</span>
+    </div>
+  `).join('');
+}
+
+function renderSkillConflicts() {
+  const list = document.getElementById('skConflicts');
+  if (!list) return;
+  const conflicts = skillConflictCache?.conflicts || [];
+  
+  if (conflicts.length === 0) {
+    list.innerHTML = '<div class="text-emerald" style="padding:0.5rem;font-size:0.65rem;"><i class="fa-solid fa-shield-halved"></i> No conflicts detected.</div>';
+    return;
+  }
+
+  list.innerHTML = conflicts.map(c => {
+    const severity = c.both_active ? 'var(--red)' : 'var(--amber)';
+    return `
+      <div class="skill-conflict-item" style="border-left:3px solid ${severity};">
+        <div style="font-size:0.7rem;font-weight:600;color:${severity};">${escapeHtml(c.reason)}</div>
+        <div style="font-size:0.55rem;color:var(--text-muted);">
+          ${c.skills.join(' vs ')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function addSkillEventToFeed(eventData) {
+  const feed = document.getElementById('skEventFeed');
+  if (!feed) return;
+  const ts = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const evt = eventData.event || 'load';
+  const icon = evt === 'load' ? '<i class="fa-solid fa-circle-check" style="color:var(--emerald);"></i>' 
+    : '<i class="fa-solid fa-circle-xmark" style="color:var(--amber);"></i>';
+  const entry = document.createElement('div');
+  entry.className = 'skill-feed-entry';
+  entry.innerHTML = `<span class="text-dim">${ts}</span> ${icon} <strong>${escapeHtml(eventData.skill)}</strong> <span class="text-dim">${evt}</span>`;
+  feed.insertBefore(entry, feed.firstChild);
+  if (feed.children.length > 50) feed.removeChild(feed.lastChild);
+}
+
 // ── Initialize App ───────────────────────────────────
 initNav();
 connect();
@@ -1104,4 +1273,5 @@ loadEcosystem();
 setInterval(loadTelemetry, 5000);
 setInterval(loadKanban, 4000);
 setInterval(pollHeaderBadges, 10000);
+setInterval(loadSkills, 15000);
 populateTemplateInstruction();

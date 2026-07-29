@@ -42,6 +42,8 @@ from swarm.agents import AGENT_CONFIG, list_agents
 from swarm.bus import bus
 from swarm.worker import AGENT_STATUS, get_agent_status, start_swarm_workers
 
+from modules import skill_monitor
+
 # ── Logging ──────────────────────────────────────────────
 
 logging.basicConfig(level=logging.INFO)
@@ -89,9 +91,10 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
     # Startup
     await bus.init_db()
+    skill_monitor.init_db()
     init_dummy_artifacts()
     await start_swarm_workers()
-    logger.info("Mission Control v2.5.1 started on port 5200")
+    logger.info("Mission Control v2.6.0 started on port 5200")
     logger.info("Auth: %s", "enabled" if MC_API_KEY else "disabled (dev mode)")
     logger.info("CORS origins: %s", CORS_ORIGINS)
     logger.info("Rate limit: %d req/min per IP", RATE_LIMIT_PER_MIN)
@@ -106,7 +109,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Hermes Mission Control",
-    version="2.5.1",
+    version="2.6.0",
     description=(
         "Orchestrator, Agent Swarm, Telegram Bridge, WebSocket Live Feed, "
         "Artifact Explorer, USB-Safe WAL. Production-ready with auth, "
@@ -121,6 +124,7 @@ app = FastAPI(
         {"name": "telegram", "description": "Bridge to Telegram"},
         {"name": "artifacts", "description": "Artifact file explorer"},
         {"name": "config", "description": "Dynamic swarm config"},
+        {"name": "skills", "description": "Skill usage monitor & stats"},
     ],
 )
 
@@ -829,6 +833,57 @@ async def trigger_wal_checkpoint():
 
 
 # ══════════════════════════════════════════════════════════
+#  Skill Monitor API — Layer 4
+# ══════════════════════════════════════════════════════════
+
+@app.post("/api/mc/skills/event", tags=["skills"])
+async def skill_event(request: Request):
+    """Record a skill load/unload event. Body: {skill_name, agent?, event_type?, metadata?}"""
+    body = await request.json()
+    name = body.get("skill_name", "").strip()
+    if not name:
+        return JSONResponse(status_code=400, content={"error": "skill_name required"})
+    result = skill_monitor.record_event(
+        skill_name=name,
+        agent=body.get("agent", "unknown"),
+        event_type=body.get("event_type", "load"),
+        metadata=body.get("metadata"),
+    )
+    # Broadcast to WebSocket clients
+    ws_msg = json.dumps({"type": "skill_event", "skill": name, "event": body.get("event_type", "load")})
+    for conn in active_connections:
+        try:
+            await conn.send_text(ws_msg)
+        except Exception:
+            pass
+    return result
+
+
+@app.get("/api/mc/skills", tags=["skills"])
+async def skill_list():
+    """Get all skills from bank + latest event status."""
+    return skill_monitor.get_all_skills()
+
+
+@app.get("/api/mc/skills/stats", tags=["skills"])
+async def skill_stats():
+    """Get usage frequency stats (today, this week, total)."""
+    return skill_monitor.get_stats()
+
+
+@app.get("/api/mc/skills/stale", tags=["skills"])
+async def skill_stale():
+    """Get skills not loaded in >30 days."""
+    return skill_monitor.get_stale()
+
+
+@app.get("/api/mc/skills/conflicts", tags=["skills"])
+async def skill_conflicts():
+    """Detect conflicting active skills."""
+    return skill_monitor.get_conflicts()
+
+
+# ══════════════════════════════════════════════════════════
 #  WebSocket: Live Multi-Terminal Feed
 # ══════════════════════════════════════════════════════════
 
@@ -842,6 +897,7 @@ async def swarm_ws(websocket: WebSocket):
             "type": "init",
             "agents": get_agent_status(),
             "logs": await bus.get_agent_logs(limit=30),
+            "skills": skill_monitor.get_all_skills() if skill_monitor else {"skills": [], "total": 0, "active": 0},
         }
         await websocket.send_text(json.dumps(initial))
 
@@ -851,6 +907,7 @@ async def swarm_ws(websocket: WebSocket):
                 "type": "tick",
                 "agents": get_agent_status(),
                 "logs": await bus.get_agent_logs(limit=25),
+                "skills": skill_monitor.get_all_skills() if skill_monitor else {"skills": [], "total": 0, "active": 0},
             }
             await websocket.send_text(json.dumps(snapshot))
     except WebSocketDisconnect:
