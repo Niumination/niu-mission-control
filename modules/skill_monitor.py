@@ -68,13 +68,27 @@ def init_db():
 
 # ── Bank Pusat Scanner ──────────────────────────────────
 
+def _get_home():
+    """Get real user home dir — handles Hermes env where HOME != /Users/user."""
+    home = os.path.expanduser("~")
+    if os.path.isdir(os.path.join(home, "Desktop/Niumination")):
+        return home
+    # Fallback: resolve from USER env
+    user = os.environ.get("USER", "zaryu")
+    alt = f"/Users/{user}"
+    if os.path.isdir(os.path.join(alt, "Desktop/Niumination")):
+        return alt
+    return home  # give up, let caller handle
+
+
 def _scan_skill_bank():
     """Scan ~/Desktop/Niumination/skills/ for available skills."""
     global SKILL_CACHE
     if SKILL_CACHE is not None:
         return SKILL_CACHE
 
-    bank = os.path.expanduser("~/Desktop/Niumination/skills")
+    home = _get_home()
+    bank = os.path.join(home, "Desktop", "Niumination", "skills")
     skills = []
     if os.path.isdir(bank):
         for root, dirs, files in os.walk(bank):
