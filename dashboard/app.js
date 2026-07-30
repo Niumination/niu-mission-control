@@ -415,7 +415,15 @@ async function loadTelemetry() {
     
     // Render disk partitions info if on Storage Page
     if (document.getElementById('page-storage').classList.contains('active')) {
-      renderDiskUsage(data.disks);
+      // Convert single disk object from API ke format array
+      const diskData = data.disk ? [{
+        mount: '/',
+        total_gb: data.disk.total_gb,
+        free_gb: data.disk.free_gb,
+        used_pct: data.disk.percent,
+        status: data.disk.percent > 90 ? 'critical' : data.disk.percent > 75 ? 'warning' : 'ok',
+      }] : [];
+      renderDiskUsage(diskData);
       
       // Update RAM disk circle gauge
       const circle = document.getElementById('ramDiskCircle');
@@ -1044,11 +1052,6 @@ function renderEcoGit() {
     </div>`).join('');
 }
 
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
 function formatDateShort(dateStr) {
   if (!dateStr) return '';
   try {
@@ -1129,6 +1132,7 @@ async function loadSkills() {
   renderSkillStats();
   renderSkillStale();
   renderSkillConflicts();
+  renderExecGuide();
 }
 
 function renderSkillKPI() {
@@ -1166,6 +1170,9 @@ function renderSkillActiveList() {
     const activeLabel = sk.active ? 'ACTIVE' : 'IDLE';
     const ts = sk.last_timestamp ? formatDateShort(new Date(sk.last_timestamp * 1000).toISOString()) : 'never';
     const icon = sk.active ? '<span class="status-pulse-emerald"></span>' : '';
+    const trigger = SKILL_TRIGGER_MAP[sk.name];
+    const directCall = trigger ? trigger.direct : '/' + sk.name;
+    const firstTrigger = trigger && trigger.triggers.length > 0 ? trigger.triggers[0] : '';
     return `
       <div class="agent-card-premium" style="margin-bottom:0.3rem;padding:0.4rem 0.6rem;">
         <div class="agent-card-header" style="font-size:0.7rem;">
@@ -1177,6 +1184,10 @@ function renderSkillActiveList() {
           <span class="text-dim" style="font-size:0.55rem;margin-left:0.5rem;">
             Last: ${ts} &middot; Loads: ${sk.load_count}
           </span>
+        </div>
+        <div class="exec-guide-hint">
+          <code class="exec-hint-call">${escapeHtml(directCall)}</code>
+          ${firstTrigger ? `<span class="exec-hint-trigger">${escapeHtml(firstTrigger)}</span>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -1258,6 +1269,100 @@ function addSkillEventToFeed(eventData) {
   entry.innerHTML = `<span class="text-dim">${ts}</span> ${icon} <strong>${escapeHtml(eventData.skill)}</strong> <span class="text-dim">${evt}</span>`;
   feed.insertBefore(entry, feed.firstChild);
   if (feed.children.length > 50) feed.removeChild(feed.lastChild);
+}
+
+// ── Execution Guide ──────────────────────────────────
+
+const SKILL_TRIGGER_MAP = {
+  'ponytail-core': {
+    direct: '/ponytail',
+    triggers: ['lazy mode', 'yagni', 'minimal solution', 'simplest solution', 'do less', 'shortest path', 'be lazy'],
+  },
+  'ponytail-audit': {
+    direct: '/ponytail-audit',
+    triggers: ['audit kode', 'cek over-engineering', 'apa yang bisa didelete', 'find bloat', 'review codebase'],
+  },
+  'ultrathink': {
+    direct: '/ultrathink',
+    triggers: ['deep reasoning', 'architectural thinking', 'trade-off analysis', 'system design', 'craftsmanship'],
+  },
+  'systematic-debugging': {
+    direct: '/systematic-debugging',
+    triggers: ['debug', 'bug', 'error', 'crash', 'gak jalan', 'kenapa error', 'troubleshoot', 'root cause'],
+  },
+  'project-orientation': {
+    direct: '/project-orientation',
+    triggers: ['orientasi', 'cek project', 'cek dulu', 'lihat dulu', 'verify', 'apa aja isinya'],
+  },
+  'document-content-pipeline': {
+    direct: '/document-content-pipeline',
+    triggers: ['pdf', 'odl-pdf', 'extract', 'markdown', 'batch convert', '20 file', 'indikator'],
+  },
+  'optimization': {
+    direct: '/optimization',
+    triggers: ['optimasi', 'percepat', 'latency', 'bottleneck', 'profiling', 'kurangi load', 'performance'],
+  },
+  'premortem': {
+    direct: '/premortem',
+    triggers: ['premortem', 'failure analysis', 'risk assessment', 'before launching', 'what could go wrong'],
+  },
+  'tripwire': {
+    direct: '/tripwire',
+    triggers: ['tripwire', 'single risk', 'most critical', 'prioritize risk', 'top risk'],
+  },
+  'redteam': {
+    direct: '/redteam',
+    triggers: ['security audit', 'pentest', 'vulnerability', 'penetration test', 'adversarial', 'attack surface'],
+  },
+  'ghost': {
+    direct: '/ghost',
+    triggers: ['humanize', 'AI detection', 'bypass AI', 'natural writing', 'tulisan manusia'],
+  },
+  'up-eco': {
+    direct: '/up-eco',
+    triggers: ['cek ekosistem', 'ecosystem check', 'status proyek', 'divergence', 'sync status'],
+  },
+  'ekosistem-scaffold': {
+    direct: '/ekosistem-scaffold',
+    triggers: ['scaffold', 'buat proyek baru', 'inisialisasi project', 'new project setup'],
+  },
+};
+
+let execGuideMode = 'direct';
+
+function switchExecGuide(mode) {
+  execGuideMode = mode;
+  document.querySelectorAll('.exec-guide-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.exec-guide-tab[onclick*="${mode}"]`).classList.add('active');
+  renderExecGuide();
+}
+
+function renderExecGuide() {
+  const body = document.getElementById('execGuideBody');
+  if (!body) return;
+  
+  if (execGuideMode === 'direct') {
+    let html = '<div class="exec-guide-grid">';
+    for (const [key, val] of Object.entries(SKILL_TRIGGER_MAP)) {
+      html += `<div class="exec-guide-item">
+        <code class="exec-guide-cmd">${escapeHtml(val.direct)}</code>
+        <span class="exec-guide-skill">${escapeHtml(key)}</span>
+      </div>`;
+    }
+    html += '</div>';
+    body.innerHTML = html;
+  } else {
+    let html = '<div class="exec-guide-grid">';
+    for (const [key, val] of Object.entries(SKILL_TRIGGER_MAP)) {
+      const tags = val.triggers.map(t => `<span class="exec-guide-tag">${escapeHtml(t)}</span>`).join('');
+      html += `<div class="exec-guide-item conversation-mode">
+        <div class="exec-guide-skill">${escapeHtml(key)}</div>
+        <div class="exec-guide-tags">${tags}</div>
+      </div>`;
+    }
+    html += '</div>';
+    body.innerHTML = html;
+  }
 }
 
 // ── Initialize App ───────────────────────────────────

@@ -30,6 +30,7 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 
 import psutil
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
@@ -161,8 +162,8 @@ async def verify_api_key(request: Request):
 async def rate_limit_middleware(request: Request, call_next):
     """Per-IP rate limiting. Skips WebSocket and static files."""
     path = request.url.path
-    # Skip rate limiting for static files, dashboard, health, and WebSocket
-    if path.startswith("/static") or path == "/ws/swarm" or path == "/health":
+    # Skip rate limiting for static files, dashboard, health, WebSocket, and API
+    if path.startswith("/static") or path == "/ws/swarm" or path == "/health" or path == "/" or path.startswith("/api/mc"):
         return await call_next(request)
 
     client_ip = request.client.host if request.client else "unknown"
@@ -223,6 +224,9 @@ class ConfigPayload(BaseModel):
 # ── WebSocket connections ────────────────────────────────
 
 active_connections: list[WebSocket] = []
+
+# Thread pool for blocking DB calls in async endpoints
+_thread_pool = ThreadPoolExecutor(max_workers=2)
 
 
 # ── Helper: Dummy Artifacts ──────────────────────────────
@@ -291,13 +295,10 @@ async def health_check():
     """
     return {
         "status": "ok",
-        "version": "2.5.1",
+        "version": "2.6.0",
         "uptime": _get_uptime(),
         "timestamp": datetime.now().isoformat(),
     }
-
-
-_start_time = time.time()
 
 
 def _get_uptime() -> str:
@@ -306,6 +307,8 @@ def _get_uptime() -> str:
     hours, remainder = divmod(elapsed, 3600)
     minutes, seconds = divmod(remainder, 60)
     return f"{hours}h {minutes}m {seconds}s"
+
+_start_time = time.time()
 
 
 # ── System Health ────────────────────────────────────────
@@ -843,11 +846,14 @@ async def skill_event(request: Request):
     name = body.get("skill_name", "").strip()
     if not name:
         return JSONResponse(status_code=400, content={"error": "skill_name required"})
-    result = skill_monitor.record_event(
-        skill_name=name,
-        agent=body.get("agent", "unknown"),
-        event_type=body.get("event_type", "load"),
-        metadata=body.get("metadata"),
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        _thread_pool, lambda: skill_monitor.record_event(
+            skill_name=name,
+            agent=body.get("agent", "unknown"),
+            event_type=body.get("event_type", "load"),
+            metadata=body.get("metadata"),
+        )
     )
     # Broadcast to WebSocket clients
     ws_msg = json.dumps({"type": "skill_event", "skill": name, "event": body.get("event_type", "load")})
@@ -862,25 +868,29 @@ async def skill_event(request: Request):
 @app.get("/api/mc/skills", tags=["skills"])
 async def skill_list():
     """Get all skills from bank + latest event status."""
-    return skill_monitor.get_all_skills()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_thread_pool, skill_monitor.get_all_skills)
 
 
 @app.get("/api/mc/skills/stats", tags=["skills"])
 async def skill_stats():
     """Get usage frequency stats (today, this week, total)."""
-    return skill_monitor.get_stats()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_thread_pool, skill_monitor.get_stats)
 
 
 @app.get("/api/mc/skills/stale", tags=["skills"])
 async def skill_stale():
     """Get skills not loaded in >30 days."""
-    return skill_monitor.get_stale()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_thread_pool, skill_monitor.get_stale)
 
 
 @app.get("/api/mc/skills/conflicts", tags=["skills"])
 async def skill_conflicts():
     """Detect conflicting active skills."""
-    return skill_monitor.get_conflicts()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_thread_pool, skill_monitor.get_conflicts)
 
 
 # ══════════════════════════════════════════════════════════
@@ -893,21 +903,25 @@ async def swarm_ws(websocket: WebSocket):
     await websocket.accept()
     active_connections.append(websocket)
     try:
+        loop = asyncio.get_event_loop()
+        initial_skills = await loop.run_in_executor(_thread_pool, lambda: skill_monitor.get_all_skills()) if skill_monitor else {"skills": [], "total": 0, "active": 0}
         initial = {
             "type": "init",
             "agents": get_agent_status(),
             "logs": await bus.get_agent_logs(limit=30),
-            "skills": skill_monitor.get_all_skills() if skill_monitor else {"skills": [], "total": 0, "active": 0},
+            "skills": initial_skills,
         }
         await websocket.send_text(json.dumps(initial))
 
         while True:
             await asyncio.sleep(1.5)
+            loop = asyncio.get_event_loop()
+            tick_skills = await loop.run_in_executor(_thread_pool, lambda: skill_monitor.get_all_skills()) if skill_monitor else {"skills": [], "total": 0, "active": 0}
             snapshot = {
                 "type": "tick",
                 "agents": get_agent_status(),
                 "logs": await bus.get_agent_logs(limit=25),
-                "skills": skill_monitor.get_all_skills() if skill_monitor else {"skills": [], "total": 0, "active": 0},
+                "skills": tick_skills,
             }
             await websocket.send_text(json.dumps(snapshot))
     except WebSocketDisconnect:
