@@ -2163,3 +2163,146 @@ body {
   align-items: center;
 }
 
+/* ── Execution Guide ────────────────────────────── */
+
+.exec-guide-bar {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-glow);
+  border-radius: 8px;
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.exec-guide-header {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  color: var(--cyan);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.exec-guide-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.exec-guide-tabs {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.exec-guide-tab {
+  font-size: 0.55rem;
+  font-family: 'DM Sans', sans-serif;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.exec-guide-tab.active {
+  color: var(--cyan);
+  border-color: var(--cyan-glow);
+  background: rgba(0, 240, 255, 0.08);
+}
+
+.exec-guide-body {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.exec-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.3rem;
+}
+
+.exec-guide-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.4rem;
+  background: rgba(0, 240, 255, 0.03);
+  border-radius: 4px;
+  font-size: 0.55rem;
+}
+
+.exec-guide-item.conversation-mode {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.exec-guide-cmd {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--emerald);
+  font-size: 0.6rem;
+  background: rgba(0, 255, 135, 0.08);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+.exec-guide-skill {
+  color: var(--text-secondary);
+  font-size: 0.55rem;
+}
+
+.exec-guide-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.exec-guide-tag {
+  font-size: 0.5rem;
+  color: var(--amber);
+  background: rgba(255, 184, 0, 0.08);
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 184, 0, 0.15);
+}
+
+/* Skill card trigger hint */
+.exec-guide-hint {
+  margin-top: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.exec-hint-call {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  color: var(--emerald);
+  background: rgba(0, 255, 135, 0.06);
+  padding: 0.05rem 0.25rem;
+  border-radius: 2px;
+}
+
+.exec-hint-trigger {
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Scrollbar for execution guide */
+.exec-guide-body::-webkit-scrollbar {
+  width: 4px;
+}
+.exec-guide-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.exec-guide-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.2);
+  border-radius: 2px;
+}
+
