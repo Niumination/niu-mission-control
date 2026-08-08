@@ -15,7 +15,7 @@ Single Pane of Glass untuk seluruh Niumination Ecosystem — menggabungkan Herme
 niu-mission-control/
 ├── server.py                    ← FastAPI server (port 5200)
 ├── modules/
-│   ├── ecosystem_scanner.py     ← Scan Production/ + projects/, git, launchd
+│   ├── ecosystem_scanner.py     ← Scan struktur baru (apps/sites/desktop/labs/services/sandbox/agents/tools), git, launchd
 │   ├── gateway_log_parser.py    ← Telegram feed dari Hermes state.db
 │   ├── hermes_bridge.py         ← Hermes CLI bridge (send, terminal)
 │   └── hermes_status.py         ← Gateway + cron status (subprocess)
@@ -52,7 +52,7 @@ niu-mission-control/
 | `/api/mc/system` | GET | Mac system: CPU, RAM, disk, swap, uptime, network, top processes |
 | `/api/mc/hermes` | GET | Hermes gateway + cron status (subprocess, 10s timeout) |
 | `/api/mc/ecosystem` | GET | **NEW** — Full ecosystem: projects, cron, git, backlog |
-| `/api/mc/ecosystem?type=projects` | GET | Projects only (Production/ + projects/ scan) |
+| `/api/mc/ecosystem?type=projects` | GET | Projects only (struktur baru scan) |
 | `/api/mc/ecosystem?type=cron` | GET | LaunchD cron jobs only |
 | `/api/mc/ecosystem?type=git` | GET | Git activity only |
 | `/api/mc/ecosystem?type=backlog` | GET | BACKLOG.md task counts only |
@@ -69,23 +69,40 @@ niu-mission-control/
 ## Ecosystem Scanner
 
 `modules/ecosystem_scanner.py` — scan seluruh Niumination ecosystem:
-- **30 projects** dari `Production/` (12) + `projects/` (18)
+- **39 projects** dari struktur baru: `apps/` (12), `sites/` (5), `desktop/` (3), `services/` (6), `labs/` (2), `sandbox/` (5), `agents/` (3), `tools/` (1), `dotfiles/` (1), `brain/` (1)
 - Git metadata: branch, last commit (hash, msg, date), dirty, unpushed count
-- **8 LaunchD cron jobs** dari `~/Library/LaunchAgents/com.niumination.*.plist`
-- **30 git repos** dengan recent commits (3 per repo)
+- **LaunchD cron jobs** — `com.niumation.*.plist` **sudah DIHAPUS 5 Agu 2026** (0 jobs) — scanner harus handle kosong
+- **39 git repos** dengan recent commits (3 per repo)
 - BACKLOG.md parser: total/done/active/p1/p2/p3
 
 ## Data Sources
 
 | Data | Source | Endpoint |
 |------|--------|----------|
-| Projects | Filesystem scan `Production/` + `projects/` | `/api/mc/ecosystem` |
+| Projects | Filesystem scan struktur baru (`apps/`, `sites/`, `desktop/`, `labs/`, `services/`, `sandbox/`, `agents/`, `tools/`) | `/api/mc/ecosystem` |
 | Git status | `git log`, `git status`, `git remote` per repo | `/api/mc/ecosystem` |
 | Mac system | psutil (CPU, RAM, disk, swap, network, processes) | `/api/mc/system` |
-| Cron (macOS) | `~/Library/LaunchAgents/com.niumination.*.plist` | `/api/mc/ecosystem?type=cron` |
-| Cron (Hermes) | `hermes cron list` (subprocess, 10s timeout) | `/api/mc/hermes` |
+| Cron (macOS) | `~/Library/LaunchAgents/com.niumation.*.plist` — **kosong sejak 5 Agu** | `/api/mc/ecosystem?type=cron` |
+| Cron (Hermes) | `hermes cron list` (subprocess, 10s timeout) — 1 job aktif (memory-checkpoint) | `/api/mc/hermes` |
+| Crontab | `crontab -l` — 1 entry (sync-to-agents.sh tiap 6 jam) | — |
 | Telegram | Hermes `state.db` (SQLite sessions + messages) | `/api/mc/telegram-feed` |
 | Backlog | `BACKLOG.md` regex parsing | `/api/mc/ecosystem?type=backlog` |
+
+## Sync Fixes v2.1 (30 Jul 2026)
+
+**Root cause dashboard tidak sync dengan bank skill:**
+
+1. **Permanent cache** — `skill_monitor.py:_scan_skill_bank()` caches skill list FOREVER setelah first call (`if SKILL_CACHE is not None: return`). Skills baru ditambahkan ke bank tidak akan muncul sampai server restart.
+   - Fix: Ganti dengan TTL cache 30s, auto-refresh dari disk setiap request setelah TTL expire.
+
+2. **Auto-seed** — Tidak ada mekanisme seed awal. sync-to-agents.sh POST events ke MC, tapi jika MC down events silent fail. 15 dari 29 skills tidak terdaftar di database.
+   - Fix: `_seed_all_skills()` jalan di `init_db()` dan di `notify_sync_completed()`, menjamin semua skill bank terdaftar di DB.
+
+3. **Ecosystem scanner salah path** — `Production/` dan `projects/` tidak ada di v4.0. Yang benar: `apps/`, `services/`, `sites/`, `desktop/`, `agents/`, `labs/`, `sandbox/`.
+   - Fix: SCAN_DIRS di-update. Status label, sort order, filter di dashboard ikut di-update.
+
+4. **SKILL_TRIGGER_MAP hardcoded** — Hanya 13 dari 29 skills punya trigger entry di dashboard.
+   - Fix: Lengkapi semua 29 skills dengan direct command dan trigger keywords.
 
 ## Known Issues
 
@@ -94,6 +111,13 @@ niu-mission-control/
 - Swarm topology belum diuji ke proyek spesifik
 
 ## Changelog
+
+### v2.6.1 (30 Jul 2026)
+- **fix**: Permanent cache di skill_monitor.py — ganti TTL 30s, auto-refresh
+- **fix**: Auto-seed semua 29 skills bank ke DB di startup + setiap sync
+- **fix**: Ecosystem scanner SCAN_DIRS ke v4.0 (apps, services, sites, desktop, agents, labs, sandbox)
+- **fix**: SKILL_TRIGGER_MAP dashboard — dari 13 jadi 29 skills (complete)
+- **fix**: Filter eco projects — dari Production/projects ke maturity pipeline
 
 ### v2.6.0 (25 Jul 2026)
 - feat: Ecosystem Overview page (4 tabs: Projects, Mac, Cron, Git)

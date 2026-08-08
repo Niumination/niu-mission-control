@@ -7,6 +7,11 @@ let ws = null;
 let reconnectTimer = null;
 let currentTgTopic = '1';
 
+// ── WebSocket Recording State ───────────────────────────
+let wsRecordingSessionId = null;
+let wsRecordingStartTime = null;
+let wsRecordingTimer = null;
+
 // ── WebSockets Client connection ──────────────────────
 function connect() {
   if (ws) {
@@ -19,11 +24,22 @@ function connect() {
     document.getElementById('gwStatusText').textContent = 'ONLINE';
     document.getElementById('gwBadge').className = 'telemetry-badge badge-emerald';
     clearInterval(reconnectTimer);
+    
+    // If recording, send a marker message
+    if (wsRecordingSessionId) {
+      recordWsMessage('sent', 'connection', { type: 'open', timestamp: Date.now() });
+    }
   };
 
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      
+      // Record received message if recording
+      if (wsRecordingSessionId) {
+        recordWsMessage('received', data.type || 'message', data);
+      }
+      
       if (data.type === 'init' || data.type === 'tick') {
         renderAgents(data.agents);
         renderTerminalsAndLogs(data.logs);
@@ -47,10 +63,18 @@ function connect() {
     document.getElementById('gwStatusText').textContent = 'OFFLINE';
     document.getElementById('gwBadge').className = 'telemetry-badge badge-red';
     if (!reconnectTimer) reconnectTimer = setInterval(connect, 3000);
+    
+    // Record close event if recording
+    if (wsRecordingSessionId) {
+      recordWsMessage('received', 'connection', { type: 'close', timestamp: Date.now() });
+    }
   };
 
   ws.onerror = (err) => {
     console.error('WebSocket Error context:', err);
+    if (wsRecordingSessionId) {
+      recordWsMessage('received', 'error', { message: err.message, timestamp: Date.now() });
+    }
   };
 }
 
@@ -1380,3 +1404,84 @@ setInterval(loadKanban, 4000);
 setInterval(pollHeaderBadges, 10000);
 setInterval(loadSkills, 15000);
 populateTemplateInstruction();
+
+// ── WebSocket Replay Functions ───────────────────────────
+async function recordWsMessage(direction, type, payload) {
+  if (!wsRecordingSessionId) return;
+  try {
+    await fetch('/api/mc/ws/session/' + wsRecordingSessionId + '/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ direction, type, payload, timestamp: Date.now() }),
+    });
+  } catch (e) { console.log('Record message fail:', e.message); }
+}
+
+function toggleWsRecording() {
+  const btn = document.getElementById('wsRecBtn');
+  const badge = document.getElementById('wsRecBadge');
+  if (wsRecordingSessionId) {
+    wsRecordingSessionId = null; wsRecordingTimer = null;
+    btn.innerHTML = '<i class="fa-solid fa-circle"></i> <span class="label">REC</span>';
+    btn.classList.remove('recording'); badge.classList.remove('recording');
+    btn.classList.add('badge-cyan');
+    document.getElementById('wsRecSession').textContent = '';
+  } else {
+    fetch('/api/mc/ws/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'session_' + Date.now() }) })
+      .then(r => r.json()).then(d => {
+        wsRecordingSessionId = d.session_id; wsRecordingStartTime = Date.now();
+        btn.classList.add('recording'); badge.classList.add('recording');
+        btn.classList.remove('badge-cyan'); btn.innerHTML = '<i class="fa-solid fa-circle"></i> <span class="label">STOP</span>';
+        document.getElementById('wsRecSession').textContent = '#'+d.session_id;
+        wsRecordingTimer = setInterval(() => {
+          const sec = Math.floor((Date.now() - wsRecordingStartTime) / 1000);
+          document.getElementById('wsRecTime').textContent = sec < 60 ? '00:'+String(sec).padStart(2,'0') : Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+        }, 1000);
+      }).catch(e => console.log('Start recording fail:', e));
+  }
+}
+function closeWsReplayModal() { document.getElementById('wsReplayModal').style.display = 'none'; }
+function loadWsSessions() { document.getElementById('wsSessionList').innerHTML = '<div class="text-dim">Loading...</div>'; setTimeout(() => { document.getElementById('wsSessionList').innerHTML = '<div class="ws-session-item"><span>Mock session #1 (placeholder)</span></div>'; }, 200); }
+function wsPlaybackPlay() { console.log('Play'); }
+function wsPlaybackPause() { console.log('Pause'); }
+function wsPlaybackStop() { console.log('Stop'); }
+function wsPlaybackClose() { document.getElementById('wsPlaybackControls').style.display = 'none'; document.getElementById('wsMessageLog').innerHTML = '<div class="text-dim">Select a session</div>'; }
+function setWsPlaybackSpeed() { console.log('Speed set'); }
+function showWsSessionForm() { console.log('New session'); }
+// ── Vercel Deploy Dashboard ──────────────────────────
+function triggerDeploy(projectName) {
+  fetch('/api/mc/deploy', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ project: projectName, branch: 'main', environment: 'production' })
+  }).then(r => r.json()).then(data => {
+    alert('Deploy triggered for ' + projectName + '\nJob: ' + data.vercel_job_id + '\nURL: ' + data.deploy_url);
+    loadDeployStatus();
+  }).catch(e => alert('Deploy trigger failed: ' + e.message));
+}
+async function loadDeployStatus() {
+  try {
+    const res = await fetch('/api/mc/deploy/status');
+    const data = await res.json();
+    document.getElementById('deployLiveCount').textContent = data.success || 2;
+    document.getElementById('deployLastTime').textContent = data.projects ? data.projects[0].last_deploy ? data.projects[0].last_deploy.split(' ')[1] || '--' : '--' : '--';
+  } catch (e) { console.log('Deploy status load failed:', e); }
+}
+// ── Skill Marketplace ──────────────────────────────
+function filterMarket() {
+  const search = document.getElementById('marketSearch')?.value.toLowerCase() || '';
+  const filter = document.getElementById('marketFilter')?.value || 'all';
+  const cards = document.querySelectorAll('#marketGrid .agent-card-premium');
+  cards.forEach(c => {
+    const text = c.textContent.toLowerCase();
+    const domain = c.querySelector('.badge')?.textContent?.toLowerCase() || '';
+    const matchesSearch = text.includes(search);
+    const matchesFilter = filter === 'all' || domain.includes(filter) || (filter === 'dev' && (text.includes('lazy') || text.includes('debug')));
+    c.style.display = (matchesSearch && matchesFilter) ? '' : 'none';
+  });
+}
+function installSkill(name) {
+  alert('Installing skill: ' + name + '\n(Integration: add to bank pusat via skills/sync-to-agents.sh)');
+}
+function loadMarket() {
+  filterMarket();
+}

@@ -8,11 +8,30 @@
   <!-- Fonts: Orbitron for titles, DM Sans for UI, JetBrains Mono for terminals -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
-  
-  <!-- FontAwesome for Premium Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet"></noscript>
+
+  <!-- FontAwesome for Premium Icons - Local first, CDN fallback -->
+  <link rel="stylesheet" href="/static/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="/static/fontawesome/css/all.min.css"></noscript>
+  <script>
+    // FontAwesome CDN fallback if local fails
+    (function() {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
+      link.integrity = 'sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==';
+      link.crossOrigin = 'anonymous';
+      link.referrerPolicy = 'no-referrer';
+      // Only inject if local FontAwesome hasn't loaded within 2s
+      setTimeout(function() {
+        if (!document.fonts.check('1em "Font Awesome 6 Free"')) {
+          document.head.appendChild(link);
+        }
+      }, 2000);
+    })();
+  </script>
+
   <!-- Link Stylesheet -->
   <link rel="stylesheet" href="/static/styles.css">
 </head>
@@ -55,6 +74,14 @@
         <i class="fa-solid fa-microchip"></i>
         <span class="label">LATENCY:</span> <span class="kpi-value" id="kpiLatency">--</span>
       </div>
+      <div class="telemetry-badge badge-red" id="wsRecBadge" style="display:none;">
+        <span class="pulse-dot" style="background:var(--red);"></span>
+        <span class="label">REC:</span> <strong id="wsRecTime">00:00</strong>
+        <span id="wsRecSession" style="font-size:0.5rem;margin-left:0.3rem;"></span>
+      </div>
+      <button class="telemetry-badge badge-cyan" id="wsRecBtn" onclick="toggleWsRecording()" title="Toggle WebSocket Recording">
+        <i class="fa-solid fa-circle"></i> <span class="label">REC</span>
+      </button>
       <div class="user-role">
         <div class="avatar"><i class="fa-solid fa-shield-halved"></i></div>
         <div class="role-info">
@@ -95,8 +122,17 @@
       <a href="#" class="nav-item" data-page="skills">
         <i class="fa-solid fa-brain nav-icon"></i> <span>Skill Monitor</span>
       </a>
+      <a href="#" class="nav-item" data-page="skills-market">
+        <i class="fa-solid fa-store nav-icon"></i> <span>Skill Market</span>
+      </a>
       <a href="#" class="nav-item" data-page="system">
         <i class="fa-solid fa-sliders nav-icon"></i> <span>System Config</span>
+      </a>
+      <a href="#" class="nav-item" data-page="cost">
+        <i class="fa-solid fa-coins nav-icon"></i> <span>Cost Tracking</span>
+      </a>
+      <a href="#" class="nav-item" data-page="deploy">
+        <i class="fa-solid fa-rocket nav-icon"></i> <span>Vercel Deploy</span>
       </a>
       
       <div class="sidebar-footer">
@@ -257,7 +293,7 @@
                   <option value="qa">QA - Test suite and terminal auditor</option>
                 </select>
                 <input type="text" id="delegateInstruct" placeholder="Enter custom agent directives...">
-                <button onclick="delegateQuick()" class="btn-primary-glow"><i class="fa-solid fa-play"></i> Dispatch</button>
+                <button onclick="delegateQuick()" id="delegateBtn" class="btn-primary-glow"><i class="fa-solid fa-play"></i> Dispatch</button>
               </div>
             </div>
           </section>
@@ -284,19 +320,45 @@
             </div>
 
             <div class="col-header" style="margin-top: 1.5rem;">
-              <span class="col-title"><i class="fa-solid fa-file-invoice"></i> ARTIFACT INSPECTOR</span>
-            </div>
-            
-            <div class="artifact-panel">
-              <div class="artifact-header-bar">
-                <i class="fa-solid fa-file-code"></i> <span id="activeArtifactName">active_spec.md</span>
-                <button class="btn-tab-link" onclick="loadArtifactsList()"><i class="fa-solid fa-sync"></i> Refresh List</button>
-              </div>
-              <div class="artifact-content-area" id="artifactContent">
-                <pre>Waiting for agent mission outputs...</pre>
-              </div>
-            </div>
-          </section>
+                          <span class="col-title"><i class="fa-solid fa-file-invoice"></i> ARTIFACT INSPECTOR</span>
+                        </div>
+
+                        <div class="artifact-panel">
+                          <div class="artifact-header-bar">
+                            <i class="fa-solid fa-file-code"></i> <span id="activeArtifactName">active_spec.md</span>
+                            <div class="header-buttons">
+                              <button class="btn-tab-link" onclick="loadArtifactsList()"><i class="fa-solid fa-sync"></i> Refresh</button>
+                              <button class="btn-tab-link" onclick="toggleArtifactMode('diff')"><i class="fa-solid fa-code-compare"></i> Diff</button>
+                            </div>
+                          </div>
+
+                          <!-- Content View (default) -->
+                          <div class="artifact-content-area" id="artifactContent">
+                            <pre>Waiting for agent mission outputs...</pre>
+                          </div>
+
+                          <!-- Diff View -->
+                          <div class="artifact-content-area" id="artifactDiffView" style="display:none;">
+                            <div class="diff-header">
+                              <select id="diffFileSelect" onchange="loadArtifactVersions()">
+                                <option value="">Select artifact file...</option>
+                              </select>
+                              <div class="diff-version-row">
+                                <select id="diffFromVersion" onchange="loadArtifactDiff()">
+                                  <option value="">From version...</option>
+                                </select>
+                                <span class="diff-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                                <select id="diffToVersion" onchange="loadArtifactDiff()">
+                                  <option value="">To version...</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div class="diff-content" id="diffContent">
+                              <div class="text-dim">Select two versions to compare</div>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
         </div>
       </section>
 
@@ -327,9 +389,12 @@
         <div class="eco-tab-content active" id="eco-tab-projects">
           <div class="eco-filter-row">
             <select id="ecoProjectFilter" onchange="filterEcoProjects()">
-              <option value="all">All Projects</option>
-              <option value="Production">Production (12)</option>
-              <option value="projects">Projects (18)</option>
+              <option value="all">All Projects (~40)</option>
+              <option value="production">🏭 Apps (11)</option>
+              <option value="active">🔧 Services+Agents (9)</option>
+              <option value="development">🌐 Sites+Desktop (9)</option>
+              <option value="experimental">🔬 Labs (2)</option>
+              <option value="playground">💤 Sandbox (7)</option>
               <option value="dirty">Needs Commit</option>
               <option value="unpushed">Needs Push</option>
             </select>
@@ -485,7 +550,7 @@
           <div class="shell-input-row">
             <span class="shell-prompt">zaryu@macbook-pro ~ %</span>
             <input type="text" id="terminalShellInput" placeholder="Type diagnostic shell command..." onkeydown="handleTerminalCommandKey(event)">
-            <button onclick="executeTerminalShellCommand()" class="btn-exec-terminal">RUN CMD</button>
+            <button onclick="executeTerminalShellCommand()" id="terminalRunBtn" class="btn-exec-terminal">RUN CMD</button>
           </div>
         </div>
 
@@ -752,8 +817,242 @@
         </div>
       </section>
 
+      <!-- 11. PAGE: COST TRACKING -->
+      <section class="page" id="page-deploy">
+    <div class="section-title-box">
+      <h2><i class="fa-solid fa-rocket"></i> VERCEL MULTI-PROJECT DEPLOY</h2>
+      <p>Trigger deploys, monitor build status, and manage releases across the Niumination ecosystem.</p>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-icon icon-emerald"><i class="fa-solid fa-check-circle"></i></div>
+        <div class="kpi-details"><span class="kpi-label">LIVE PROJECTS</span><span class="kpi-value" id="deployLiveCount">2</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon icon-amber"><i class="fa-solid fa-rocket"></i></div>
+        <div class="kpi-details"><span class="kpi-label">LAST DEPLOY</span><span class="kpi-value" id="deployLastTime">14:32</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon icon-blue"><i class="fa-solid fa-code-branch"></i></div>
+        <div class="kpi-details"><span class="kpi-label">BRANCH</span><span class="kpi-value">main</span></div>
+      </div>
+    </div>
+
+    <div class="eco-filter-row" style="margin:1rem 0;">
+      <button class="btn-refresh-eco" onclick="loadDeployStatus()"><i class="fa-solid fa-sync"></i> Refresh Status</button>
+    </div>
+
+    <div id="deployProjectGrid" class="agent-cards-container" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+      <div class="agent-card-premium">
+        <div class="agent-card-header"><span>Niu-Vermilion</span><span class="badge">PRODUCTION</span></div>
+        <div>Branch: main | Env: production</div>
+        <div>URL: <a href="#">niu-vermilion.vercel.app</a></div>
+        <div>Status: <span class="status-badge state-executing">LIVE</span></div>
+        <button class="btn-primary-glow" style="margin-top:0.5rem;font-size:0.6rem;padding:0.3rem 0.6rem;" onclick="triggerDeploy('Niu-Vermilion')">Deploy</button>
+      </div>
+      <div class="agent-card-premium">
+        <div class="agent-card-header"><span>Pemdi Aceh Tengah</span><span class="badge">PRODUCTION</span></div>
+        <div>Branch: main | Env: production</div>
+        <div>URL: <a href="#">pemdi-aceh-tengah.vercel.app</a></div>
+        <div>Status: <span class="status-badge state-executing">LIVE</span></div>
+        <button class="btn-primary-glow" style="margin-top:0.5rem;font-size:0.6rem;padding:0.3rem 0.6rem;" onclick="triggerDeploy('Pemdi Aceh Tengah')">Deploy</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="page-cost">
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-coins"></i> AGENT COST TRACKING</h2>
+          <p>Token usage, estimated costs, and budget monitoring across all swarm agents.</p>
+        </div>
+
+        <!-- Summary KPI Row -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-icon icon-blue"><i class="fa-solid fa-dollar-sign"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">TOTAL COST (30d)</span>
+              <span class="kpi-value" id="costTotalCost">$0.00</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon icon-emerald"><i class="fa-solid fa-microchip"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">TOTAL TOKENS</span>
+              <span class="kpi-value" id="costTotalTokens">0</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon icon-purple"><i class="fa-solid fa-list-check"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">REQUESTS</span>
+              <span class="kpi-value" id="costTotalRequests">0</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon icon-amber"><i class="fa-solid fa-tasks"></i></div>
+            <div class="kpi-details">
+              <span class="kpi-label">TASKS WITH COST</span>
+              <span class="kpi-value" id="costTasksWithCost">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Period Selector -->
+        <div class="eco-filter-row" style="margin-bottom: 1rem;">
+          <select id="costPeriodSelect" onchange="loadCostData()">
+            <option value="7">Last 7 Days</option>
+            <option value="30" selected>Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+          </select>
+          <button class="btn-refresh-eco" onclick="loadCostData()"><i class="fa-solid fa-sync"></i> Refresh</button>
+        </div>
+
+        <div class="grid">
+          <!-- Agent Cost Breakdown -->
+          <section class="col-left">
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-chart-pie"></i> COST BY AGENT</span>
+            </div>
+            <div id="costAgentGrid" class="agent-cards-container">
+              <!-- Rendered via JS -->
+            </div>
+          </section>
+
+          <!-- Model Cost Breakdown -->
+          <section class="col-center">
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-brain"></i> COST BY MODEL</span>
+            </div>
+            <div id="costModelGrid" class="skill-stats-grid">
+              <!-- Rendered via JS -->
+            </div>
+          </section>
+
+          <!-- Recent Cost Entries -->
+          <section class="col-right">
+            <div class="col-header">
+              <span class="col-title"><i class="fa-solid fa-clock-rotate-left"></i> RECENT ENTRIES</span>
+            </div>
+            <div id="costRecentList" class="skill-stale-list" style="padding:0.5rem;overflow-y:auto;max-height:400px;">
+              <!-- Rendered via JS -->
+            </div>
+          </section>
+        </div>
+
+        <!-- Task Cost Detail Modal Trigger -->
+        <div id="costTaskDetail" class="artifact-panel" style="display:none;margin-top:1rem;">
+          <div class="artifact-header-bar">
+            <i class="fa-solid fa-file-invoice-dollar"></i> <span id="costDetailTaskId">Task Cost Detail</span>
+            <button class="btn-tab-link" onclick="document.getElementById('costTaskDetail').style.display='none'"><i class="fa-solid fa-xmark"></i> Close</button>
+          </div>
+          <div class="artifact-content-area" id="costDetailContent">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- WebSocket Replay Modal -->
+      <div id="wsReplayModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:900px;max-height:80vh;">
+          <div class="modal-header">
+            <h3><i class="fa-solid fa-tape"></i> WEBSOCKET REPLAY</h3>
+            <button class="btn-tab-link" onclick="closeWsReplayModal()"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="modal-body" style="padding:1rem;overflow:auto;">
+            <div class="ws-replay-toolbar" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+              <button class="btn-tool" onclick="loadWsSessions()"><i class="fa-solid fa-refresh"></i> Refresh</button>
+              <button class="btn-tool" onclick="showWsSessionForm()"><i class="fa-solid fa-plus"></i> New Session</button>
+              <div style="flex:1;"></div>
+              <select id="wsPlaybackSpeed" onchange="setWsPlaybackSpeed()" style="padding:0.2rem 0.5rem;border-radius:4px;background:var(--bg-surface);border:1px solid var(--border-muted);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:0.6rem;">
+                <option value="0.5">0.5x</option>
+                <option value="1" selected>1x</option>
+                <option value="2">2x</option>
+                <option value="5">5x</option>
+                <option value="10">10x</option>
+              </select>
+            </div>
+
+            <!-- Session List -->
+            <div id="wsSessionList" class="ws-session-list">
+              <div class="text-dim">Loading sessions...</div>
+            </div>
+
+            <!-- Playback Controls (shown when session selected) -->
+            <div id="wsPlaybackControls" style="display:none;margin-top:1rem;padding:1rem;background:rgba(22,32,54,0.6);border-radius:6px;border:1px solid var(--border-muted);">
+              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+                <strong id="wsPlaybackSessionName"></strong>
+                <span class="text-dim" id="wsPlaybackSessionMeta"></span>
+                <div style="flex:1;"></div>
+                <button class="btn-tool" onclick="wsPlaybackPlay()"><i class="fa-solid fa-play"></i> Play</button>
+                <button class="btn-tool" onclick="wsPlaybackPause()"><i class="fa-solid fa-pause"></i> Pause</button>
+                <button class="btn-tool" onclick="wsPlaybackStop()"><i class="fa-solid fa-stop"></i> Stop</button>
+                <button class="btn-tool-danger" onclick="wsPlaybackClose()"><i class="fa-solid fa-xmark"></i> Close</button>
+              </div>
+              <div class="ws-progress-bar" style="height:6px;background:var(--bg-deepest);border-radius:3px;overflow:hidden;">
+                <div id="wsProgressFill" style="width:0%;height:100%;background:var(--cyan);transition:width 0.1s linear;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">
+                <span id="wsProgressCurrent">0:00</span>
+                <span id="wsProgressTotal">0:00</span>
+              </div>
+            </div>
+
+            <!-- Message Log -->
+            <div id="wsMessageLog" style="max-height:400px;overflow:auto;font-family:'JetBrains Mono',monospace;font-size:0.55rem;">
+              <div class="text-dim">Select a session to view messages</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
+
+      <!-- SKILL MARKETPLACE -->
+      <section class="page" id="page-skills-market" style="padding:1rem 1.5rem;">
+        <div class="section-title-box">
+          <h2><i class="fa-solid fa-store"></i> SKILL MARKETPLACE</h2>
+          <p>Browse, install, and manage skills from the Bank Pusat registry.</p>
+        </div>
+        <div class="eco-filter-row" style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="marketSearch" placeholder="Search skills..." oninput="filterMarket()" style="padding:0.3rem 0.6rem;border-radius:4px;border:1px solid var(--border-muted);background:var(--bg-panel);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:0.6rem;flex:1;min-width:200px;">
+          <select id="marketFilter" onchange="filterMarket()" style="padding:0.3rem 0.5rem;border-radius:4px;background:var(--bg-panel);border:1px solid var(--border-muted);font-size:0.55rem;">
+            <option value="all">All Domains</option>
+            <option value="dev">Dev Tools</option>
+            <option value="security">Security</option>
+            <option value="design">Design</option>
+          </select>
+          <button class="btn-refresh-eco" onclick="loadMarket()"><i class="fa-solid fa-sync"></i> Refresh</button>
+        </div>
+        <div id="marketGrid" class="agent-cards-container" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));display:grid;gap:0.75rem;">
+          <!-- Skill cards rendered via JS -->
+          <div class="agent-card-premium" onclick="alert('Skill: ponytail-core — Lazy/minimal solutions')">
+            <div class="agent-card-header"><span>ponytail-core</span><span class="badge">DEV</span></div>
+            <div class="agent-role-desc">Lazy/minimal solutions — do only what's needed</div>
+            <div style="font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">Triggers: lazy, yagni, minimal</div>
+            <button class="btn-tool" style="margin-top:0.4rem;font-size:0.55rem;" onclick="event.stopPropagation();installSkill('ponytail-core')">Install</button>
+          </div>
+          <div class="agent-card-premium" onclick="alert('Skill: ultrathink — Deep architectural reasoning')">
+            <div class="agent-card-header"><span>ultrathink</span><span class="badge">ARCH</span></div>
+            <div class="agent-role-desc">Deep architectural reasoning before building</div>
+            <div style="font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">Triggers: deep reasoning, architecture, trade-off</div>
+            <button class="btn-tool" style="margin-top:0.4rem;font-size:0.55rem;" onclick="event.stopPropagation();installSkill('ultrathink')">Install</button>
+          </div>
+          <div class="agent-card-premium" onclick="alert('Skill: systematic-debugging — 4-phase root cause debugging')">
+            <div class="agent-card-header"><span>systematic-debugging</span><span class="badge">DEBUG</span></div>
+            <div class="agent-role-desc">4-phase root cause debugging workflow</div>
+            <div style="font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">Triggers: debug, error, crash, root cause</div>
+            <button class="btn-tool" style="margin-top:0.4rem;font-size:0.55rem;" onclick="event.stopPropagation();installSkill('systematic-debugging')">Install</button>
+          </div>
+          <div class="agent-card-premium" onclick="alert('Skill: project-orientation — Verify before working')">
+            <div class="agent-card-header"><span>project-orientation</span><span class="badge">ORIENT</span></div>
+            <div class="agent-role-desc">Establish awareness before implementing</div>
+            <div style="font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">Triggers: check first, verify, inspect</div>
+            <button class="btn-tool" style="margin-top:0.4rem;font-size:0.55rem;" onclick="event.stopPropagation();installSkill('project-orientation')">Install</button>
+          </div>
+        </div>
+      </section>
 
   <!-- Link JavaScript -->
   <script src="/static/app.js"></script>
