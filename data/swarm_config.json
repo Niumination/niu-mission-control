@@ -3,5 +3,11 @@
   "usb_safe_mode": true,
   "concurrency_limit": 4,
   "llm_model": "opencode/big-pickle",
-  "tg_chat_id": "-1004204696417"
+  "tg_chat_id": "-1004204696417",
+  "telegram_topics": {
+    "general": "1",
+    "research": "802",
+    "programmer": "803",
+    "qa": "804"
+  }
 }
