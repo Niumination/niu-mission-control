@@ -3,7 +3,7 @@ Ecosystem Scanner — Scan seluruh Niumination project dari filesystem
 =====================================================================
 
 Data sources:
-- Production/ dan projects/ directories (filesystem scan)
+- v4.0 maturity pipeline directories (apps/, services/, sites/, desktop/, agents/, labs/, sandbox/)
 - Git metadata (branch, last commit, dirty, remote)
 - LaunchD plist files (macOS cron jobs)
 - BACKLOG.md (task counts)
@@ -26,10 +26,15 @@ WIB = timezone(timedelta(hours=7))
 NIUMINATION = "/Users/zaryu/Desktop/Niumination"
 LAUNCH_AGENTS = os.path.expanduser("~/Library/LaunchAgents")
 
-# Directories to scan
+# Directories to scan (v4.0 maturity pipeline)
 SCAN_DIRS = {
-    "Production": os.path.join(NIUMINATION, "Production"),
-    "projects": os.path.join(NIUMINATION, "projects"),
+    "apps": os.path.join(NIUMINATION, "apps"),
+    "services": os.path.join(NIUMINATION, "services"),
+    "sites": os.path.join(NIUMINATION, "sites"),
+    "desktop": os.path.join(NIUMINATION, "desktop"),
+    "agents": os.path.join(NIUMINATION, "agents"),
+    "labs": os.path.join(NIUMINATION, "labs"),
+    "sandbox": os.path.join(NIUMINATION, "sandbox"),
 }
 
 # Ignore patterns
@@ -226,10 +231,10 @@ def _get_git_info(project_path: str) -> dict[str, Any]:
 def _scan_single_project(category: str, name: str, project_path: str) -> dict[str, Any]:
     """Scan a single project — runs in thread pool."""
     git_info = _get_git_info(project_path)
-    # Try auto-detect first, fallback to DEPLOY_MAP\n    deploy_url = _detect_deploy_url(project_path) or DEPLOY_MAP.get(name)
+    deploy_url = _detect_deploy_url(project_path) or DEPLOY_MAP.get(name)
     has_agents_md = os.path.isfile(os.path.join(project_path, "AGENTS.md"))
 
-    if category == "Production":
+    if category == "apps":
         status_label = "production"
     elif git_info.get("dirty"):
         status_label = "active"
@@ -277,8 +282,12 @@ def scan_projects() -> list[dict[str, Any]]:
             except Exception:
                 pass
 
-    # Sort: Production first, then alphabetical
-    projects.sort(key=lambda p: (0 if p["category"] == "Production" else 1, p["name"]))
+    # Sort: by maturity pipeline order, then alphabetically
+    category_order = {
+        "sandbox": 0, "labs": 1, "services": 2, "sites": 3,
+        "desktop": 4, "agents": 5, "apps": 6
+    }
+    projects.sort(key=lambda p: (category_order.get(p["category"], 99), p["name"]))
 
     _cache["projects"] = projects
     _cache_time["projects"] = now
