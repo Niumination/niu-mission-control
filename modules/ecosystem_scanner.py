@@ -54,6 +54,103 @@ DEPLOY_MAP = {
 }
 
 
+
+
+def _parse_git_date(date_str: str) -> datetime:
+    """Parse git date string with multiple format support.
+
+    Git --pretty=%ci outputs: 2026-07-30 14:30:45 +0700
+    Git --pretty=%cI outputs: 2026-07-30T14:30:45+07:00
+    """
+    date_str = date_str.strip()
+
+    # Try ISO format first (git --pretty=%cI)
+    try:
+        return datetime.fromisoformat(date_str)
+    except Exception:
+        pass
+
+    # Try git default format: 2026-07-30 14:30:45 +0700
+    try:
+        if " " in date_str:
+            dt_part, tz_part = date_str.rsplit(" ", 1)
+            if len(tz_part) == 5 and tz_part[0] in "+-":
+                tz_part = tz_part[:3] + ":" + tz_part[3:]
+                date_str = f"{dt_part}T{tz_part}"
+        return datetime.fromisoformat(date_str)
+    except Exception:
+        pass
+
+    # Fallback: try parsing just the date part
+    try:
+        return datetime.fromisoformat(date_str.split()[0])
+    except Exception:
+        pass
+
+    return datetime.now(timezone.utc)
+
+
+def _detect_deploy_url(project_path: str) -> str | None:
+    """Auto-detect deploy URL from project config files."""
+    # Check vercel.json
+    vercel_path = os.path.join(project_path, "vercel.json")
+    if os.path.isfile(vercel_path):
+        try:
+            with open(vercel_path, "r") as f:
+                import json
+                data = json.load(f)
+                if "alias" in data:
+                    aliases = data["alias"]
+                    if isinstance(aliases, list) and aliases:
+                        return f"https://{aliases[0]}"
+                    elif isinstance(aliases, str):
+                        return f"https://{aliases}"
+                if "domains" in data:
+                    domains = data["domains"]
+                    if isinstance(domains, list) and domains:
+                        return f"https://{domains[0]}"
+        except Exception:
+            pass
+
+    # Check netlify.toml
+    netlify_path = os.path.join(project_path, "netlify.toml")
+    if os.path.isfile(netlify_path):
+        try:
+            import tomllib
+            with open(netlify_path, "rb") as f:
+                data = tomllib.load(f)
+        except Exception:
+            pass
+
+    # Check package.json for homepage or repository
+    package_path = os.path.join(project_path, "package.json")
+    if os.path.isfile(package_path):
+        try:
+            with open(package_path, "r") as f:
+                import json
+                data = json.load(f)
+                if "homepage" in data and data["homepage"]:
+                    return data["homepage"]
+                if "repository" in data:
+                    repo = data["repository"]
+                    if isinstance(repo, dict) and "url" in repo:
+                        url = repo["url"]
+                        if "github.com" in url:
+                            url = url.replace("git@", "https://").replace(".git", "")
+                            if url.startswith("https://github.com/"):
+                                return url
+        except Exception:
+            pass
+
+    # Check for .vercel/output or .netlify directories
+    if os.path.isdir(os.path.join(project_path, ".vercel")):
+        return "vercel-deployed"
+    if os.path.isdir(os.path.join(project_path, ".netlify")):
+        return "netlify-deployed"
+
+    return None
+
+
 def _git_cmd(cwd: str, *args: str) -> str:
     """Run a git command and return stdout, or empty string on failure."""
     try:
@@ -107,7 +204,7 @@ def _get_git_info(project_path: str) -> dict[str, Any]:
                     branch = om.group(1).rstrip(",")
 
             try:
-                last_commit_dt = datetime.fromisoformat(date_str.replace(" ", "T", 1)).isoformat()
+                last_commit_dt = _parse_git_date(date_str).isoformat()
             except Exception:
                 last_commit_dt = date_str
 
@@ -129,7 +226,7 @@ def _get_git_info(project_path: str) -> dict[str, Any]:
 def _scan_single_project(category: str, name: str, project_path: str) -> dict[str, Any]:
     """Scan a single project — runs in thread pool."""
     git_info = _get_git_info(project_path)
-    deploy_url = DEPLOY_MAP.get(name)
+    # Try auto-detect first, fallback to DEPLOY_MAP\n    deploy_url = _detect_deploy_url(project_path) or DEPLOY_MAP.get(name)
     has_agents_md = os.path.isfile(os.path.join(project_path, "AGENTS.md"))
 
     if category == "Production":

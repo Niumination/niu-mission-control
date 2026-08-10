@@ -36,7 +36,7 @@ def test_health_check(client):
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"
-    assert data["version"] == "2.5.1"
+    assert data["version"] == "2.6.0"
     assert "uptime" in data
     assert "timestamp" in data
 
@@ -181,14 +181,14 @@ def test_delegate_task(client):
 
 
 def test_delegate_unknown_agent(client):
-    """POST /api/mc/delegate with invalid agent returns 400."""
+    """POST /api/mc/delegate with invalid agent returns 422 (validation error)."""
     r = client.post(
         "/api/mc/delegate",
         json={"agent": "nonexistent", "instruction": "Test"},
     )
-    assert r.status_code == 400
+    assert r.status_code == 422
     data = r.json()
-    assert "error" in data
+    assert "detail" in data
 
 
 # ── 12. Task Update ──────────────────────────────────────

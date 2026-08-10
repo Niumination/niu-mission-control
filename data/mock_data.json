@@ -1,0 +1,225 @@
+{
+  "mock_enabled": true,
+  "description": "Mock data configuration for dashboard development and offline mode. Set mock_enabled to false to disable.",
+  "telemetry": {
+    "cpu_percent": 23.5,
+    "memory": {
+      "total_gb": 16,
+      "used_gb": 4.2,
+      "free_gb": 11.8,
+      "percent": 26.3
+    },
+    "disk": {
+      "total_gb": 500,
+      "used_gb": 180,
+      "free_gb": 320,
+      "percent": 36.0
+    },
+    "health_score": 95,
+    "llm_model": "opencode/big-pickle",
+    "uptime": "2h 34m 12s"
+  },
+  "agents": [
+    {
+      "id": "chief",
+      "name": "Hermes Chief",
+      "role": "Orchestrator & Task Router",
+      "status": "idle",
+      "color": "amber"
+    },
+    {
+      "id": "research",
+      "name": "AG-01 Research",
+      "role": "Web Scraper & Blueprint Compiler",
+      "status": "idle",
+      "color": "cyan"
+    },
+    {
+      "id": "programmer",
+      "name": "AG-02 Programmer",
+      "role": "Code Generator & Refactorer",
+      "status": "idle",
+      "color": "emerald"
+    },
+    {
+      "id": "qa",
+      "name": "AG-03 QA Tester",
+      "role": "Test Runner & Crash Analyzer",
+      "status": "idle",
+      "color": "purple"
+    }
+  ],
+  "tasks": {
+    "pending": [
+      {
+        "task_id": "mck-001",
+        "agent": "research",
+        "status": "pending",
+        "payload": { "instruction": "Analyze latest FastAPI patterns for 2025" },
+        "created_at": "2026-08-02T10:00:00"
+      },
+      {
+        "task_id": "mck-002",
+        "agent": "programmer",
+        "status": "pending",
+        "payload": { "instruction": "Implement authentication middleware" },
+        "created_at": "2026-08-02T10:15:00"
+      }
+    ],
+    "running": [
+      {
+        "task_id": "mck-003",
+        "agent": "qa",
+        "status": "running",
+        "payload": { "instruction": "Run integration test suite for API v1" },
+        "created_at": "2026-08-02T09:45:00"
+      }
+    ],
+    "completed": [
+      {
+        "task_id": "mck-004",
+        "agent": "research",
+        "status": "completed",
+        "payload": { "instruction": "Document swarm architecture patterns" },
+        "result": { "output": "Documentation complete. See /docs/swarm-architecture.md" },
+        "created_at": "2026-08-01T14:30:00"
+      },
+      {
+        "task_id": "mck-005",
+        "agent": "programmer",
+        "status": "completed",
+        "payload": { "instruction": "Fix rate limiter memory leak" },
+        "result": { "output": "Fixed in server.py - added periodic cleanup" },
+        "created_at": "2026-08-01T16:00:00"
+      }
+    ],
+    "failed": []
+  },
+  "ecosystem": {
+    "projects": [
+      {
+        "name": "niu-vermilion",
+        "category": "apps",
+        "status": "production",
+        "deploy_url": "https://niu-vermilion.vercel.app",
+        "has_dox": true,
+        "branch": "main",
+        "last_commit": { "hash": "a1b2c3d", "message": "Add rich text editor", "date": "2026-07-30T14:30:45+07:00" },
+        "dirty": false,
+        "remote_url": "https://github.com/Niumination/niu-vermilion"
+      },
+      {
+        "name": "Niu-LKH",
+        "category": "sites",
+        "status": "production",
+        "deploy_url": "https://niumination.github.io/Niu-LKH",
+        "has_dox": true,
+        "branch": "main",
+        "last_commit": { "hash": "e4f5g6h", "message": "Update content", "date": "2026-07-28T09:15:00+07:00" },
+        "dirty": false,
+        "remote_url": "https://github.com/Niumination/Niu-LKH"
+      },
+      {
+        "name": "PemdiAcehTengah",
+        "category": "apps",
+        "status": "active",
+        "deploy_url": "https://pemdi-aceh-tengah.vercel.app",
+        "has_dox": true,
+        "branch": "develop",
+        "last_commit": { "hash": "i7j8k9l", "message": "WIP: Form validation", "date": "2026-07-31T11:20:00+07:00" },
+        "dirty": true,
+        "remote_url": "https://github.com/Niumination/PemdiAcehTengah"
+      }
+    ],
+    "cron": [
+      { "name": "ecosystem-sync", "schedule": "0 * * * *", "status": "active", "last_run": "2026-08-02T10:00:00" },
+      { "name": "wal-checkpoint", "schedule": "*/15 * * * *", "status": "active", "last_run": "2026-08-02T10:15:00" },
+      { "name": "skill-monitor", "schedule": "0 6 * * *", "status": "active", "last_run": "2026-08-02T06:00:00" }
+    ],
+    "git_activity": [
+      {
+        "name": "niu-vermilion",
+        "category": "apps",
+        "commits": [
+          { "hash": "a1b2c3d", "message": "Add rich text editor", "date": "2026-07-30T14:30:45+07:00", "author": "zaryu" },
+          { "hash": "z9y8x7w", "message": "Fix tipTap toolbar", "date": "2026-07-29T16:45:00+07:00", "author": "zaryu" }
+        ]
+      },
+      {
+        "name": "Niu-LKH",
+        "category": "sites",
+        "commits": [
+          { "hash": "e4f5g6h", "message": "Update content", "date": "2026-07-28T09:15:00+07:00", "author": "zaryu" }
+        ]
+      }
+    ],
+    "mac_system": {
+      "cpu_model": "Apple M2 Pro",
+      "cpu_cores": 12,
+      "memory_total_gb": 16,
+      "disk_total_gb": 500,
+      "disk_free_gb": 320,
+      "os_version": "macOS 14.5",
+      "brew_packages": 142,
+      "node_version": "v20.12.0",
+      "python_version": "3.11.5"
+    }
+  },
+  "telegram_feed": [
+    {
+      "timestamp": "2026-08-02 10:15:30",
+      "type": "user",
+      "user": "Afrizal Munthe",
+      "message": "Deploy niu-vermilion to production",
+      "topic_id": "1",
+      "topic_label": "General",
+      "agent": "general"
+    },
+    {
+      "timestamp": "2026-08-02 10:16:00",
+      "type": "assistant",
+      "user": "Hermes Chief",
+      "message": "Task dispatched to AG-02 Programmer. Building production bundle...",
+      "topic_id": "803",
+      "topic_label": "Programmer (803)",
+      "agent": "programmer"
+    },
+    {
+      "timestamp": "2026-08-02 10:18:30",
+      "type": "assistant",
+      "user": "AG-02 Programmer",
+      "message": "✅ Build successful. Deploying to Vercel...",
+      "topic_id": "803",
+      "topic_label": "Programmer (803)",
+      "agent": "programmer"
+    },
+    {
+      "timestamp": "2026-08-02 10:20:00",
+      "type": "assistant",
+      "user": "AG-02 Programmer",
+      "message": "🚀 Deployed to https://niu-vermilion.vercel.app",
+      "topic_id": "803",
+      "topic_label": "Programmer (803)",
+      "agent": "programmer"
+    }
+  ],
+  "skills": {
+    "total": 29,
+    "active": ["ponytail-core", "ultrathink", "impeccable", "systematic-debugging"],
+    "usage_stats": [
+      { "name": "ponytail-core", "load_count": 45, "last_used": "2026-08-02T09:30:00" },
+      { "name": "ultrathink", "load_count": 32, "last_used": "2026-08-02T08:15:00" },
+      { "name": "impeccable", "load_count": 28, "last_used": "2026-08-01T14:20:00" },
+      { "name": "systematic-debugging", "load_count": 19, "last_used": "2026-08-01T11:00:00" },
+      { "name": "verification-before-completion", "load_count": 15, "last_used": "2026-07-31T16:45:00" }
+    ],
+    "stale": [
+      { "name": "redteam", "domain": "security", "days_since_last_load": 45, "never_loaded": false },
+      { "name": "ponytail-audit", "domain": "code-quality", "days_since_last_load": 35, "never_loaded": false }
+    ],
+    "conflicts": [
+      { "skill1": "ultrathink", "skill2": "ponytail-core", "type": "Craftsmanship vs Minimalism" },
+      { "skill1": "impeccable", "skill2": "ui-ux-pro-max", "type": "UI/UX Build vs Research" }
+    ]
+  }
+}

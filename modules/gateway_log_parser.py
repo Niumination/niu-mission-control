@@ -49,6 +49,24 @@ TOPIC_AGENT_MAP = {
 }
 
 
+def _ensure_indexes(db_path: str):
+    """Create indexes on messages table for faster queries."""
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_messages_chat_role_compact "
+            "ON messages(chat_id, role, compacted)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_messages_session "
+            "ON messages(session_id)"
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
 def _find_state_db() -> Optional[str]:
     """Cari state.db di beberapa lokasi."""
     for path in STATE_DB_CANDIDATES:
@@ -120,6 +138,9 @@ def parse_telegram_feed(
     if not path or not os.path.exists(path):
         logger.warning("Hermes state.db not found")
         return []
+
+    # Ensure indexes exist for better query performance
+    _ensure_indexes(path)
 
     events: list[dict[str, Any]] = []
 
