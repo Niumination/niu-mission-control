@@ -831,7 +831,7 @@ body {
 .terminal-matrix {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.35rem;
   overflow-y: auto;
   min-height: 200px;
@@ -1256,7 +1256,7 @@ body {
 
 .topo-agents-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   width: 80%;
   margin-top: 0.25rem;

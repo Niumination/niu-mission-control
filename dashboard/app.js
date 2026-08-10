@@ -867,7 +867,7 @@ async function sendTelegramFullMessage() {
 
 // ── Terminals clearing triggers ─────────────────────
 function clearTerminals() {
-  const streams = ['termResearch', 'termProgrammer', 'termQA'];
+  const streams = ['termResearch', 'termProgrammer', 'termQA', 'termCreator'];
   streams.forEach(s => {
     const el = document.getElementById(s);
     if (el) el.innerHTML = '<div class="text-dim">// Buffer logs cleared. Listening for new worker streams...</div>';
