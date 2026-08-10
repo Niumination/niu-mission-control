@@ -536,39 +536,136 @@ def get_git_activity(limit_per_repo: int = 3) -> list[dict[str, Any]]:
     return repos
 
 
+# ── BACKLOG parsing (v4.0 format) ────────────────────────────────
+# BACKLOG.md master memakai dua format proyek, bukan checkbox:
+#   1. Scoreboard : `Name  ████ 95% P1 🟢 Active ...` (maturity bar)
+#   2. KANBAN tabel: `| **Name** | 🟢 Active | ...`
+# Status token dicari berdasarkan posisi TERAWAL di baris — kolom status
+# selalu muncul sebelum kolom deploy (✅ SSH / 🟢 GitHub), jadi "✅ Done"
+# tidak tertukar dengan "✅ SSH".
+_STATUS_TOKENS = [
+    ("done", "✅ done"),
+    ("done", "✅ phase 3"),
+    ("done", "100% ✅"),
+    ("done", "✅ live"),
+    ("cancelled", "❌"),
+    ("cancelled", "distop"),
+    ("critical", "🔴"),
+    ("active", "🟢"),
+    ("active", "🟡"),
+    ("stale", "⏸"),
+    ("stale", "stale"),
+    ("stale", "dormant"),
+    ("low", "⚪"),
+    ("low", "minor"),
+    ("new", "🆕"),
+    ("done", "✅"),
+]
+
+_TABLE_HEADER_CELLS = {"proyek", "name", "project", "status", "priority", "kategori", "#", "url"}
+
+
+def _classify_status(text: str) -> str | None:
+    """Earliest status token in the line wins."""
+    low = text.lower()
+    best: tuple[int, str] | None = None
+    for status, token in _STATUS_TOKENS:
+        idx = low.find(token)
+        if idx != -1 and (best is None or idx < best[0]):
+            best = (idx, status)
+    return best[1] if best else None
+
+
 def get_backlog_summary() -> dict[str, Any]:
-    """Parse BACKLOG.md for task counts."""
+    """Parse BACKLOG.md (v4.0: scoreboard + KANBAN tables) for task counts.
+
+    Handles:
+    - Checkbox task lines: `- [x]`, `- [~]`, `- [ ]`, `- [-]` (sub-backlogs)
+    - Scoreboard rows: `Name  ████ 95% P1 🟢 Active ...`
+    - KANBAN table rows: `| **Name** | 🟢 Active | ...` (status di cell 1-3)
+    - Prioritas P1/P2/P3 dari baris yang sama (dedupe per nama proyek)
+    """
+    zeros = {"total": 0, "done": 0, "active": 0, "todo": 0, "cancelled": 0, "p1": 0, "p2": 0, "p3": 0}
     backlog_path = os.path.join(NIUMINATION, "BACKLOG.md")
     if not os.path.isfile(backlog_path):
-        return {"total": 0, "done": 0, "active": 0, "todo": 0}
+        return zeros
 
     try:
-        with open(backlog_path, "r") as f:
+        with open(backlog_path, "r", encoding="utf-8") as f:
             content = f.read()
-
-        tasks = re.findall(r"^- \[(.)\]", content, re.MULTILINE)
-        total = len(tasks)
-        done = sum(1 for t in tasks if t == "x")
-        active = sum(1 for t in tasks if t == "~")
-        todo = sum(1 for t in tasks if t == " ")
-        cancelled = sum(1 for t in tasks if t == "-")
-
-        p1 = len(re.findall(r"^- \[.\] .*P1", content, re.MULTILINE))
-        p2 = len(re.findall(r"^- \[.\] .*P2", content, re.MULTILINE))
-        p3 = len(re.findall(r"^- \[.\] .*P3", content, re.MULTILINE))
-
-        return {
-            "total": total,
-            "done": done,
-            "active": active,
-            "todo": todo,
-            "cancelled": cancelled,
-            "p1": p1,
-            "p2": p2,
-            "p3": p3,
-        }
     except Exception:
-        return {"total": 0, "done": 0, "active": 0, "todo": 0}
+        return zeros
+
+    tasks = re.findall(r"^- \[(.)\]", content, re.MULTILINE)
+    done = sum(1 for t in tasks if t == "x")
+    active = sum(1 for t in tasks if t in "~↻")
+    todo = sum(1 for t in tasks if t == " ")
+    cancelled = sum(1 for t in tasks if t in "-→")
+
+    # Proyek: scoreboard menang, tabel mengisi gap (dedupe per nama)
+    projects: dict[str, str] = {}
+    priorities: dict[str, str] = {}
+    prio_re = re.compile(r"\bP([123])\b", re.IGNORECASE)
+
+    def add_project(name: str, text: str) -> None:
+        if not name or name in projects:
+            return
+        status = _classify_status(text)
+        if not status:
+            return
+        projects[name] = status
+        m = prio_re.search(text)
+        if m:
+            priorities[name] = m.group(1)
+
+    # Pass 1: scoreboard rows (punya maturity bar █, tanpa leading '|')
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("|") or "█" not in line:
+            continue
+        parts = line.split()
+        if parts:
+            add_project(parts[0], line)
+
+    # Pass 2: KANBAN table rows — hanya dari section "KANBAN SYSTEM"
+    # (tabel deployment/AI ecosystem di luar section ini bukan proyek).
+    # Status dicari di cell 1-3; nama URL/numerik di-skip.
+    kanban_section = re.search(r"##\s*🎯\s*KANBAN SYSTEM.*?(?=\n##\s|\Z)", content, re.DOTALL)
+    table_source = kanban_section.group(0) if kanban_section else ""
+    for line in table_source.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        name = cells[0].strip("*").strip()
+        if not name or name.startswith("---") or name.lower() in _TABLE_HEADER_CELLS:
+            continue
+        if "." in name or "/" in name or name.isdigit():
+            continue
+        add_project(name, " ".join(cells[1:4]))
+
+    statuses = list(projects.values())
+    done += statuses.count("done")
+    active += statuses.count("active")
+    cancelled += statuses.count("cancelled") + statuses.count("critical")
+    todo += statuses.count("stale") + statuses.count("low") + statuses.count("new")
+
+    p1 = sum(1 for v in priorities.values() if v == "1")
+    p2 = sum(1 for v in priorities.values() if v == "2")
+    p3 = sum(1 for v in priorities.values() if v == "3")
+
+    return {
+        "total": done + active + todo + cancelled,
+        "done": done,
+        "active": active,
+        "todo": todo,
+        "cancelled": cancelled,
+        "p1": p1,
+        "p2": p2,
+        "p3": p3,
+    }
 
 
 def get_full_ecosystem() -> dict[str, Any]:
