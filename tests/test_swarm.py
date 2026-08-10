@@ -17,15 +17,15 @@ from swarm.bus import SwarmBus
 # ── Agent Config ─────────────────────────────────────────
 
 def test_config_complete():
-    """All 4 agents must be defined."""
-    expected = {"chief", "research", "programmer", "qa"}
+    """All 5 agents must be defined."""
+    expected = {"chief", "research", "programmer", "qa", "creator"}
     assert set(AGENT_CONFIG.keys()) == expected
 
 
 def test_list_agents():
-    """list_agents returns 4 agents with required fields."""
+    """list_agents returns 5 agents with required fields."""
     agents = list_agents()
-    assert len(agents) == 4
+    assert len(agents) == 5
     for a in agents:
         assert "id" in a
         assert "name" in a

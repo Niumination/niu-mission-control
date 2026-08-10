@@ -80,9 +80,9 @@ def test_agents_status(client):
     data = r.json()
     assert "agents" in data
     agents = data["agents"]
-    assert len(agents) == 4
+    assert len(agents) == 5
     agent_ids = {a["id"] for a in agents}
-    assert agent_ids == {"chief", "research", "programmer", "qa"}
+    assert agent_ids == {"chief", "research", "programmer", "qa", "creator"}
     for a in agents:
         assert "name" in a
         assert "role" in a
