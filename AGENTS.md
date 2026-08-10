@@ -1,6 +1,6 @@
 # Niu-MissionControl — Unified Command Center
 
-**Lokasi:** `~/Desktop/Niumination/projects/niu-mission-control/`
+**Lokasi:** `~/Desktop/Niumination/services/niu-mission-control/`
 **Port:** 5200 (localhost)
 **Stack:** Python 3, FastAPI, WebSocket, psutil, aiosqlite
 **Version:** 2.6.0
