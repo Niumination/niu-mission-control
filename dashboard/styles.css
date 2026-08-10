@@ -28,6 +28,8 @@
   --amber-glow: rgba(255, 184, 0, 0.4);
   --purple: #8b5cf6;
   --purple-glow: rgba(139, 92, 246, 0.4);
+  --pink: #f472b6;
+  --pink-glow: rgba(244, 114, 182, 0.4);
   --red: #ff3366;
   --red-glow: rgba(255, 51, 102, 0.4);
   --slate: #334155;
@@ -584,6 +586,7 @@ body {
 .border-research { border-left-color: var(--cyan); }
 .border-programmer { border-left-color: var(--emerald); }
 .border-qa { border-left-color: var(--purple); }
+.border-creator { border-left-color: var(--pink); }
 
 .agent-card-header {
   display: flex;
@@ -1270,6 +1273,7 @@ body {
 .text-blue { color: var(--cyan); }
 .text-emerald { color: var(--emerald); }
 .text-purple { color: var(--purple); }
+.text-pink { color: var(--pink); }
 
 .swarm-config-panel-row {
   display: grid;

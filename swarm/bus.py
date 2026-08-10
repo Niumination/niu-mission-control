@@ -36,6 +36,7 @@ class SwarmBus:
             "research": asyncio.Queue(),
             "programmer": asyncio.Queue(),
             "qa": asyncio.Queue(),
+            "creator": asyncio.Queue(),
         }
         self._db: Optional[aiosqlite.Connection] = None
 

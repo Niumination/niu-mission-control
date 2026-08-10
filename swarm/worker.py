@@ -127,13 +127,49 @@ async def qa_agent_worker(bus_instance):
             queue.task_done()
 
 
+async def creator_agent_worker(bus_instance):
+    """Worker Loop untuk Agent 04 (Konten Kreator)."""
+    queue = bus_instance.queues["creator"]
+    while True:
+        task_id = await queue.get()
+        try:
+            await _set_status("creator", "thinking")
+            await bus_instance.update_task_status(task_id, "running")
+            await bus_instance.log_event(
+                task_id, "creator", "INFO", "Menyusun konsep konten..."
+            )
+
+            await asyncio.sleep(2)
+            # Real: panggil LLM untuk draft konten
+
+            await bus_instance.update_task_status(
+                task_id, "completed",
+                result={"output": "Draft konten siap ditinjau."},
+            )
+            await bus_instance.log_event(
+                task_id, "creator", "INFO", "Draft konten selesai dibuat."
+            )
+            await _set_status("creator", "idle")
+        except Exception as e:
+            await bus_instance.update_task_status(
+                task_id, "failed", result={"error": str(e)}
+            )
+            await bus_instance.log_event(
+                task_id, "creator", "ERROR", f"Gagal membuat konten: {str(e)}"
+            )
+            await _set_status("creator", "idle")
+        finally:
+            queue.task_done()
+
+
 async def start_swarm_workers():
     """Jalankan semua worker agent secara paralel di background."""
     await bus.init_db()
     asyncio.create_task(research_agent_worker(bus))
     asyncio.create_task(programmer_agent_worker(bus))
     asyncio.create_task(qa_agent_worker(bus))
-    logger.info("Swarm workers started: research, programmer, qa")
+    asyncio.create_task(creator_agent_worker(bus))
+    logger.info("Swarm workers started: research, programmer, qa, creator")
 
 
 def get_agent_status() -> dict:

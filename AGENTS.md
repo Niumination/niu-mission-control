@@ -20,7 +20,7 @@ niu-mission-control/
 │   ├── hermes_bridge.py         ← Hermes CLI bridge (send, terminal)
 │   └── hermes_status.py         ← Gateway + cron status (subprocess)
 ├── swarm/
-│   ├── agents.py                ← Agent config (chief, research, programmer, qa)
+│   ├── agents.py                ← Agent config (chief, research, programmer, qa, creator)
 │   ├── bus.py                   ← SwarmBus: aiosqlite + asyncio.Queue + WAL
 │   └── worker.py                ← Parallel asyncio loops per agent
 ├── dashboard/

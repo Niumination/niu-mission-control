@@ -241,6 +241,7 @@
                   <option value="research">AG-01: Research</option>
                   <option value="programmer">AG-02: Coder</option>
                   <option value="qa">AG-03: QA Tester</option>
+                  <option value="creator">AG-04: Konten Kreator</option>
                   <option value="chief">AG-00: Chief</option>
                 </select>
                 <button class="btn-tool-sm" onclick="clearTerminals()" title="Clear terminal logs"><i class="fa-solid fa-trash-can"></i></button>
@@ -281,6 +282,17 @@
                 </div>
                 <div class="term-body" id="termQA"></div>
               </div>
+
+              <div class="term-col" id="termCol-creator" data-agent="creator">
+                <div class="term-title-bar">
+                  <span class="dot-btn red"></span>
+                  <span class="dot-btn yellow"></span>
+                  <span class="dot-btn green"></span>
+                  <span class="term-title-text">[AG-04] Konten Kreator stream</span>
+                  <span class="status-pill state-idle">idle</span>
+                </div>
+                <div class="term-body" id="termCreator"></div>
+              </div>
             </div>
 
             <!-- Quick manual delegate panel -->
@@ -291,6 +303,7 @@
                   <option value="research">Research - Web scraper / summary brief</option>
                   <option value="programmer">Programmer - AST code generator</option>
                   <option value="qa">QA - Test suite and terminal auditor</option>
+                  <option value="creator">Konten Kreator - Copywriting / storytelling</option>
                 </select>
                 <input type="text" id="delegateInstruct" placeholder="Enter custom agent directives...">
                 <button onclick="delegateQuick()" id="delegateBtn" class="btn-primary-glow"><i class="fa-solid fa-play"></i> Dispatch</button>
@@ -431,7 +444,7 @@
       <section class="page" id="page-swarm">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-network-wired"></i> SWARM AGENT SYSTEM ORCHESTRATION</h2>
-          <p>Detailed system prompts and modular profile config mapping for the 4-agent swarm topology.</p>
+          <p>Detailed system prompts and modular profile config mapping for the 5-agent swarm topology.</p>
         </div>
         
         <div class="topology-map-visual">
@@ -445,6 +458,7 @@
             <div class="node-subtitle">Task Decomposition &amp; Routing</div>
           </div>
           <div class="topo-connectors-row">
+            <div class="connect-branch"></div>
             <div class="connect-branch"></div>
             <div class="connect-branch"></div>
             <div class="connect-branch"></div>
@@ -462,6 +476,10 @@
               <div class="node-title text-purple">AG-03: QA Tester</div>
               <div class="node-subtitle">Test runner &amp; crash analyzer</div>
             </div>
+            <div class="topo-agent-node border-creator">
+              <div class="node-title text-pink">AG-04: Konten Kreator</div>
+              <div class="node-subtitle">Articles, copywriting &amp; storytelling</div>
+            </div>
           </div>
         </div>
 
@@ -473,6 +491,7 @@
               <button class="tab-btn" onclick="switchPromptTab('research')">AG-01: Research</button>
               <button class="tab-btn" onclick="switchPromptTab('programmer')">AG-02: Programmer</button>
               <button class="tab-btn" onclick="switchPromptTab('qa')">AG-03: QA Tester</button>
+              <button class="tab-btn" onclick="switchPromptTab('creator')">AG-04: Konten Kreator</button>
             </div>
             <div class="prompt-editor-body">
               <div class="editor-header">SYSTEM PROMPT DEFINITION (READ-ONLY)</div>
@@ -500,6 +519,7 @@
                   <option value="research">AG-01 Research &amp; Blueprinting</option>
                   <option value="programmer">AG-02 Code Implementation</option>
                   <option value="qa">AG-03 QA Validation Tests</option>
+                  <option value="creator">AG-04 Konten Kreator</option>
                 </select>
               </div>
               <div class="form-group">
