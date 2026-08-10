@@ -36,7 +36,7 @@ def test_health_check(client):
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"
-    assert data["version"] == "2.6.0"
+    assert data["version"] == "2.6.2"
     assert "uptime" in data
     assert "timestamp" in data
 
