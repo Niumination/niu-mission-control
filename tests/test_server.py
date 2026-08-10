@@ -133,6 +133,34 @@ def test_get_config(client):
     assert "orchestrator" in data
     assert "usb_safe_mode" in data
     assert "llm_model" in data
+    assert "telegram_topics" in data
+    assert data["telegram_topics"].get("creator") == "1172"
+
+
+def test_save_config_preserves_telegram_topics(client):
+    """POST /api/mc/config without telegram_topics must preserve existing mapping."""
+    r = client.get("/api/mc/config")
+    existing = r.json()
+
+    # Save a payload that omits telegram_topics (as the dashboard form does)
+    r = client.post(
+        "/api/mc/config",
+        json={
+            "orchestrator": existing["orchestrator"],
+            "usb_safe_mode": existing["usb_safe_mode"],
+            "concurrency_limit": existing["concurrency_limit"],
+            "llm_model": existing["llm_model"],
+            "tg_chat_id": existing["tg_chat_id"],
+        },
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "saved"
+    assert data["config"]["telegram_topics"].get("creator") == "1172"
+
+    # Verify persisted on disk
+    r2 = client.get("/api/mc/config")
+    assert r2.json()["telegram_topics"].get("creator") == "1172"
 
 
 def test_list_artifacts(client):

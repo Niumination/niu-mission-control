@@ -741,6 +741,9 @@ async function loadSystemSettings() {
     const cfg = await cfgRes.json();
     const hermes = await hermesRes.json();
     
+    // Store full topic map so saveSystemConfig round-trips it
+    window.__mcConfigTopics = cfg.telegram_topics || {};
+    
     // Populate form fields
     document.getElementById('cfgOrchestrator').value = cfg.orchestrator || 'chief';
     document.getElementById('cfgUsbSafe').checked = cfg.usb_safe_mode ?? true;
@@ -784,7 +787,8 @@ async function saveSystemConfig() {
     usb_safe_mode: document.getElementById('cfgUsbSafe').checked,
     concurrency_limit: parseInt(document.getElementById('cfgConcurrency').value) || 4,
     llm_model: document.getElementById('cfgLlm').value,
-    tg_chat_id: document.getElementById('cfgTgChatId').value
+    tg_chat_id: document.getElementById('cfgTgChatId').value,
+    telegram_topics: window.__mcConfigTopics || {}
   };
 
   try {
