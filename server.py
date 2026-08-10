@@ -242,7 +242,7 @@ class DelegateRequest(BaseModel):
     @field_validator("agent")
     @classmethod
     def validate_agent(cls, v: str) -> str:
-        allowed = {"chief", "research", "programmer", "qa"}
+        allowed = {"chief", "research", "programmer", "qa", "creator"}
         if v not in allowed:
             raise ValueError(f"agent must be one of: {', '.join(allowed)}")
         return v
@@ -536,7 +536,7 @@ async def agents_status():
 
     for a in agents:
         a["status"] = runtime_status.get(a["id"], "idle")
-    return {"agents": agents, "swarm_active": "3 / 3 Workers"}
+    return {"agents": agents, "swarm_active": f"{len(agents)} / {len(agents)} Workers"}
 
 
 # ── Tasks Kanban ─────────────────────────────────────────
@@ -613,7 +613,7 @@ async def delegate_task(req: DelegateRequest):
 
     # Load topic map from config
     config_path = os.path.join(BASE_DIR, "data", "swarm_config.json")
-    topic_map = {"chief": "1", "research": "802", "programmer": "803", "qa": "804"}
+    topic_map = {"chief": "1", "research": "802", "programmer": "803", "qa": "804", "creator": "1172"}
     if os.path.exists(config_path):
         try:
             with open(config_path, "r") as f:
@@ -626,6 +626,7 @@ async def delegate_task(req: DelegateRequest):
                         "research": tg_topics.get("research", "802"),
                         "programmer": tg_topics.get("programmer", "803"),
                         "qa": tg_topics.get("qa", "804"),
+                        "creator": tg_topics.get("creator", "1172"),
                     }
         except Exception:
             pass  # Use defaults on error
@@ -729,6 +730,24 @@ SUMMARY: 3/3 Tests Passed. Duration: 1.1s
         )
         await bus.update_task_status(
             task_id, "completed", result={"output": "PASS (3/3 tests passed)"}
+        )
+
+    elif agent == "creator":
+        await bus.log_event(task_id, "creator", "INFO", "Menyusun draft konten...")
+        await asyncio.sleep(3)
+        draft = (
+            "Draft konten: [Hook] Layanan digital Diskominfo Aceh Tengah kini "
+            "semakin dekat dengan masyarakat. [Isi] ... [Ajakan] Kunjungi "
+            "portal resmi Pemkab Aceh Tengah."
+        )
+        os.makedirs("/tmp/hermes_content", exist_ok=True)
+        with open("/tmp/hermes_content/draft.md", "w") as f:
+            f.write(draft)
+        await bus.log_event(
+            task_id, "creator", "INFO", "Draft konten selesai. Hook -> isi -> ajakan."
+        )
+        await bus.update_task_status(
+            task_id, "completed", result={"output": "Draft konten siap ditinjau"}
         )
 
 
