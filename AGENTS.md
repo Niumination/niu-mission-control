@@ -112,6 +112,16 @@ niu-mission-control/
 
 ## Changelog
 
+### v2.6.2 (10 Agu 2026)
+- **feat**: Agent `creator` (AG-04 Konten Kreator) — sync Telegram topic 1172 ke seluruh stack:
+  - `swarm/agents.py` — AGENT_CONFIG + creator (pink theme)
+  - `swarm/bus.py` — queue creator; `swarm/worker.py` — worker loop ke-4
+  - `server.py` — validator allowed, topic_map creator→1172, simulasi eksekusi, swarm_active dinamis (5/5)
+  - `data/swarm_config.json` — `telegram_topics.creator = "1172"`
+  - Dashboard: topology node, prompt tab, terminal stream col, TG bridge tab/info/sender, delegate/filter/task selects, grid layout 4 kolom
+  - **fix**: `save_config` preserve `telegram_topics` — cegah mapping topic hilang saat save dari dashboard
+- **test**: suite update ke 5 agent — 44 passed (config preservation + agents list)
+
 ### v2.6.1 (30 Jul 2026)
 - **fix**: Permanent cache di skill_monitor.py — ganti TTL 30s, auto-refresh
 - **fix**: Auto-seed semua 29 skills bank ke DB di startup + setiap sync
