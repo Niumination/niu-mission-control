@@ -30,7 +30,7 @@ import uuid
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
@@ -231,6 +231,7 @@ class ConfigPayload(BaseModel):
     concurrency_limit: int
     llm_model: str
     tg_chat_id: str
+    telegram_topics: Optional[Dict[str, str]] = None
 
 
 class DelegateRequest(BaseModel):
@@ -920,9 +921,19 @@ async def get_config():
 async def save_config(cfg: ConfigPayload):
     """Save swarm configuration."""
     config_path = os.path.join(BASE_DIR, "data", "swarm_config.json")
+    payload = cfg.model_dump(exclude_none=True)
+    # Preserve existing telegram_topics when payload doesn't include it
+    if cfg.telegram_topics is None and os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                existing = json.load(f)
+                if "telegram_topics" in existing:
+                    payload["telegram_topics"] = existing["telegram_topics"]
+        except Exception:
+            pass
     with open(config_path, "w") as f:
-        json.dump(cfg.model_dump(), f, indent=2)
-    return {"status": "saved", "config": cfg}
+        json.dump(payload, f, indent=2)
+    return {"status": "saved", "config": payload}
 
 
 # ── Clear Logs ───────────────────────────────────────────
