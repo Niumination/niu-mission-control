@@ -1,4 +1,4 @@
-# Niu-MissionControl v2.5.1 — Orchestrator Rules
+# Niu-MissionControl v2.6.2 — Orchestrator Rules
 
 ## Arsitektur
 
@@ -7,7 +7,7 @@ Commander (User)
     ↓ Dashboard (localhost:5200) atau Telegram
     ↓
 Niu-MissionControl (FastAPI + WebSocket)
-    ├── REST API: 15 endpoints + /health
+    ├── REST API: 39 endpoints + /health
     ├── WebSocket: /ws/swarm (real-time feed)
     ├── Auth: X-API-Key header (opsional via MC_API_KEY)
     ├── CORS: configurable (MC_CORS_ORIGINS)
@@ -18,14 +18,15 @@ SwarmBus (IPC Layer)
     ├── Chief (Orchestrator) → route tasks
     ├── Research Agent → scraping, docs, blueprints
     ├── Programmer Agent → write/modify code
-    └── QA Agent → run tests, capture output
+    ├── QA Agent → run tests, capture output
+    └── Creator Agent → konten, copywriting, storytelling
     ↓
 Hermes Bridge (Telegram → Gateway → Agent)
     ↓
 Hermes Gateway (launchd, PID managed)
 ```
 
-## Swarm Topology (4 Agents)
+## Swarm Topology (5 Agents)
 
 | ID | Name | Role | Telegram Topic |
 |----|------|------|----------------|
@@ -33,9 +34,10 @@ Hermes Gateway (launchd, PID managed)
 | `research` | Agent 01 | Research & Learn | 802 (MC-Research) |
 | `programmer` | Agent 02 | Programmer & Coder | 803 (MC-Programmer) |
 | `qa` | Agent 03 | Tester & QA | 804 (MC-QA) |
+| `creator` | Agent 04 | Content Creator | 1172 (MC-Konten Kreator) |
 
 Commander (user) memantau & berinteraksi langsung via dashboard + Telegram.
-Agent bekerja **paralel** — Chief delegate, 3 agent eksekusi bersamaan.
+Agent bekerja **paralel** — Chief delegate, 4 agent eksekusi bersamaan.
 
 ## Port & Addresses
 

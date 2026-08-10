@@ -128,7 +128,7 @@ async def lifespan(app: FastAPI):
     skill_monitor.init_db()
     init_dummy_artifacts()
     await start_swarm_workers()
-    logger.info("Mission Control v2.6.0 started on port 5200")
+    logger.info("Mission Control v2.6.2 started on port 5200")
     logger.info("Auth: %s", "enabled" if MC_API_KEY else "disabled (dev mode)")
     logger.info("CORS origins: %s", CORS_ORIGINS)
     logger.info("Rate limit: %d req/min per IP", RATE_LIMIT_PER_MIN)
@@ -145,7 +145,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Hermes Mission Control",
-    version="2.6.0",
+    version="2.6.2",
     description=(
         "Orchestrator, Agent Swarm, Telegram Bridge, WebSocket Live Feed, "
         "Artifact Explorer, USB-Safe WAL. Production-ready with auth, "
@@ -345,7 +345,7 @@ async def health_check():
 
     return {
         "status": "ok",
-        "version": "2.6.0",
+        "version": "2.6.2",
         "uptime": _get_uptime(),
         "timestamp": datetime.now().isoformat(),
         "database": db_status,
