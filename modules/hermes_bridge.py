@@ -166,16 +166,50 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
         output = r.stdout
         if r.stderr:
             output += "\n" + r.stderr
-            
+
+        # Audit log
+        _audit_log_terminal(cmd, r.returncode, output[:200])
+
         return {
             "status": "ok" if r.returncode == 0 else "error",
             "output": output[:3000] + ("\n... [output truncated]" if len(output) > 3000 else ""),
             "exit_code": r.returncode,
         }
     except subprocess.TimeoutExpired:
+        _audit_log_terminal(cmd, -1, f"Timeout ({timeout}s)")
         return {"status": "error", "output": f"Timeout ({timeout}s)"}
     except Exception as e:
+        _audit_log_terminal(cmd, -1, str(e))
         return {"status": "error", "output": str(e)}
+
+
+def _audit_log_terminal(cmd: str, exit_code: int, output_summary: str):
+    """Log terminal command execution for audit trail."""
+    import sqlite3
+    import time
+    import os
+
+    db_path = os.path.join(HERMES_DATA_DIR, "terminal_audit.db")
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS terminal_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp REAL NOT NULL,
+                command TEXT NOT NULL,
+                exit_code INTEGER NOT NULL,
+                output_summary TEXT,
+                user TEXT DEFAULT 'dashboard'
+            )
+        """)
+        conn.execute(
+            "INSERT INTO terminal_audit (timestamp, command, exit_code, output_summary, user) VALUES (?, ?, ?, ?, ?)",
+            (time.time(), cmd, exit_code, output_summary, "dashboard"),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # Fail silently to not break command execution
 
 
 def get_activity_log(limit: int = 20) -> list[dict[str, Any]]:

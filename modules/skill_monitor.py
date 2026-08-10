@@ -10,6 +10,9 @@ API:
 - GET  /api/mc/skills/stats  — usage frequency & trending
 - GET  /api/mc/skills/stale  — skill >30 hari tidak dipakai
 - GET  /api/mc/skills/conflicts — konflik skill terdeteksi
+
+v2.0 — Fix: permanent cache dihapus, auto-seed skills ke DB,
+TTL 30s untuk performa, tidak ada skill yang hilang.
 """
 
 import json
@@ -29,18 +32,37 @@ DB_PATH = os.path.join(BASE_DIR, "data", "mission_control.db")
 # Thresholds
 STALE_DAYS = 30
 CONFLICT_PAIRS = [
-    ("ponytail-core", "ultrathink"),   # minimal vs craftsmanship
-    ("ponytail-core", "redteam"),      # minimal vs adversarial
-    ("ponytail-audit", "redteam"),     # audit vs pentest
+    ("ultrathink", "ponytail-core"),           # Craftsmanship vs Minimalism
+    ("impeccable", "ui-ux-pro-max"),           # UI/UX Build vs Research
+    ("systematic-debugging", "hermes-zero-defect-architect"),  # Debugging Generic vs Aggressive
 ]
 
-SKILL_CACHE = None  # Lazy-loaded from bank pusat
+# Skill bank cache with TTL
+_skill_bank_cache: list[dict] | None = None
+_skill_bank_cache_time: float = 0
+SKILL_BANK_CACHE_TTL = 30  # detik, refresh dari disk setiap 30 detik
+
+SKILL_CACHE_ACTIVE: dict[str, float] = {}  # skill_name -> last load timestamp
+
+
+# ── Helpers ──────────────────────────────────────────────
+
+def _get_home() -> str:
+    """Get real user home dir — handles Hermes env where HOME != /Users/user."""
+    home = os.path.expanduser("~")
+    if os.path.isdir(os.path.join(home, "Desktop/Niumination")):
+        return home
+    user = os.environ.get("USER", "zaryu")
+    alt = f"/Users/{user}"
+    if os.path.isdir(os.path.join(alt, "Desktop/Niumination")):
+        return alt
+    return home
 
 
 # ── DB Init ──────────────────────────────────────────────
 
 def init_db():
-    """Create skill_events table if not exists."""
+    """Create skill_events table if not exists, then auto-seed bank skills."""
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("""
@@ -65,27 +87,19 @@ def init_db():
     conn.close()
     logger.info("Skill monitor DB initialized")
 
-
-# ── Bank Pusat Scanner ──────────────────────────────────
-
-def _get_home():
-    """Get real user home dir — handles Hermes env where HOME != /Users/user."""
-    home = os.path.expanduser("~")
-    if os.path.isdir(os.path.join(home, "Desktop/Niumination")):
-        return home
-    # Fallback: resolve from USER env
-    user = os.environ.get("USER", "zaryu")
-    alt = f"/Users/{user}"
-    if os.path.isdir(os.path.join(alt, "Desktop/Niumination")):
-        return alt
-    return home  # give up, let caller handle
+    # Auto-seed: ensure all skills from bank have at least one event
+    _seed_all_skills()
 
 
-def _scan_skill_bank():
-    """Scan ~/Desktop/Niumination/skills/ for available skills."""
-    global SKILL_CACHE
-    if SKILL_CACHE is not None:
-        return SKILL_CACHE
+# ── Bank Pusat Scanner (TTL-based, no permanent cache) ──
+
+def _scan_skill_bank(force: bool = False) -> list[dict]:
+    """Scan ~/Desktop/Niumination/skills/ — TTL cache 30s, refresh otomatis."""
+    global _skill_bank_cache, _skill_bank_cache_time
+
+    now = time.time()
+    if not force and _skill_bank_cache is not None and (now - _skill_bank_cache_time) < SKILL_BANK_CACHE_TTL:
+        return _skill_bank_cache
 
     home = _get_home()
     bank = os.path.join(home, "Desktop", "Niumination", "skills")
@@ -103,14 +117,48 @@ def _scan_skill_bank():
                     "domain": domain,
                     "path": sk_path,
                 })
-    SKILL_CACHE = skills
+
+    _skill_bank_cache = skills
+    _skill_bank_cache_time = now
+    logger.debug("Skill bank scanned: %d skills", len(skills))
     return skills
 
 
+# ── Auto-Seed: all bank skills get a registration event in DB ──
+
+def _seed_all_skills():
+    """Ensure every skill from bank pusat has a 'seed' event in DB.
+    This guarantees get_all_skills() always shows ALL skills,
+    even if sync-to-agents.sh failed to POST events.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        bank_skills = _scan_skill_bank(force=True)
+        now = time.time()
+        seeded = 0
+
+        for sk in bank_skills:
+            name = sk["name"]
+            existing = conn.execute(
+                "SELECT COUNT(*) FROM skill_events WHERE skill_name = ?",
+                (name,),
+            ).fetchone()[0]
+            if existing == 0:
+                conn.execute(
+                    "INSERT INTO skill_events (skill_name, agent, event_type, timestamp, metadata) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (name, "system", "seed", now, json.dumps({"source": "auto-seed"})),
+                )
+                seeded += 1
+
+        conn.commit()
+        if seeded:
+            logger.info("Auto-seeded %d new skills into DB", seeded)
+    finally:
+        conn.close()
+
+
 # ── Event Recording ─────────────────────────────────────
-
-SKILL_CACHE_ACTIVE = {}  # skill_name -> last load timestamp
-
 
 def record_event(skill_name: str, agent: str = "unknown",
                  event_type: str = "load", metadata: dict = None) -> dict:
@@ -138,7 +186,9 @@ def record_event(skill_name: str, agent: str = "unknown",
 # ── Stats ────────────────────────────────────────────────
 
 def get_all_skills():
-    """Get all skills from bank + latest event status."""
+    """Get all skills from bank + latest event status.
+    Auto-refresh bank scan setiap 30s. Tidak ada permanent cache.
+    """
     bank_skills = _scan_skill_bank()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -163,9 +213,9 @@ def get_all_skills():
             "name": name,
             "domain": sk["domain"],
             "active": active,
-            "last_event": row["event_type"] if row else None,
+            "last_event": row["event_type"] if row else "seed",
             "last_timestamp": row["timestamp"] if row else None,
-            "last_agent": row["agent"] if row else None,
+            "last_agent": row["agent"] if row else "system",
             "load_count": count_row["cnt"] if count_row else 0,
         })
 
@@ -228,7 +278,7 @@ def get_stale():
         name = sk["name"]
         row = conn.execute(
             "SELECT MAX(timestamp) as last_ts FROM skill_events "
-            "WHERE skill_name = ? AND event_type = 'load'",
+            "WHERE skill_name = ? AND (event_type = 'load' OR event_type = 'seed')",
             (name,),
         ).fetchone()
 
@@ -263,7 +313,6 @@ def get_conflicts():
                 "both_active": True,
             })
 
-    # Also check bank skills: if both ponytail-core and ponytail-audit active at same time
     bank_skills = {s["name"] for s in _scan_skill_bank()}
     for name in loaded:
         if name not in bank_skills:
@@ -279,11 +328,11 @@ def get_conflicts():
 # ── Cleanup old events (keep last 90 days) ──────────────
 
 def cleanup_old_events():
-    """Delete skill events older than 90 days."""
+    """Delete skill events older than 90 days, preserving seed events."""
     threshold = time.time() - 90 * 86400
     conn = sqlite3.connect(DB_PATH)
     deleted = conn.execute(
-        "DELETE FROM skill_events WHERE timestamp < ?",
+        "DELETE FROM skill_events WHERE timestamp < ? AND event_type != 'seed'",
         (threshold,),
     ).rowcount
     conn.commit()
@@ -299,3 +348,6 @@ def notify_sync_completed():
     """Record that sync happened (called from sync-to-agents.sh hook)."""
     record_event("__sync__", agent="system", event_type="sync",
                  metadata={"source": "sync-to-agents.sh"})
+
+    # Re-scan bank and seed any new skills
+    _seed_all_skills()
