@@ -12,3 +12,4 @@ Jinja2
 httpx
 pytest
 pytest-asyncio
+python-json-logger
