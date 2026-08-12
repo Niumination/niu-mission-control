@@ -121,6 +121,15 @@
     }
     .proj-item .p-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 4px #4ade80; }
 
+    /* live meter */
+    .meter { margin-top: 8px; }
+    .meter-row { display: flex; align-items: center; gap: 8px; font-size: 0.6rem; color: #8a97b5; margin: 3px 0; }
+    .meter-bar { flex: 1; height: 4px; background: rgba(111, 216, 255, 0.1); border-radius: 2px; overflow: hidden; }
+    .meter-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #6fd8ff, #9b6dff); transition: width 0.5s; }
+    .meter-fill.warn { background: linear-gradient(90deg, #fbbf24, #f87171); }
+    #ws-ind { position: fixed; top: 12px; right: 140px; font-size: 0.55rem; color: #4ade80; letter-spacing: 0.1em; }
+    #ws-ind.off { color: #f87171; }
+
     /* scrollbar */
     #agents-panel::-webkit-scrollbar { width: 4px; }
     #agents-panel::-webkit-scrollbar-thumb { background: #1e2a44; border-radius: 2px; }
@@ -156,8 +165,12 @@
   </div>
 
   <div id="hint">DRAG = PUTAR · SCROLL = ZOOM</div>
+  <div id="ws-ind">● LIVE</div>
+  <button id="gesture-btn" onclick="window.__toggleGesture()" style="position:fixed;bottom:12px;right:16px;pointer-events:auto;background:rgba(111,216,255,0.08);border:1px solid rgba(111,216,255,0.3);color:#6fd8ff;font-family:'JetBrains Mono',monospace;font-size:0.62rem;padding:6px 12px;border-radius:6px;cursor:pointer;z-index:10">✋ GESTURE OFF</button>
+  <video id="cam" style="position:fixed;bottom:56px;right:16px;width:160px;border:1px solid rgba(111,216,255,0.2);border-radius:8px;display:none;z-index:10"></video>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="/static/orb.js"></script>
 </body>
 </html>

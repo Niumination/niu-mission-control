@@ -193,6 +193,141 @@
   loadRoutines();
   setInterval(loadRoutines, 30000);
 
+  // ── WebSocket live (ULTRON v3) ─────────────
+  const wsInd = document.getElementById('ws-ind');
+  let ws = null;
+  let wsRetry = 0;
+
+  function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}/ws/orb`);
+
+    ws.onopen = () => {
+      wsInd.textContent = '● LIVE';
+      wsInd.classList.remove('off');
+      wsRetry = 0;
+    };
+    ws.onclose = () => {
+      wsInd.textContent = '○ OFFLINE';
+      wsInd.classList.add('off');
+      wsRetry++;
+      setTimeout(connectWS, Math.min(30000, 2000 * wsRetry));
+    };
+    ws.onerror = () => { try { ws.close(); } catch (e) {} };
+    ws.onmessage = (ev) => {
+      try {
+        const d = JSON.parse(ev.data);
+        if (d.type !== 'tick') return;
+        // live CPU/RAM meter
+        updateMeter('cpu', d.system.cpu);
+        updateMeter('ram', d.system.ram_pct);
+        // agents live status
+        if (d.agents && d.agents.agents) {
+          renderAgentsLive(d.agents.agents);
+        }
+      } catch (e) { /* ignore */ }
+    };
+  }
+
+  function updateMeter(id, val) {
+    let row = document.getElementById(`meter-${id}`);
+    if (!row) {
+      const sysPanel = document.getElementById('system-stats');
+      const meter = document.createElement('div');
+      meter.className = 'meter';
+      meter.innerHTML = `
+        <div class="meter-row"><span>CPU</span><div class="meter-bar"><div class="meter-fill" id="meter-cpu-fill" style="width:0%"></div></div><span id="meter-cpu">0%</span></div>
+        <div class="meter-row"><span>RAM</span><div class="meter-bar"><div class="meter-fill" id="meter-ram-fill" style="width:0%"></div></div><span id="meter-ram">0%</span></div>`;
+      sysPanel.appendChild(meter);
+      row = meter;
+    }
+    const fill = document.getElementById(`meter-${id}-fill`);
+    const label = document.getElementById(`meter-${id}`);
+    if (fill) { fill.style.width = val + '%'; fill.classList.toggle('warn', val > 80); }
+    if (label) label.textContent = Math.round(val) + '%';
+  }
+
+  function renderAgentsLive(agents) {
+    const panel = document.getElementById('agents-panel');
+    if (!agents.length) return;
+    panel.innerHTML = agents.map((a) => {
+      const st = (a.status || 'idle').toLowerCase();
+      const dot = st === 'online' || st === 'running' || st === 'active' ? 'online' : (st === 'offline' || st === 'error' ? 'offline' : 'idle');
+      return `<div class="agent-item">
+        <span class="agent-dot ${dot}"></span>
+        <span class="agent-name">${a.name || a.id || '?'}</span>
+        <span class="agent-model">${a.model || a.thread || ''}</span>
+      </div>`;
+    }).join('');
+  }
+
+  connectWS();
+
+  // ── Gesture control (MediaPipe hands) — v3 ──
+  let gestureOn = false;
+  let hands = null, camHandle = null, videoEl = null;
+  let lastPinch = null; // {x, y}
+
+  window.__toggleGesture = async function () {
+    gestureOn = !gestureOn;
+    const btn = document.getElementById('gesture-btn');
+    const cam = document.getElementById('cam');
+    if (gestureOn) {
+      if (typeof Hands === 'undefined') {
+        btn.textContent = '✋ UNAVAILABLE';
+        gestureOn = false;
+        return;
+      }
+      try {
+        videoEl = cam;
+        videoEl.style.display = 'block';
+        videoEl.width = 160; videoEl.height = 120;
+        camHandle = new Camera(videoEl, {
+          onFrame: async () => { if (hands) await hands.send({ image: videoEl }); },
+          width: 160, height: 120
+        });
+        await camHandle.start();
+        hands = new Hands({
+          locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+        });
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.6 });
+        hands.onResults(onHandResults);
+        btn.textContent = '✋ GESTURE ON';
+      } catch (e) {
+        btn.textContent = '✋ CAM ERR';
+        gestureOn = false;
+        videoEl.style.display = 'none';
+      }
+    } else {
+      if (camHandle) { try { await camHandle.stop(); } catch (e) {} }
+      if (videoEl) videoEl.style.display = 'none';
+      btn.textContent = '✋ GESTURE OFF';
+      lastPinch = null;
+    }
+  };
+
+  function onHandResults(results) {
+    if (!results.multiHandLandmarks || !results.multiHandLandmarks.length) {
+      lastPinch = null;
+      return;
+    }
+    const lm = results.multiHandLandmarks[0];
+    // pinch: thumb (4) + index (8) distance
+    const thumb = lm[4], index = lm[8];
+    const dx = thumb.x - index.x, dy = thumb.y - index.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.08) {
+      // pinch held → drag orb by hand x/y
+      if (lastPinch) {
+        rotY += (lm[8].x - lastPinch.x) * 2.5;
+        rotX += (lm[8].y - lastPinch.y) * 2.5;
+      }
+      lastPinch = { x: lm[8].x, y: lm[8].y };
+    } else {
+      lastPinch = null;
+    }
+  }
+
   // ── Animation loop ───────────────────────
   function animate() {
     requestAnimationFrame(animate);
