@@ -1232,7 +1232,16 @@ async def deploy_status():
 
 @app.get("/", response_class=HTMLResponse, tags=["system"])
 async def index():
-    """Serve the main dashboard HTML."""
+    """Serve the ORB (main) HTML — ULTRON-inspired 3D command center."""
+    orb_path = os.path.join(DASHBOARD_DIR, "orb.html")
+    if os.path.exists(orb_path):
+        return FileResponse(orb_path)
+    return FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
+
+
+@app.get("/dashboard", response_class=HTMLResponse, tags=["system"])
+async def dashboard_legacy():
+    """Serve the legacy dashboard HTML (moved from /)."""
     return FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
 
 
