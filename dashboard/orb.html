@@ -92,6 +92,35 @@
       pointer-events: none;
     }
 
+    /* routines panel */
+    #routines-panel {
+      pointer-events: auto;
+      max-width: 320px;
+    }
+    .routine-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%;
+      background: rgba(111, 216, 255, 0.06);
+      border: 1px solid rgba(111, 216, 255, 0.2);
+      color: #c9e8ff; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem; padding: 7px 12px; border-radius: 6px;
+      cursor: pointer; margin-bottom: 6px; transition: all 0.2s;
+    }
+    .routine-btn:hover { background: rgba(111, 216, 255, 0.16); border-color: rgba(111, 216, 255, 0.5); }
+    .routine-btn:disabled { opacity: 0.4; cursor: wait; }
+    .routine-btn .r-icon { font-size: 0.9rem; margin-right: 8px; }
+    .routine-btn .r-status { font-size: 0.58rem; color: #5a6a8a; }
+    #routine-output {
+      margin-top: 8px; font-size: 0.6rem; color: #6fd8ff;
+      max-height: 80px; overflow-y: auto; white-space: pre-wrap;
+      border-top: 1px solid rgba(111, 216, 255, 0.15); padding-top: 6px;
+    }
+    .proj-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.62rem; padding: 3px 0; color: #8a97b5;
+    }
+    .proj-item .p-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 4px #4ade80; }
+
     /* scrollbar */
     #agents-panel::-webkit-scrollbar { width: 4px; }
     #agents-panel::-webkit-scrollbar-thumb { background: #1e2a44; border-radius: 2px; }
@@ -112,6 +141,12 @@
       <div class="panel" id="system-panel">
         <h3>System</h3>
         <div id="system-stats"><div class="stat-row"><span class="label">Loading...</span></div></div>
+      </div>
+      <div class="panel" id="routines-panel">
+        <h3>Routines</h3>
+        <div id="routine-buttons"></div>
+        <div id="proj-list"></div>
+        <div id="routine-output"></div>
       </div>
       <div class="panel" id="agents-panel-wrap">
         <h3>Agents</h3>
