@@ -34,6 +34,7 @@ from typing import Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
+import subprocess
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -216,6 +217,13 @@ class CommandRequest(BaseModel):
     """Request body for terminal command execution."""
     command: str
     timeout: Optional[int] = 15
+
+
+class RoutineRequest(BaseModel):
+    """Request body for routine trigger."""
+    name: str
+    project: Optional[str] = None
+    status: Optional[str] = None
 
 
 class TelegramRequest(BaseModel):
@@ -759,6 +767,83 @@ async def run_terminal_command(req: CommandRequest):
     """Execute a shell command securely and return output."""
     from modules.hermes_bridge import run_terminal
     return run_terminal(req.command, timeout=req.timeout)
+
+
+# ── Routines (Personal AI OS control surface) ──────────
+
+BRAIN_SCRIPTS = "/Users/zaryu/Desktop/Niumination/brain/scripts"
+if not os.path.isdir(BRAIN_SCRIPTS):
+    BRAIN_SCRIPTS = os.path.expanduser("~/Desktop/Niumination/brain/scripts")
+
+ROUTINE_WHITELIST = {
+    "morning-brief": ["python3", "routine_morning.py", "--send"],
+    "daily-report": ["python3", "routine_daily.py"],
+    "project-sync": ["python3", "routine_project.py"],
+}
+
+
+@app.get("/api/mc/routines", tags=["routines"])
+async def list_routines():
+    """Daftar routine yang tersedia + status brain."""
+    import json as _json
+    brain = "/Users/zaryu/Desktop/Niumination/brain"
+    projects = []
+    pdir = os.path.join(brain, "projects")
+    if os.path.isdir(pdir):
+        for name in sorted(os.listdir(pdir)):
+            sf = os.path.join(pdir, name, "status.md")
+            if os.path.isfile(sf):
+                try:
+                    with open(sf) as f:
+                        lines = [l for l in f.read().split("\n") if l.strip()]
+                    status = ""
+                    if "## Status Saat Ini" in lines:
+                        idx = lines.index("## Status Saat Ini")
+                        status = lines[idx + 1].strip()[:80] if idx + 1 < len(lines) else ""
+                    projects.append({"name": name, "status": status})
+                except Exception:
+                    pass
+    # capture count hari ini
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+    daily = os.path.join(brain, "inbox", f"{today}-daily.md")
+    capture_count = 0
+    if os.path.isfile(daily):
+        try:
+            with open(daily) as f:
+                capture_count = sum(1 for l in f if l.startswith("- ["))
+        except Exception:
+            pass
+    return {
+        "routines": sorted(ROUTINE_WHITELIST.keys()),
+        "projects": projects,
+        "capture_today": capture_count,
+        "brain_root": brain,
+    }
+
+
+@app.post("/api/mc/routine/run", tags=["routines"])
+async def run_routine(req: RoutineRequest):
+    """Trigger routine dari orb. Whitelist ketat — hanya 3 routine."""
+    if req.name not in ROUTINE_WHITELIST:
+        return {"status": "error", "output": f"Routine '{req.name}' tidak dikenal. Tersedia: {sorted(ROUTINE_WHITELIST)}"}
+    cmd = list(ROUTINE_WHITELIST[req.name])
+    if req.name == "project-sync":
+        if not req.project or not req.status:
+            return {"status": "error", "output": "project-sync butuh 'project' dan 'status'"}
+        cmd.extend([req.project, req.status])
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=120,
+                           cwd=BRAIN_SCRIPTS if os.path.isdir(BRAIN_SCRIPTS) else None)
+        return {
+            "status": "ok" if r.returncode == 0 else "error",
+            "output": (r.stdout or r.stderr).strip()[:2000],
+            "exit_code": r.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "output": "Timeout 120s"}
+    except Exception as e:
+        return {"status": "error", "output": str(e)[:300]}
 
 
 # ── Telegram Feed (from gateway.log) ────────────────────

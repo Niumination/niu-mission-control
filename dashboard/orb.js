@@ -141,6 +141,58 @@
   loadAgents();
   setInterval(() => { loadSystem(); loadAgents(); }, 15000);
 
+  // ── Routines (control surface) ──────────────
+  const routineBtns = {
+    'morning-brief': { icon: '🌅', label: 'Morning Brief' },
+    'daily-report': { icon: '📊', label: 'Rekap Harian' },
+    'project-sync': { icon: '📁', label: 'Sync Proyek' },
+  };
+
+  async function loadRoutines() {
+    try {
+      const res = await fetch('/api/mc/routines');
+      const d = await res.json();
+      const btns = document.getElementById('routine-buttons');
+      btns.innerHTML = (d.routines || []).map((r) =>
+        `<button class="routine-btn" onclick="window.__runRoutine('${r}')">
+          <span><span class="r-icon">${routineBtns[r]?.icon || '⚡'}</span>${routineBtns[r]?.label || r}</span>
+          <span class="r-status">run</span>
+        </button>`).join('');
+      // projects
+      const projs = document.getElementById('proj-list');
+      projs.innerHTML = (d.projects || []).slice(0, 4).map((p) =>
+        `<div class="proj-item"><span class="p-dot"></span>${p.name} <span style="margin-left:auto;color:#5a6a8a;font-size:0.55rem">${p.status.slice(0, 25) || ''}</span></div>`).join('');
+      // capture count → system panel tambahan
+      if (d.capture_today !== undefined) {
+        const sp = document.getElementById('system-stats');
+        if (!sp.innerHTML.includes('Capture')) {
+          sp.innerHTML += `<div class="stat-row"><span class="label">Capture</span><span class="value ok">${d.capture_today}</span></div>`;
+        }
+      }
+    } catch (e) {
+      document.getElementById('routine-buttons').innerHTML = '<div class="stat-row"><span class="label">API offline</span></div>';
+    }
+  }
+
+  window.__runRoutine = async function (name) {
+    const out = document.getElementById('routine-output');
+    out.textContent = `▶ Menjalankan ${name}...`;
+    try {
+      const res = await fetch('/api/mc/routine/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const d = await res.json();
+      out.textContent = (d.output || d.status || 'selesai').slice(0, 500);
+    } catch (e) {
+      out.textContent = 'Error: ' + e.message;
+    }
+  };
+
+  loadRoutines();
+  setInterval(loadRoutines, 30000);
+
   // ── Animation loop ───────────────────────
   function animate() {
     requestAnimationFrame(animate);
