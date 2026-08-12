@@ -1278,6 +1278,44 @@ async def swarm_ws(websocket: WebSocket):
             active_connections.remove(websocket)
 
 
+# ── Orb WebSocket (ULTRON v3 live feed) ─────────────────
+
+@app.websocket("/ws/orb")
+async def orb_ws(websocket: WebSocket):
+    """Live feed untuk orb: system + agents + routines, tick tiap 2s."""
+    await websocket.accept()
+    active_connections.append(websocket)
+    try:
+        loop = asyncio.get_event_loop()
+
+        def _orb_snapshot():
+            import psutil as _ps
+            cpu = _ps.cpu_percent(interval=None)
+            mem = _ps.virtual_memory()
+            return {
+                "type": "tick",
+                "system": {
+                    "cpu": round(cpu, 1),
+                    "ram_pct": round(mem.percent, 1),
+                    "ram_used_gb": round(mem.used / 1073741824, 1),
+                },
+                "agents": get_agent_status(),
+                "time": datetime.now().strftime("%H:%M:%S"),
+            }
+
+        while True:
+            await asyncio.sleep(2)
+            snap = await loop.run_in_executor(_thread_pool, _orb_snapshot)
+            await websocket.send_text(json.dumps(snap))
+    except WebSocketDisconnect:
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+    except Exception as e:
+        logger.error("Orb WS error: %s", e)
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+
+
 # ══════════════════════════════════════════════════════════
 #  Vercel Multi-Project Deploy
 # ══════════════════════════════════════════════════════════
