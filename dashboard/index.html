@@ -194,46 +194,123 @@
           </div>
         </div>
 
-        <!-- CURRENT DIRECTIVE + LIVE TELEMETRY (template integration) -->
-        <div class="dir-section">
-          <div class="dir-section-title"><i class="fa-solid fa-bullhorn"></i> CURRENT DIRECTIVE</div>
-          <div class="directive-banner">
-            <div class="dir-label"><i class="fa-solid fa-microchip"></i> Active Directive — Thread <span id="dirThreadId">1</span></div>
-            <div class="dir-text" id="dirText">Memuat direktif aktif…</div>
-            <div class="dir-thread" id="dirThreadMeta">—</div>
-          </div>
-
-          <div class="dir-telemetry">
-            <div class="dir-tile tile-blue">
-              <div class="tile-label"><i class="fa-solid fa-clock"></i> Uptime</div>
-              <div class="tile-value" id="tileUptime">—</div>
-              <div class="tile-sub">Mission Control server</div>
-            </div>
-            <div class="dir-tile tile-emerald">
-              <div class="tile-label"><i class="fa-solid fa-bolt"></i> Today</div>
-              <div class="tile-value" id="tileToday">—</div>
-              <div class="tile-sub">Aktivitas hari ini</div>
-            </div>
-            <div class="dir-tile tile-purple">
-              <div class="tile-label"><i class="fa-solid fa-list-check"></i> Queue</div>
-              <div class="tile-value" id="tileQueue">—</div>
-              <div class="tile-sub">Task antrian (pending)</div>
-            </div>
-            <div class="dir-tile tile-amber">
-              <div class="tile-label"><i class="fa-solid fa-layer-group"></i> Sessions</div>
-              <div class="tile-value" id="tileSessions">—</div>
-              <div class="tile-sub">Sesi aktif gateway</div>
-            </div>
-            <div class="dir-tile tile-rose">
-              <div class="tile-label"><i class="fa-solid fa-triangle-exclamation"></i> Errors</div>
-              <div class="tile-value" id="tileErrors">—</div>
-              <div class="tile-sub">Error hari ini</div>
+        <!-- LIVE OPS — Asad Tinkers AgentOS template (directive | context | vps) -->
+        <div class="at-live-ops">
+          <!-- Kolom 1: CURRENT DIRECTIVE -->
+          <div class="at-ops-col">
+            <div class="at-ops-label"><i class="fa-solid fa-bullhorn at-accent"></i> <span class="at-accent">Current Directive</span></div>
+            <div class="at-directive-text" id="dirText">Memuat direktif aktif…</div>
+            <div class="at-directive-meta">
+              <span id="dirThreadMeta">—</span>
+              <span id="dirThreadId">Thread 1</span>
             </div>
           </div>
 
-          <div class="dir-section-title" style="margin-top:1rem;"><i class="fa-solid fa-window-restore"></i> CONTEXT WINDOW — SEMUA THREAD</div>
-          <div class="dir-context-grid" id="ctxGrid">
-            <div class="dir-ctx-card"><div class="ctx-thread">Memuat…</div></div>
+          <!-- Kolom 2: CONTEXT WINDOW -->
+          <div class="at-ops-col">
+            <div class="at-ops-label"><i class="fa-solid fa-window-restore"></i> Context Window — 5 Thread</div>
+            <div class="at-context-agents" id="ctxGrid">
+              <div class="at-context-row"><span style="color:var(--at-text-muted);font-size:11px;font-family:var(--at-font-mono)">Memuat…</span></div>
+            </div>
+          </div>
+
+          <!-- Kolom 3: VPS HEALTH -->
+          <div class="at-ops-col">
+            <div class="at-ops-label"><i class="fa-solid fa-server"></i> VPS / Local Health</div>
+            <div class="at-vps-item">
+              <div class="at-vps-label-row"><span>CPU Usage</span><span class="at-v" id="vpsCpuLabel">—</span></div>
+              <div class="at-vps-bar"><div class="at-vps-fill cpu" id="vpsCpuBar" style="width:0%"></div></div>
+            </div>
+            <div class="at-vps-item">
+              <div class="at-vps-label-row"><span>RAM Usage</span><span class="at-v" id="vpsRamLabel">—</span></div>
+              <div class="at-vps-bar"><div class="at-vps-fill ram" id="vpsRamBar" style="width:0%"></div></div>
+            </div>
+            <div class="at-vps-item">
+              <div class="at-vps-label-row"><span>Disk Storage</span><span class="at-v" id="vpsDiskLabel">—</span></div>
+              <div class="at-vps-bar"><div class="at-vps-fill disk" id="vpsDiskBar" style="width:0%"></div></div>
+            </div>
+            <div class="at-vps-item">
+              <div class="at-vps-label-row"><span>Hermes DBs</span><span class="at-v" id="vpsDbLabel">—</span></div>
+              <div class="at-vps-bar"><div class="at-vps-fill disk" id="vpsDbBar" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OPS FOOTER — Queue / Sessions / Errors / Today / Uptime -->
+        <div class="at-ops-footer">
+          <div class="at-ops-foot-cell">
+            <div class="at-foot-label"><i class="fa-solid fa-list-check"></i> Queue</div>
+            <div class="at-foot-value" id="tileQueue">—</div>
+            <div class="at-foot-sub">Task pending</div>
+          </div>
+          <div class="at-ops-foot-cell">
+            <div class="at-foot-label"><i class="fa-solid fa-layer-group"></i> Sessions</div>
+            <div class="at-foot-value" id="tileSessions">—</div>
+            <div class="at-foot-sub">Aktif gateway</div>
+          </div>
+          <div class="at-ops-foot-cell">
+            <div class="at-foot-label"><i class="fa-solid fa-triangle-exclamation"></i> Errors</div>
+            <div class="at-foot-value" id="tileErrors" style="color:var(--at-red)">—</div>
+            <div class="at-foot-sub">Hari ini</div>
+          </div>
+          <div class="at-ops-foot-cell">
+            <div class="at-foot-label"><i class="fa-solid fa-bolt"></i> Today</div>
+            <div class="at-foot-value" id="tileToday">—</div>
+            <div class="at-foot-sub">Aktivitas</div>
+          </div>
+          <div class="at-ops-foot-cell">
+            <div class="at-foot-label"><i class="fa-solid fa-clock"></i> Uptime</div>
+            <div class="at-foot-value" id="tileUptime">—</div>
+            <div class="at-foot-sub">MC server</div>
+          </div>
+        </div>
+
+        <!-- STATS STRIP — Integrity / Calls / Messages / Tokens / Cache -->
+        <div class="at-stats-strip">
+          <div class="at-stat-cell accent-violet">
+            <div class="at-stat-label"><i class="fa-solid fa-shield-halved"></i> Integrity</div>
+            <div class="at-stat-value" id="statIntegrity">—</div>
+            <div class="at-stat-sub">Health score</div>
+          </div>
+          <div class="at-stat-cell accent-cyan">
+            <div class="at-stat-label"><i class="fa-solid fa-phone"></i> Agent Calls</div>
+            <div class="at-stat-value" id="statCalls">—</div>
+            <div class="at-stat-sub">Total semua agent</div>
+          </div>
+          <div class="at-stat-cell accent-mint">
+            <div class="at-stat-label"><i class="fa-solid fa-message"></i> Messages</div>
+            <div class="at-stat-value" id="statMessages">—</div>
+            <div class="at-stat-sub">Total exchange</div>
+          </div>
+          <div class="at-stat-cell accent-amber">
+            <div class="at-stat-label"><i class="fa-solid fa-coins"></i> Tokens In</div>
+            <div class="at-stat-value" id="statTokens">—</div>
+            <div class="at-stat-sub">Input tokens</div>
+          </div>
+          <div class="at-stat-cell accent-pink">
+            <div class="at-stat-label"><i class="fa-solid fa-gauge-high"></i> Throughput</div>
+            <div class="at-stat-value" id="statThroughput">—</div>
+            <div class="at-stat-sub">Responses total</div>
+          </div>
+        </div>
+
+        <!-- BOTTOM SECTION — Live Activity Feed -->
+        <div class="at-bottom-section">
+          <div class="at-activity-card">
+            <div class="at-card-head">
+              <span class="at-card-title"><i class="fa-solid fa-timeline"></i> Live Activity Feed</span>
+              <span class="at-card-sub">Auto-refreshing · agent logs</span>
+            </div>
+            <div class="at-activity-feed" id="activityFeed">
+              <div style="color:var(--at-text-muted);font-size:12px;font-family:var(--at-font-mono)">Memuat aktivitas…</div>
+            </div>
+          </div>
+          <div class="at-activity-card">
+            <div class="at-card-head">
+              <span class="at-card-title"><i class="fa-solid fa-chart-simple"></i> Swarm Telemetry</span>
+              <span class="at-card-sub">4/4 agent aktif</span>
+            </div>
+            <div id="swarmMini" style="font-family:var(--at-font-mono);font-size:12px;color:var(--at-text-muted)">Memuat…</div>
           </div>
         </div>
 
@@ -1134,7 +1211,7 @@
       if (!data.threads || !data.threads.length) return;
       const threads = data.threads;
 
-      // Directive banner — thread paling baru aktif
+      // Directive — thread paling baru aktif
       let active = threads[0];
       for (const t of threads) {
         if ((t.updated_at || '') > (active.updated_at || '')) active = t;
@@ -1142,30 +1219,26 @@
       const elId = document.getElementById('dirThreadId');
       const elText = document.getElementById('dirText');
       const elMeta = document.getElementById('dirThreadMeta');
-      if (elId) elId.textContent = active.thread_id;
+      if (elId) elId.textContent = `Thread ${active.thread_id} · ${THREAD_NAMES[active.thread_id] || '—'}`;
       if (elText) elText.textContent = active.directive || 'Tidak ada direktif khusus untuk thread ini (default agent).';
-      if (elMeta) elMeta.textContent = `Thread ${active.thread_id} (${THREAD_NAMES[active.thread_id] || '—'}) · Model: ${active.model} · Update: ${(active.updated_at || '—').slice(0, 16).replace('T', ' ')}`;
+      if (elMeta) elMeta.textContent = `Model: ${active.model} · Update: ${(active.updated_at || '—').slice(0, 16).replace('T', ' ')}`;
 
-      // Context window cards
+      // Context window rows (template style)
       const grid = document.getElementById('ctxGrid');
       if (grid) {
         grid.innerHTML = '';
         for (const t of threads) {
           const pct = Math.min(t.context_pct || 0, 100);
-          const warn = pct > 80 ? 'background:linear-gradient(90deg,#f59e0b,#ef4444);' : '';
-          const card = document.createElement('div');
-          card.className = 'dir-ctx-card';
-          card.innerHTML = `
-            <div class="ctx-head">
-              <span class="ctx-thread">#${t.thread_id} · ${THREAD_NAMES[t.thread_id] || '—'}</span>
-              <span class="ctx-model">${t.model}</span>
+          const warn = pct > 80 ? ' warn' : '';
+          const row = document.createElement('div');
+          row.className = 'at-context-row';
+          row.innerHTML = `
+            <div class="at-context-head">
+              <span class="at-name">#${t.thread_id} · ${THREAD_NAMES[t.thread_id] || '—'}</span>
+              <span class="at-pct">${(t.context_tokens / 1000).toFixed(1)}K/${(t.context_max / 1000).toFixed(0)}K · ${t.context_pct || 0}%</span>
             </div>
-            <div class="ctx-bar"><div class="ctx-bar-fill" style="width:${pct}%;${warn}"></div></div>
-            <div class="ctx-meta">
-              <span>${(t.context_tokens / 1000).toFixed(1)}K / ${(t.context_max / 1000).toFixed(0)}K tok</span>
-              <span>${t.context_pct || 0}%</span>
-            </div>`;
-          grid.appendChild(card);
+            <div class="at-context-bar"><div class="at-context-fill${warn}" style="width:${pct}%"></div></div>`;
+          grid.appendChild(row);
         }
       }
     } catch (e) {
@@ -1179,21 +1252,35 @@
       const s = await res.json();
       const up = document.getElementById('tileUptime');
       if (up) up.textContent = s.uptime || '—';
+      // VPS bars
+      const setVps = (labelId, barId, pct, text) => {
+        const l = document.getElementById(labelId);
+        const b = document.getElementById(barId);
+        if (l) l.textContent = text;
+        if (b) b.style.width = Math.min(pct, 100) + '%';
+      };
+      if (s.cpu_percent !== undefined) setVps('vpsCpuLabel', 'vpsCpuBar', s.cpu_percent, s.cpu_percent + '%');
+      if (s.memory && s.memory.percent !== undefined) setVps('vpsRamLabel', 'vpsRamBar', s.memory.percent, s.memory.percent + '% (' + (s.memory.used_gb || 0).toFixed(1) + '/' + (s.memory.total_gb || 0).toFixed(0) + ' GB)');
+      if (s.disk && s.disk.percent !== undefined) setVps('vpsDiskLabel', 'vpsDiskBar', s.disk.percent, s.disk.percent + '%');
+      const dbEl = document.getElementById('vpsDbLabel');
+      if (dbEl && s.disk && s.disk.free_gb !== undefined) {
+        dbEl.textContent = s.disk.free_gb.toFixed(1) + ' GB free';
+        document.getElementById('vpsDbBar').style.width = '25%';
+      }
     } catch (e) {}
     try {
       const res = await fetch('/api/mc/tasks');
       const t = await res.json();
-      let pending = 0, doneToday = 0;
-      const items = t.tasks || t.items || t.kanban || [];
+      const pending = (t.pending || []).length + (t.queue || []).length;
+      const all = [...(t.pending || []), ...(t.running || []), ...(t.done || []), ...(t.completed || [])];
       const today = new Date().toISOString().slice(0, 10);
-      for (const it of items) {
-        if ((it.status || '').toLowerCase().includes('pending') || (it.status || '').toLowerCase().includes('todo') || (it.status || '').toLowerCase().includes('queue')) pending++;
-        if ((it.updated_at || it.completed_at || '').slice(0, 10) === today) doneToday++;
-      }
+      const doneToday = all.filter(it => (it.created_at || it.updated_at || it.completed_at || '').slice(0, 10) === today).length;
       const q = document.getElementById('tileQueue');
       if (q) q.textContent = pending;
       const td = document.getElementById('tileToday');
       if (td) td.textContent = doneToday;
+      const th = document.getElementById('statThroughput');
+      if (th) th.textContent = all.length || '—';
     } catch (e) {}
     try {
       const res = await fetch('/api/mc/ws/sessions?limit=100');
@@ -1211,10 +1298,89 @@
     } catch (e) {}
   }
 
+  async function loadStatsStrip() {
+    try {
+      // Integrity: hitung dari errors — 100 - (errors_hari_ini * 2), floor 0
+      const er = await fetch('/api/mc/errors?limit=1');
+      if (er.ok) {
+        const d = await er.json();
+        const integrity = Math.max(0, Math.round(100 - (d.count || 0) * 1.5));
+        const el = document.getElementById('statIntegrity');
+        if (el) el.textContent = integrity + '%';
+      }
+    } catch (e) {}
+    try {
+      // Agent Calls & Messages: dari log swarm (data nyata)
+      const lr = await fetch('/api/mc/logs?limit=500');
+      if (lr.ok) {
+        const ld = await lr.json();
+        const logs = ld.logs || [];
+        const calls = new Set(logs.map(l => l.task_id)).size;
+        const elC = document.getElementById('statCalls');
+        if (elC) elC.textContent = calls || '—';
+        const elM = document.getElementById('statMessages');
+        if (elM) elM.textContent = logs.length || '—';
+      }
+    } catch (e) {}
+    try {
+      const dr = await fetch('/api/mc/directive');
+      const d = await dr.json();
+      const threads = d.threads || [];
+      let tokens = 0;
+      for (const t of threads) tokens += t.context_tokens || 0;
+      const elT = document.getElementById('statTokens');
+      if (elT) elT.textContent = tokens ? (tokens / 1000000).toFixed(1) + 'M' : '—';
+    } catch (e) {}
+  }
+
+  async function loadActivity() {
+    try {
+      const res = await fetch('/api/mc/logs?limit=15');
+      const d = await res.json();
+      const logs = d.logs || [];
+      const feed = document.getElementById('activityFeed');
+      if (!feed) return;
+      if (!logs.length) {
+        feed.innerHTML = '<div style="color:var(--at-text-muted);font-size:12px;font-family:var(--at-font-mono)">Belum ada aktivitas tercatat.</div>';
+        return;
+      }
+      feed.innerHTML = '';
+      const badgeMap = { research: 'badge-research', programmer: 'badge-coder', coder: 'badge-coder', qa: 'badge-qa', creator: 'badge-creator', chief: 'badge-orch', orchestrator: 'badge-orch' };
+      for (const log of logs.slice(0, 15)) {
+        const agent = (log.agent_id || log.agent || 'chief').toLowerCase();
+        const status = (log.status || 'ok').toLowerCase();
+        const text = log.task || log.message || log.summary || JSON.stringify(log).slice(0, 120);
+        const time = (log.created_at || log.ts || log.timestamp || '').toString().slice(11, 16) || '';
+        const item = document.createElement('div');
+        item.className = 'at-feed-item';
+        item.innerHTML = `
+          <span class="at-feed-badge ${badgeMap[agent] || 'badge-orch'}">${agent.toUpperCase().slice(0, 5)}</span>
+          <span class="at-feed-text" title="${text.replace(/"/g, '&quot;')}">${text}</span>
+          <span class="at-feed-time ${status === 'error' || status === 'err' ? 'at-feed-err' : 'at-feed-ok'}">${status === 'error' || status === 'err' ? 'ERR' : 'OK'}${time ? ' · ' + time : ''}</span>`;
+        feed.appendChild(item);
+      }
+    } catch (e) {}
+    try {
+      const res = await fetch('/api/mc/agents');
+      const d = await res.json();
+      const agents = d.agents || [];
+      const mini = document.getElementById('swarmMini');
+      if (mini) {
+        mini.innerHTML = agents.map(a =>
+          `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <span>${a.name || a.id}</span>
+            <span style="color:${(a.status || 'idle') === 'active' ? 'var(--at-mint)' : 'var(--at-amber)'}">${(a.status || 'idle').toUpperCase()}</span>
+          </div>`).join('') || '—';
+      }
+    } catch (e) {}
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     loadDirective();
     loadTelemetry();
-    setInterval(() => { loadDirective(); loadTelemetry(); }, 30000);
+    loadStatsStrip();
+    loadActivity();
+    setInterval(() => { loadDirective(); loadTelemetry(); loadStatsStrip(); loadActivity(); }, 30000);
   });
   </script>
 </body>
