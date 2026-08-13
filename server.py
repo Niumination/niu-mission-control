@@ -575,6 +575,25 @@ async def logs_feed(agent: str = None, limit: int = 50):
     return {"logs": logs}
 
 
+@app.get("/api/mc/errors", tags=["tasks"])
+async def errors_count():
+    """Error count from Hermes errors.log for today."""
+    try:
+        path = "/Volumes/HermesAgent/HermesAgentUSB/data/logs/errors.log"
+        today = datetime.now().strftime("%Y-%m-%d")
+        count = 0
+        last_lines = []
+        if os.path.exists(path):
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    if line.startswith(today) and "ERROR" in line:
+                        count += 1
+                        last_lines.append(line.strip()[-160:])
+        return {"count": count, "today": today, "recent": last_lines[-5:]}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # ── Task Update ──────────────────────────────────────────
 
 @app.post("/api/mc/task-update", tags=["tasks"])
@@ -1098,6 +1117,98 @@ async def get_ws_session(session_id: int):
     try:
         messages = await bus.get_ws_session_messages(session_id)
         return {"session_id": session_id, "messages": messages}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ══════════════════════════════════════════════════════════
+#  Directive & Context Window (per-thread telemetry)
+# ══════════════════════════════════════════════════════════
+
+# Thread id → model context window (tokens). Covers models currently mapped
+# in Hermes config; unknown models fall back to 1M.
+CONTEXT_WINDOWS = {
+    "gemini-3.5-flash-lite": 1_048_576,
+    "gemini-2.5-pro": 1_048_576,
+    "deepseek-r1-distill-qwen-32b": 131_072,
+    "glm-4.7-flash": 131_072,
+    "glm-5.2": 131_072,
+    "gemma-4-31b-it": 131_072,
+    "minimax-m3": 131_072,
+    "big-pickle": 262_144,
+}
+DEFAULT_CONTEXT = 1_048_576
+
+
+def _load_hermes_config() -> dict:
+    """Read Hermes config.yaml (channel_overrides + channel_prompts)."""
+    try:
+        cfg_path = os.path.expanduser("~/.hermes/config.yaml")
+        if not os.path.exists(cfg_path):
+            cfg_path = "/Volumes/HermesAgent/HermesAgentUSB/data/config.yaml"
+        return _yaml_safe_load(cfg_path)
+    except Exception:
+        return {}
+
+
+def _yaml_safe_load(path: str) -> dict:
+    try:
+        import yaml as _y
+        with open(path, encoding="utf-8") as f:
+            return _y.safe_load(f) or {}
+    except Exception:
+        return {}
+
+
+@app.get("/api/mc/directive", tags=["telegram"])
+async def mc_directive():
+    """Per-thread: current directive (channel prompt), model, context window usage."""
+    try:
+        cfg = _load_hermes_config()
+        tg = cfg.get("platforms", {}).get("telegram", {})
+        overrides = tg.get("channel_overrides", {}) or {}
+        extra = tg.get("extra", {}) or {}
+        prompts_raw = extra.get("channel_prompts", "{}")
+        try:
+            prompts = json.loads(prompts_raw) if isinstance(prompts_raw, str) else prompts_raw
+        except Exception:
+            prompts = {}
+
+        # Session context usage from Hermes sessions.json mirror
+        sessions_meta = {}
+        sj_path = "/Volumes/HermesAgent/HermesAgentUSB/data/sessions/sessions.json"
+        try:
+            with open(sj_path, encoding="utf-8") as f:
+                sj = json.load(f)
+            for key, meta in sj.items():
+                if not isinstance(meta, dict):
+                    continue
+                tid = str(meta.get("origin", {}).get("thread_id") or "")
+                if tid:
+                    sessions_meta[tid] = meta
+        except Exception:
+            pass
+
+        threads = []
+        for tid in ["1", "802", "803", "804", "1172"]:
+            ov = overrides.get(tid, {}) or {}
+            model_raw = ov.get("model", "gemini/gemini-3.5-flash-lite")
+            model_short = model_raw.split("/")[-1]
+            prompt = prompts.get(tid, "")
+            directive = " ".join(prompt.split())[:160] if prompt else ""
+            meta = sessions_meta.get(tid, {})
+            tokens = meta.get("last_prompt_tokens", 0) or 0
+            ctx_max = CONTEXT_WINDOWS.get(model_short, DEFAULT_CONTEXT)
+            threads.append({
+                "thread_id": tid,
+                "model": model_short,
+                "directive": directive,
+                "context_tokens": tokens,
+                "context_max": ctx_max,
+                "context_pct": round(100 * tokens / ctx_max, 2) if ctx_max else 0,
+                "updated_at": meta.get("updated_at", ""),
+            })
+        return {"threads": threads}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
