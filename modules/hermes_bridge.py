@@ -56,16 +56,25 @@ def _run_hermes_send(text: str, topic_id: str = "1") -> dict:
         target = f"telegram:{TELEGRAM_CHAT_ID}:{topic_id}"
         env = dict(os.environ)
         env["HERMES_HOME"] = HERMES_HOME
-        r = subprocess.run(
-            [HERMES_CLI, "send", "-t", target, text],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            env=env,
-        )
-        if r.returncode == 0 and "sent" in r.stdout.lower():
-            return {"status": "sent", "message": "Pesan terkirim ke Telegram"}
-        return {"status": "error", "message": r.stderr[:200] or r.stdout[:200]}
+        last_err = ""
+        # Retry 2x dengan timeout 30s (Telegram network kadang flaky)
+        for attempt in range(2):
+            try:
+                r = subprocess.run(
+                    [HERMES_CLI, "send", "-t", target, text],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    env=env,
+                )
+                if r.returncode == 0 and "sent" in r.stdout.lower():
+                    return {"status": "sent", "message": "Pesan terkirim ke Telegram"}
+                last_err = r.stderr[:200] or r.stdout[:200]
+            except subprocess.TimeoutExpired:
+                last_err = "Timeout 30s"
+            except Exception as e:
+                last_err = str(e)
+        return {"status": "error", "message": last_err}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -210,6 +219,50 @@ def _audit_log_terminal(cmd: str, exit_code: int, output_summary: str):
         conn.close()
     except Exception:
         pass  # Fail silently to not break command execution
+
+
+def run_agent_turn(
+    prompt: str,
+    session_id: str,
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
+    timeout: int = 300,
+) -> dict[str, Any]:
+    """Trigger satu turn agent Hermes (resume session thread) via CLI.
+
+    Menjalankan `hermes -z "<prompt>" --resume <session>` — agent target
+    (misal QA thread 804) benar-benar BEKERJA dengan konteks session-nya,
+    bukan sekadar menerima pesan.
+
+    Returns:
+        {"status": "done", "output": str} atau {"status": "error", "message": str}
+    """
+    if not _is_cli_available():
+        return {"status": "error", "message": "hermes CLI tidak tersedia"}
+
+    cmd = [HERMES_CLI, "-z", prompt, "--resume", session_id]
+    if model and provider:
+        cmd += ["-m", model, "--provider", provider]
+    cmd += ["--pass-session-id"]
+
+    env = dict(os.environ)
+    env["HERMES_HOME"] = HERMES_HOME
+    try:
+        r = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+        )
+        output = (r.stdout or "").strip()
+        if r.returncode != 0 and not output:
+            return {"status": "error", "message": (r.stderr or "")[:300]}
+        return {"status": "done", "output": output[:4000]}
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": f"Timeout ({timeout}s)"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)[:300]}
 
 
 def get_activity_log(limit: int = 20) -> list[dict[str, Any]]:

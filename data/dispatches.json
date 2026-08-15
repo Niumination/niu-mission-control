@@ -1,0 +1,65 @@
+[
+ {
+  "id": "cdb80b3c05",
+  "ts": "2026-08-14T22:05:52",
+  "unix": 1786719952.246092,
+  "from": "general",
+  "to": "804",
+  "to_name": "qa",
+  "message": "Perintah dari User (via pipeline fix): lakukan audit struktur services/niu-mission-control — cek server.py, modules/, aios/ dan laporkan status, temuan, rekomendasi dalam format ✅/⚠️/🔧",
+  "status": "sent",
+  "error": null,
+  "via": "api"
+ },
+ {
+  "id": "b7d1867cdd",
+  "ts": "2026-08-14T22:08:34",
+  "unix": 1786720114.477773,
+  "from": "general",
+  "to": "804",
+  "to_name": "qa",
+  "message": "Audit singkat: cek struktur services/niu-mission-control (server.py, modules/, aios/) dan laporan 5 temuan format ✅/⚠️/🔧",
+  "status": "done",
+  "error": null,
+  "via": "api",
+  "result": "Dari viewcache saya hanya ada referensi ekosistem  Niumation dari desktop user ( /Users/zaryu/Desktop/Niumation ), tetapi struktur services/niu-mission-control tidak terlihat di dalamnya. Apakah Anda ingin saya melakukan audit pada repo ekosistem yang sedang aktif (misalnya versi terbaru yang sudah di-sync), atau lokasinya berbeda?\n\nApakah yang ingin Anda lakukan saat ini:\n- Mencari repo Niumation di alternatif lokasi server accessible?\n- Waiting lagi untuk melihat struktur selengkap saat di-sync ke cache"
+ },
+ {
+  "id": "d84992ee6b",
+  "ts": "2026-08-14T22:12:05",
+  "unix": 1786720325.546196,
+  "from": "dashboard",
+  "to": "1172",
+  "to_name": "kreator",
+  "message": "Test UI dispatch: buat 1 ide konten singkat untuk Instagram Dinas Kominfo, 2 kalimat saja",
+  "status": "error",
+  "error": "Command '['/Users/zaryu/.hermes-portable/venv/bin/hermes', 'send', '-t', 'telegram:-1004204696417:1172', 'Test UI dispatch: buat 1 ide konten singkat untuk Instagram Dinas Kominfo, 2 kalimat saja']' timed out after 15 seconds",
+  "via": "api"
+ },
+ {
+  "id": "c9102b1838",
+  "ts": "2026-08-14T22:13:45",
+  "unix": 1786720425.148822,
+  "from": "dashboard",
+  "to": "1172",
+  "to_name": "kreator",
+  "message": "Test retry: kirim 1 ide konten IG singkat",
+  "status": "done",
+  "error": null,
+  "via": "api",
+  "result": "Berikut 1 ide konten IG yang singkat:\n\n---\n\n**📸 Carousel: \"3 Zona Waktu yang Bikin Produktivitas Naik\"**\n\n**Konsep:** Carousel 4 slide — 1 hook + 3 zona waktu terbaik untuk fokus kerja.\n\n**Slide 1 (Hook):**\n> \"Jam berapa otak kamu paling produktif? Coba cek 3 zona ini 👇\"\n\n**Slide 2:** 🌅 **06:00–09:00** — Energimu paling tinggi. Cocok untuk tugas berat (planning, strategi, nulis).\n\n**Slide 3:** ☀️ **10:00–12:00** — Fokus puncak. Jadikan untuk deep work, coding, atau desain.\n\n**Slide 4:** 🌙 **16:00–18:00** — Momentum closing. Selesaikan tugas ringan & follow-up.\n\n**Caption singkat:**\n> \"Mana zona favoritmu? Save postingan ini biar gak lupa! 🔖\"\n\n**Tips tambahan:** Pakai desain minimalis dengan warna kontras agar mudah dibaca saat di-scroll.\n\n---\n\nMau aku kembangkan ide lain atau buat versi untuk Reels? 😄"
+ },
+ {
+  "id": "266270aded",
+  "ts": "2026-08-14T22:15:09",
+  "unix": 1786720509.122238,
+  "from": "dashboard",
+  "to": "1172",
+  "to_name": "kreator",
+  "message": "Test pipeline async: balas dengan OK",
+  "status": "done",
+  "error": null,
+  "via": "api",
+  "result": "OK"
+ }
+]

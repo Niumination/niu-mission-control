@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype C — Personal AI OS Shell</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --bg:#030712; --glass:rgba(15,20,35,0.65); --border:rgba(255,255,255,0.08); --cyan:#00f3ff; --mint:#10b981; --amber:#f59e0b; --red:#ef4444; --violet:#a78bfa; --pink:#f472b6; --mut:#64748b; }
+  body { background:var(--bg); color:#e2e8f0; font-family:'Inter',system-ui,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden;
+    background-image: radial-gradient(circle at 20% 0%, rgba(139,92,246,0.08), transparent 50%), radial-gradient(circle at 80% 40%, rgba(0,243,255,0.06), transparent 50%); }
+  .mono { font-family:'JetBrains Mono',monospace; }
+
+  /* ── Header ── */
+  header { height:52px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:rgba(5,8,17,0.85); border-bottom:1px solid var(--border); backdrop-filter:blur(12px); z-index:20; }
+  .logo { display:flex; align-items:center; gap:10px; font-size:13px; letter-spacing:0.25em; font-weight:700; color:var(--cyan); }
+  .logo .core { width:20px; height:20px; border-radius:50%; border:2px solid var(--cyan); box-shadow:0 0 14px var(--cyan), inset 0 0 8px var(--cyan); animation:spin 6s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .hud-stats { display:flex; gap:18px; align-items:center; }
+  .hs { text-align:right; }
+  .hs .l { font-size:8px; color:var(--mut); letter-spacing:0.15em; text-transform:uppercase; }
+  .hs .v { font-size:13px; font-weight:700; }
+  .hs .v.cyan { color:var(--cyan); } .hs .v.mint { color:var(--mint); } .hs .v.amber { color:var(--amber); }
+  .sound-btn { background:rgba(0,243,255,0.1); border:1px solid rgba(0,243,255,0.3); color:var(--cyan); border-radius:8px; padding:6px 12px; cursor:pointer; font-size:11px; font-family:'JetBrains Mono',monospace; transition:all .2s; }
+  .sound-btn:hover { background:rgba(0,243,255,0.2); box-shadow:0 0 16px -4px var(--cyan); }
+
+  /* ── Body 3 kolom ── */
+  .body { flex:1; display:grid; grid-template-columns:280px 1fr 300px; gap:12px; padding:12px; min-height:0; }
+  .panel { background:var(--glass); border:1px solid var(--border); border-radius:14px; backdrop-filter:blur(14px); padding:14px; display:flex; flex-direction:column; min-height:0; }
+  .panel-title { font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--mut); margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; }
+  .panel-title .live { color:var(--mint); font-size:8px; display:flex; align-items:center; gap:4px; }
+  .panel-title .live::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--mint); box-shadow:0 0 8px var(--mint); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* left: thread matrix mini */
+  .mini-thread { padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .mini-thread:last-child { border-bottom:none; }
+  .mt-head { display:flex; justify-content:space-between; font-size:10px; margin-bottom:5px; }
+  .mt-head .name { color:#cbd5e1; } .mt-head .st { font-size:8px; }
+  .st.idle{color:var(--mut)} .st.proc{color:var(--cyan);animation:pulse 1.4s infinite} .st.thr{color:var(--amber)} .st.err{color:var(--red)}
+  .mt-bar { height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+  .mt-fill { height:100%; border-radius:2px; transition:width .6s; }
+
+  /* center: canvas 3D placeholder */
+  .center-canvas { position:relative; display:flex; align-items:center; justify-content:center; }
+  .center-canvas .placeholder { text-align:center; color:var(--mut); }
+  .center-canvas .ph-core { width:120px; height:120px; margin:0 auto 16px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, rgba(0,243,255,0.25), rgba(139,92,246,0.1) 60%, transparent);
+    border:1px solid rgba(0,243,255,0.35); box-shadow:0 0 60px -10px var(--cyan), inset 0 0 40px rgba(0,243,255,0.15); animation:spin 14s linear infinite; position:relative; }
+  .center-canvas .ph-core::before { content:''; position:absolute; inset:-14px; border-radius:50%; border:1px dashed rgba(0,243,255,0.25); animation:spin 8s linear infinite reverse; }
+  .ph-label { font-size:11px; letter-spacing:0.2em; color:#94a3b8; }
+  .ph-sub { font-size:9px; color:var(--mut); margin-top:6px; font-family:'JetBrains Mono',monospace; }
+  .view-switch { position:absolute; top:8px; left:50%; transform:translateX(-50%); display:flex; gap:6px; background:rgba(3,7,18,0.7); border:1px solid var(--border); border-radius:999px; padding:4px; }
+  .vs { font-size:9px; padding:4px 12px; border-radius:999px; cursor:pointer; color:var(--mut); transition:all .2s; font-family:'JetBrains Mono',monospace; }
+  .vs.on { background:rgba(0,243,255,0.15); color:var(--cyan); }
+
+  /* right: swarm + tools */
+  .agent-row { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:8px; margin-bottom:4px; background:rgba(255,255,255,0.02); }
+  .agent-row .a-dot { width:7px; height:7px; border-radius:50%; }
+  .agent-row .a-name { font-size:11px; flex:1; }
+  .agent-row .a-status { font-size:8px; font-family:'JetBrains Mono',monospace; color:var(--mut); }
+  .tool-chip { display:inline-block; font-size:8px; padding:3px 7px; border-radius:5px; margin:2px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.25); color:var(--mint); font-family:'JetBrains Mono',monospace; }
+
+  /* ── Bottom dock ── */
+  .dock { height:150px; background:rgba(5,8,17,0.85); border-top:1px solid var(--border); backdrop-filter:blur(12px); display:grid; grid-template-columns:1fr 320px; gap:12px; padding:10px 14px; z-index:20; }
+  .dock .log-stream { overflow-y:auto; font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#94a3b8; }
+  .log-line { padding:1px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .log-line .t { color:var(--mut); margin-right:6px; } .log-line.ok { color:#7dd3fc; } .log-line.err { color:var(--red); }
+  .voice-console { display:flex; flex-direction:column; gap:8px; }
+  .vc-label { font-size:9px; color:var(--mut); letter-spacing:0.15em; text-transform:uppercase; }
+  .vc-wave { display:flex; align-items:center; gap:2px; height:34px; }
+  .vc-wave span { flex:1; background:var(--cyan); opacity:.5; border-radius:1px; animation:wave 1.2s ease-in-out infinite; }
+  .vc-wave span:nth-child(2n){animation-delay:.2s} .vc-wave span:nth-child(3n){animation-delay:.4s}
+  @keyframes wave { 0%,100%{height:12%} 50%{height:95%} }
+  .vc-input { display:flex; gap:6px; }
+  .vc-input input { flex:1; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:#e2e8f0; font-size:11px; outline:none; }
+  .vc-input input:focus { border-color:rgba(0,243,255,0.4); }
+  .vc-input button { background:rgba(0,243,255,0.12); border:1px solid rgba(0,243,255,0.3); color:var(--cyan); border-radius:8px; padding:0 14px; cursor:pointer; font-size:10px; }
+  .gesture-pill { font-size:8px; color:var(--amber); font-family:'JetBrains Mono',monospace; text-align:center; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo"><div class="core"></div>HERMES // AI OS</div>
+  <div class="hud-stats">
+    <div class="hs"><div class="l">Uptime</div><div class="v mono cyan" id="uptime">—</div></div>
+    <div class="hs"><div class="l">Threads</div><div class="v mono amber" id="threadsH">5/5</div></div>
+    <div class="hs"><div class="l">Load</div><div class="v mono mint" id="loadH">—</div></div>
+    <button class="sound-btn" id="soundBtn">🔊 SOUND ON</button>
+  </div>
+</header>
+
+<!-- BODY -->
+<div class="body">
+  <!-- LEFT: thread matrix -->
+  <aside class="panel">
+    <div class="panel-title"><span>Thread Orchestrator</span><span class="live">LIVE</span></div>
+    <div id="threadMatrix"></div>
+  </aside>
+
+  <!-- CENTER: 3D canvas -->
+  <section class="panel center-canvas">
+    <div class="view-switch">
+      <span class="vs on" data-view="core">CORE</span>
+      <span class="vs" data-view="swarm">SWARM</span>
+      <span class="vs" data-view="memory">MEMORY</span>
+      <span class="vs" data-view="logs">LOGS</span>
+    </div>
+    <div class="placeholder" id="canvasPlaceholder">
+      <div class="ph-core"></div>
+      <div class="ph-label">HOLOGRAPHIC CORE</div>
+      <div class="ph-sub">[ prototype A: file://01-holographic-core.html ]</div>
+    </div>
+  </section>
+
+  <!-- RIGHT: swarm + tools -->
+  <aside class="panel">
+    <div class="panel-title"><span>Swarm Agents</span><span class="live" style="color:var(--cyan)">4 ACTIVE</span></div>
+    <div id="agentList"></div>
+    <div class="panel-title" style="margin-top:14px"><span>Tool Stack</span></div>
+    <div id="toolStack"></div>
+  </aside>
+</div>
+
+<!-- DOCK -->
+<div class="dock">
+  <div class="log-stream" id="logStream"></div>
+  <div class="voice-console">
+    <div class="vc-label">Voice Command · Spacebar</div>
+    <div class="vc-wave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="vc-input"><input id="vcText" placeholder="Ketik atau tekan spasi untuk voice…"><button id="vcSend">SEND</button></div>
+    <div class="gesture-pill">✋ OPEN PALM = pause feed · 🤏 PINCH = zoom · 👉 SWIPE = ganti view [ MediaPipe ]</div>
+  </div>
+</div>
+
+<script>
+// ── Data live dari MC API (fallback ke demo jika server mati) ──
+const API = 'http://localhost:5200';
+const THREADS = [
+  { id:'memory',  name:'Memory Indexer', color:'var(--cyan)' },
+  { id:'planner', name:'Task Planner',   color:'var(--violet)' },
+  { id:'tool',    name:'Tool Engine',    color:'var(--mint)' },
+  { id:'swarm',   name:'Swarm Coord',    color:'var(--amber)' },
+  { id:'synth',   name:'Synthesizer',    color:'var(--pink)' },
+];
+const AGENTS = [
+  { n:'Hermes Chief',  s:'ACTIVE', c:'var(--mint)' },
+  { n:'Research',      s:'IDLE',   c:'var(--cyan)' },
+  { n:'Programmer',    s:'ACTIVE', c:'var(--mint)' },
+  { n:'QA Tester',     s:'IDLE',   c:'var(--amber)' },
+  { n:'Kreator',       s:'IDLE',   c:'var(--pink)' },
+];
+const TOOLS = ['CLI','Web Browser','Code Interpreter','Git','Telegram','Skill Bank'];
+
+let feedPaused = false;
+const LOGS = [
+  '[T3] exec: git push origin main — OK',
+  '[T1] vector store sync 42 docs — OK',
+  '[T4] delegate research → Topic 802 — OK',
+  '[T5] tts render 3.2s audio — OK',
+  '[T2] decompose: redesign dashboard → 6 steps',
+  '[T1] RAG retrieval top-5 chunks — OK',
+  '[T3] run: pytest tests/ — 12 passed',
+  '[T4] swarm heartbeat 4/4 — OK',
+  '[T2] plan: prototype A/B/C approved',
+  '[T5] stream flush — OK',
+];
+
+function renderMatrix(sys){
+  const el = document.getElementById('threadMatrix');
+  el.innerHTML = '';
+  THREADS.forEach((t,i)=>{
+    const status = ['idle','proc','idle','thr','idle'][i%5];
+    const load = sys && sys.cpu_percent ? Math.max(8, Math.round(sys.cpu_percent*(0.6+Math.random()*0.6))) : Math.round(20+Math.random()*60);
+    const stLabel = {idle:'IDLE',proc:'PROCESSING',thr:'THROTTLED',err:'ERROR'}[status];
+    el.innerHTML += `
+      <div class="mini-thread">
+        <div class="mt-head"><span class="name">${t.name}</span><span class="st ${status}">${stLabel}</span></div>
+        <div class="mt-bar"><div class="mt-fill" style="width:${load}%;background:${t.color}"></div></div>
+      </div>`;
+  });
+}
+function renderAgents(){
+  document.getElementById('agentList').innerHTML = AGENTS.map(a=>
+    `<div class="agent-row"><span class="a-dot" style="background:${a.c};box-shadow:0 0 8px ${a.c}"></span><span class="a-name">${a.n}</span><span class="a-status">${a.s}</span></div>`).join('');
+  document.getElementById('toolStack').innerHTML = TOOLS.map(t=>`<span class="tool-chip">${t}</span>`).join('');
+}
+function logLine(){
+  const stream = document.getElementById('logStream');
+  const line = LOGS[Math.floor(Math.random()*LOGS.length)];
+  const err = line.includes('ERR');
+  const div = document.createElement('div');
+  div.className = 'log-line ' + (err?'err':'ok');
+  div.innerHTML = `<span class="t">${new Date().toLocaleTimeString('id-ID')}</span>${line}`;
+  stream.appendChild(div);
+  if (stream.children.length > 60) stream.removeChild(stream.firstChild);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+// ── Init + interval ──
+async function tick(){
+  let sys = null;
+  try { sys = await (await fetch(API + '/api/mc/system')).json(); } catch(e) {}
+  renderMatrix(sys);
+  if (sys){
+    document.getElementById('uptime').textContent = sys.uptime || '—';
+    document.getElementById('loadH').textContent = (sys.cpu_percent||0) + '%';
+  }
+  if (!feedPaused) logLine();
+}
+renderAgents(); tick(); setInterval(tick, 3000);
+
+// ── View switch (gesture target) ──
+document.querySelectorAll('.vs').forEach(v=>v.addEventListener('click',()=>{
+  document.querySelectorAll('.vs').forEach(x=>x.classList.remove('on'));
+  v.classList.add('on');
+  const map = {core:'HOLOGRAPHIC CORE', swarm:'SWARM TOPOLOGY', memory:'MEMORY GRAPH', logs:'SYSTEM LOGS'};
+  document.querySelector('.ph-label').textContent = map[v.dataset.view];
+}));
+
+// ── Sound toggle (placeholder) ──
+const sb = document.getElementById('soundBtn');
+let soundOn = true;
+sb.addEventListener('click', ()=>{ soundOn=!soundOn; sb.textContent = soundOn?'🔊 SOUND ON':'🔇 MUTED'; sb.style.opacity = soundOn?1:.5; });
+
+// ── Voice placeholder ──
+document.getElementById('vcSend').addEventListener('click', ()=>{
+  const v = document.getElementById('vcText').value.trim();
+  if (v) LOGS.unshift(`[VC] command: ${v}`); document.getElementById('vcText').value='';
+});
+addEventListener('keydown', e=>{ if(e.code==='Space' && e.target.tagName!=='INPUT'){ e.preventDefault(); document.getElementById('vcText').focus(); }});
+</script>
+</body>
+</html>

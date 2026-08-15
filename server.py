@@ -1195,7 +1195,7 @@ async def mc_directive():
             model_raw = ov.get("model", "gemini/gemini-3.5-flash-lite")
             model_short = model_raw.split("/")[-1]
             prompt = prompts.get(tid, "")
-            directive = " ".join(prompt.split())[:160] if prompt else ""
+            directive = " ".join(prompt.split())[:300] if prompt else ""
             meta = sessions_meta.get(tid, {})
             tokens = meta.get("last_prompt_tokens", 0) or 0
             ctx_max = CONTEXT_WINDOWS.get(model_short, DEFAULT_CONTEXT)
@@ -1221,6 +1221,168 @@ async def delete_ws_session(session_id: int):
         return {"status": "deleted"}
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ── Thread Dispatch API (antar-thread pipeline) ─────────────
+
+from modules.dispatch_store import (  # noqa: E402
+    THREAD_MODELS,
+    THREAD_SESSIONS,
+    add_dispatch,
+    get_dispatches,
+    set_result,
+    update_status,
+    validate_target,
+)
+
+
+class DispatchRequest(BaseModel):
+    to: str
+    message: str
+    source: Optional[str] = "general"
+
+
+async def _broadcast_dispatch(record: dict) -> None:
+    """Kirim update dispatch ke semua WebSocket client."""
+    try:
+        ws_msg = json.dumps({"type": "dispatch", "dispatch": record})
+        for conn in list(active_connections):
+            try:
+                await conn.send_text(ws_msg)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+async def _execute_dispatch_agent(record: dict) -> None:
+    """Background task: kirim pesan + trigger agent target bekerja.
+
+    1. Kirim notifikasi ke topic via hermes send (retry 2x)
+    2. Resume session thread via `hermes -z --resume` → agent bekerja
+    3. Simpan hasil → update status sent/done/error
+    4. Kirim hasil balik ke topic target
+    5. Broadcast update ke dashboard
+    """
+    from modules.hermes_bridge import run_agent_turn, send_chat
+
+    tid = record["to"]
+    session_id = THREAD_SESSIONS.get(tid)
+    model, provider = THREAD_MODELS.get(tid, (None, None))
+    loop = asyncio.get_event_loop()
+
+    # 1. Kirim notifikasi (retry di dalam hermes_bridge)
+    try:
+        res = await loop.run_in_executor(
+            _thread_pool, lambda: send_chat(record["message"], topic_id=tid)
+        )
+        if res.get("status") == "sent":
+            updated = update_status(record["id"], "sent")
+            if updated:
+                record = updated
+            await bus.log_event(
+                "dispatch", record.get("from", "general"), "INFO",
+                f"Dispatch → thread {tid}: {record['message'][:60]} — SENT",
+            )
+        else:
+            updated = update_status(record["id"], "error", res.get("message", "unknown"))
+            if updated:
+                record = updated
+            await bus.log_event(
+                "dispatch", record.get("from", "general"), "ERROR",
+                f"Dispatch → thread {tid}: GAGAL — {str(res.get('message', ''))[:80]}",
+            )
+            await _broadcast_dispatch(record)
+            return
+    except Exception as e:
+        updated = update_status(record["id"], "error", str(e))
+        if updated:
+            record = updated
+        await bus.log_event("dispatch", record.get("from", "general"), "ERROR", f"Send error: {str(e)[:80]}")
+        await _broadcast_dispatch(record)
+        return
+
+    await _broadcast_dispatch(record)
+
+    # 2. Trigger agent target (bila ada session)
+    if not session_id:
+        return  # status tetap 'sent' — hanya notifikasi
+
+    try:
+        res = await loop.run_in_executor(
+            _thread_pool,
+            lambda: run_agent_turn(
+                record["message"], session_id, model=model, provider=provider, timeout=420
+            ),
+        )
+        if res.get("status") == "done":
+            output = res.get("output", "")
+            if output:
+                set_result(record["id"], output)
+                updated = update_status(record["id"], "done")
+                # Kirim hasil balik ke topic target
+                try:
+                    await loop.run_in_executor(
+                        _thread_pool,
+                        lambda: send_chat(output[:3500], topic_id=tid),
+                    )
+                except Exception:
+                    pass
+                await bus.log_event(
+                    "dispatch", record.get("from", "general"), "INFO",
+                    f"Agent thread {tid} SELESAI — hasil dikirim ke topic",
+                )
+            else:
+                updated = update_status(record["id"], "done", "output kosong")
+        else:
+            updated = update_status(record["id"], "error", res.get("message", "unknown"))
+            await bus.log_event(
+                "dispatch", record.get("from", "general"), "ERROR",
+                f"Agent thread {tid} gagal: {str(res.get('message', ''))[:80]}",
+            )
+    except Exception as e:
+        updated = update_status(record["id"], "error", str(e))
+        await bus.log_event("dispatch", record.get("from", "general"), "ERROR", f"Agent exec error: {str(e)[:80]}")
+
+    if updated:
+        await _broadcast_dispatch(updated)
+
+
+@app.post("/api/mc/dispatch", tags=["telegram"])
+async def mc_dispatch(req: DispatchRequest):
+    """Kirim perintah antar-thread + trigger agent + tracking realtime.
+
+    Body: {to: "804", message: "...", source: "general"}
+    1. Merekam status pending + broadcast instan (dashboard realtime)
+    2. Background task: kirim pesan → trigger agent → done/error
+    """
+    message = (req.message or "").strip()
+    if not message:
+        return JSONResponse({"error": "message wajib diisi"}, status_code=400)
+
+    ok, err = validate_target(req.to)
+    if not ok:
+        return JSONResponse({"error": err}, status_code=400)
+
+    # 1. Record pending + broadcast instan
+    record = add_dispatch(
+        to=req.to,
+        message=message,
+        from_agent=req.source or "general",
+        status="pending",
+    )
+    await _broadcast_dispatch(record)
+
+    # 2. Background: kirim + trigger agent
+    asyncio.create_task(_execute_dispatch_agent(record))
+
+    return record
+
+
+@app.get("/api/mc/dispatches", tags=["telegram"])
+async def mc_dispatches(limit: int = 20):
+    """Riwayat dispatch antar-thread (terbaru dulu)."""
+    return {"dispatches": get_dispatches(limit=max(1, min(limit, 100)))}
 
 
 # ── Cost Tracking API ─────────────────────────────────────
@@ -1366,6 +1528,7 @@ async def swarm_ws(websocket: WebSocket):
             "agents": get_agent_status(),
             "logs": await bus.get_agent_logs(limit=30),
             "skills": initial_skills,
+            "dispatches": get_dispatches(limit=8),
         }
         await websocket.send_text(json.dumps(initial))
 
@@ -1378,6 +1541,7 @@ async def swarm_ws(websocket: WebSocket):
                 "agents": get_agent_status(),
                 "logs": await bus.get_agent_logs(limit=25),
                 "skills": tick_skills,
+                "dispatches": get_dispatches(limit=8),
             }
             await websocket.send_text(json.dumps(snapshot))
     except WebSocketDisconnect:
@@ -1481,6 +1645,39 @@ async def dashboard_legacy():
 
 if os.path.exists(DASHBOARD_DIR):
     app.mount("/static", StaticFiles(directory=DASHBOARD_DIR), name="static")
+
+
+# ══════════════════════════════════════════════════════════
+#  AIOS — Personal AI OS Dashboard (v4.0)
+# ══════════════════════════════════════════════════════════
+
+AIOS_DIR = os.path.join(BASE_DIR, "aios")
+
+
+@app.get("/aios", response_class=HTMLResponse, tags=["aios"])
+async def aios_index():
+    """Serve the AI OS dashboard shell (v4.0)."""
+    return FileResponse(os.path.join(AIOS_DIR, "index.html"))
+
+
+# ══════════════════════════════════════════════════════════
+#  FUSION — Unified Desktop (prototype)
+# ══════════════════════════════════════════════════════════
+
+FUSION_DIR = os.path.join(BASE_DIR, "fusion")
+
+
+@app.get("/fusion", response_class=HTMLResponse, tags=["fusion"])
+async def fusion_index():
+    """Serve the FUSION unified desktop (prototype) — 3 halaman dalam floating windows."""
+    fusion_path = os.path.join(FUSION_DIR, "index.html")
+    if os.path.exists(fusion_path):
+        return FileResponse(fusion_path)
+    return JSONResponse({"error": "fusion not built yet"}, status_code=404)
+
+
+if os.path.exists(AIOS_DIR):
+    app.mount("/aios/static", StaticFiles(directory=AIOS_DIR), name="aios-static")
 
 
 # ── Entry Point ──────────────────────────────────────────

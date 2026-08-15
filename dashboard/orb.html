@@ -7,10 +7,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
+    :root{
+      --glass:rgba(10,15,28,.82);--glass-b:rgba(111,216,255,.14);
+      --cy400:#22d3ee;--cy500:#06b6d4;
+      --t1:#f1f5f9;--t2:#94a3b8;--t3:#64748b;--t4:#334155;
+      --r:14px;
+      --ease:cubic-bezier(.34,1.3,.4,1);
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #05070d;
+      background-image: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(111,216,255,.05), transparent 70%);
       color: #e8eaf2;
       font-family: 'JetBrains Mono', monospace;
       overflow: hidden;
@@ -35,61 +44,110 @@
     }
     #title small {
       display: block; font-family: 'JetBrains Mono', monospace;
-      font-size: 0.6rem; font-weight: 400; letter-spacing: 0.1em;
-      color: #5a6a8a; margin-top: 4px;
+      font-size: 0.62rem; font-weight: 400; letter-spacing: 0.1em;
+      color: #6a7ba0; margin-top: 4px;
     }
     #nav-btn {
       pointer-events: auto;
       background: rgba(111, 216, 255, 0.08);
       border: 1px solid rgba(111, 216, 255, 0.3);
       color: #6fd8ff; font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem; padding: 8px 16px; border-radius: 6px;
+      font-size: 0.72rem; padding: 8px 16px; border-radius: 8px;
+      cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 0 12px -4px rgba(111, 216, 255, 0.2);
+    }
+    #nav-btn:hover { background: rgba(111, 216, 255, 0.2); box-shadow: 0 0 18px -2px rgba(111, 216, 255, 0.45); transform: translateY(-1px); }
+
+    /* ── MENU DROPDOWN (navigasi dashboard dari ORB) ── */
+    #hud-actions { display: flex; gap: 10px; align-items: flex-start; pointer-events: auto; }
+    #menu-wrap { position: relative; }
+    #menu-btn {
+      background: rgba(111, 216, 255, 0.06);
+      border: 1px solid rgba(111, 216, 255, 0.22);
+      color: #9fd9ff; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; padding: 8px 14px; border-radius: 8px;
       cursor: pointer; transition: all 0.2s;
     }
-    #nav-btn:hover { background: rgba(111, 216, 255, 0.2); }
+    #menu-btn:hover { background: rgba(111, 216, 255, 0.16); border-color: rgba(111, 216, 255, 0.45); }
+    #menu-drop {
+      position: absolute; top: calc(100% + 10px); right: 0;
+      background: rgba(8, 13, 24, 0.94);
+      border: 1px solid rgba(111, 216, 255, 0.25);
+      border-radius: 12px; padding: 8px; min-width: 225px;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      display: none; flex-direction: column; gap: 2px;
+      box-shadow: 0 18px 44px -12px rgba(0,0,0,.85), 0 0 34px -12px rgba(111,216,255,.35);
+      z-index: 200;
+    }
+    #menu-drop.open { display: flex; animation: mFade .16s ease; }
+    @keyframes mFade { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+    .m-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 7px; cursor: pointer;
+      font-size: 0.74rem; color: #a5b2cf; white-space: nowrap;
+      transition: all 0.15s; user-select: none;
+    }
+    .m-item:hover { background: rgba(111, 216, 255, 0.12); color: #eaf6ff; transform: translateX(3px); }
+    .m-item .mi { font-size: 0.9rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .m-sep { height: 1px; background: rgba(111, 216, 255, 0.12); margin: 5px 4px; }
 
     #hud-bottom {
       display: flex; justify-content: space-between; align-items: flex-end;
       gap: 24px;
     }
     .panel {
-      background: rgba(10, 16, 28, 0.75);
+      background: rgba(10, 16, 28, 0.78);
       border: 1px solid rgba(111, 216, 255, 0.15);
-      border-radius: 10px; padding: 14px 18px;
-      backdrop-filter: blur(8px);
-      min-width: 200px;
+      border-radius: 12px; padding: 14px 18px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      min-width: 210px;
+      box-shadow: 0 8px 32px -12px rgba(0,0,0,.6);
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .panel:hover {
+      border-color: rgba(111, 216, 255, 0.28);
+      box-shadow: 0 10px 40px -12px rgba(0,0,0,.7), 0 0 24px -10px rgba(111,216,255,.25);
     }
     .panel h3 {
-      font-size: 0.6rem; font-weight: 500; letter-spacing: 0.15em;
-      color: #5a6a8a; margin-bottom: 8px; text-transform: uppercase;
+      font-size: 0.66rem; font-weight: 600; letter-spacing: 0.18em;
+      color: #7c8db0; margin-bottom: 9px; text-transform: uppercase;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .panel h3::before {
+      content: ''; width: 3px; height: 11px; border-radius: 2px;
+      background: linear-gradient(180deg, #6fd8ff, #9b6dff); flex-shrink: 0;
     }
     .stat-row {
       display: flex; justify-content: space-between; align-items: center;
-      font-size: 0.75rem; padding: 3px 0;
+      font-size: 0.8rem; padding: 4px 0;
     }
     .stat-row .label { color: #8a97b5; }
     .stat-row .value { color: #e8eaf2; font-weight: 500; }
-    .stat-row .value.ok { color: #4ade80; }
+    .stat-row .value.ok { color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,.3); }
     .stat-row .value.warn { color: #fbbf24; }
     .stat-row .value.err { color: #f87171; }
 
-    #agents-panel { max-height: 180px; overflow-y: auto; }
+    #agents-panel { max-height: 180px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #1e2a44 transparent; }
     .agent-item {
       display: flex; align-items: center; gap: 8px;
-      font-size: 0.7rem; padding: 4px 0;
+      font-size: 0.75rem; padding: 5px 6px; margin: 0 -6px; border-radius: 6px;
+      transition: background .15s;
     }
+    .agent-item:hover { background: rgba(111, 216, 255, 0.06); }
     .agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .agent-dot.online { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
     .agent-dot.idle { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; }
     .agent-dot.offline { background: #f87171; box-shadow: 0 0 6px #f87171; }
-    .agent-name { color: #8a97b5; }
-    .agent-model { color: #5a6a8a; font-size: 0.6rem; margin-left: auto; }
+    .agent-name { color: #a5b2cf; }
+    .agent-model { color: #6a7ba0; font-size: 0.65rem; margin-left: auto; }
 
     /* hint */
     #hint {
-      position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
-      font-size: 0.6rem; color: #3d4a66; letter-spacing: 0.1em;
-      pointer-events: none;
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      font-size: 0.65rem; color: #6a7ba0; letter-spacing: 0.12em;
+      pointer-events: none; text-align: center; white-space: nowrap;
+      text-shadow: 0 1px 6px rgba(0,0,0,.8);
     }
 
     /* routines panel */
@@ -103,36 +161,110 @@
       background: rgba(111, 216, 255, 0.06);
       border: 1px solid rgba(111, 216, 255, 0.2);
       color: #c9e8ff; font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem; padding: 7px 12px; border-radius: 6px;
-      cursor: pointer; margin-bottom: 6px; transition: all 0.2s;
+      font-size: 0.73rem; padding: 8px 12px; border-radius: 8px;
+      cursor: pointer; margin-bottom: 7px; transition: all 0.2s;
     }
-    .routine-btn:hover { background: rgba(111, 216, 255, 0.16); border-color: rgba(111, 216, 255, 0.5); }
+    .routine-btn:hover { background: rgba(111, 216, 255, 0.16); border-color: rgba(111, 216, 255, 0.5); transform: translateX(3px); box-shadow: 0 4px 14px -6px rgba(111,216,255,.3); }
     .routine-btn:disabled { opacity: 0.4; cursor: wait; }
-    .routine-btn .r-icon { font-size: 0.9rem; margin-right: 8px; }
-    .routine-btn .r-status { font-size: 0.58rem; color: #5a6a8a; }
+    .routine-btn .r-icon { font-size: 0.95rem; margin-right: 8px; }
+    .routine-btn .r-status { font-size: 0.63rem; color: #7c8db0; }
     #routine-output {
-      margin-top: 8px; font-size: 0.6rem; color: #6fd8ff;
-      max-height: 80px; overflow-y: auto; white-space: pre-wrap;
-      border-top: 1px solid rgba(111, 216, 255, 0.15); padding-top: 6px;
+      margin-top: 9px; font-size: 0.65rem; color: #6fd8ff;
+      max-height: 90px; overflow-y: auto; white-space: pre-wrap;
+      border-top: 1px solid rgba(111, 216, 255, 0.15); padding-top: 7px;
+      scrollbar-width: thin; scrollbar-color: #1e2a44 transparent;
     }
     .proj-item {
       display: flex; align-items: center; gap: 6px;
-      font-size: 0.62rem; padding: 3px 0; color: #8a97b5;
+      font-size: 0.68rem; padding: 4px 0; color: #a5b2cf;
     }
+    .proj-item:hover { color: #c9e8ff; }
     .proj-item .p-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 4px #4ade80; }
 
     /* live meter */
-    .meter { margin-top: 8px; }
-    .meter-row { display: flex; align-items: center; gap: 8px; font-size: 0.6rem; color: #8a97b5; margin: 3px 0; }
-    .meter-bar { flex: 1; height: 4px; background: rgba(111, 216, 255, 0.1); border-radius: 2px; overflow: hidden; }
-    .meter-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #6fd8ff, #9b6dff); transition: width 0.5s; }
-    .meter-fill.warn { background: linear-gradient(90deg, #fbbf24, #f87171); }
-    #ws-ind { position: fixed; top: 12px; right: 140px; font-size: 0.55rem; color: #4ade80; letter-spacing: 0.1em; }
-    #ws-ind.off { color: #f87171; }
+    .meter { margin-top: 9px; }
+    .meter-row { display: flex; align-items: center; gap: 8px; font-size: 0.65rem; color: #8a97b5; margin: 4px 0; }
+    .meter-bar { flex: 1; height: 5px; background: rgba(111, 216, 255, 0.1); border-radius: 3px; overflow: hidden; }
+    .meter-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #6fd8ff, #9b6dff); transition: width 0.5s; box-shadow: 0 0 8px rgba(111,216,255,.4); }
+    .meter-fill.warn { background: linear-gradient(90deg, #fbbf24, #f87171); box-shadow: 0 0 8px rgba(248,113,113,.4); }
+    #ws-ind { position: fixed; top: 12px; right: 165px; font-size: 0.62rem; color: #4ade80; letter-spacing: 0.12em; text-shadow: 0 0 10px rgba(74,222,128,.5); }
+    #ws-ind.off { color: #f87171; text-shadow: 0 0 10px rgba(248,113,113,.5); }
 
     /* scrollbar */
     #agents-panel::-webkit-scrollbar { width: 4px; }
     #agents-panel::-webkit-scrollbar-thumb { background: #1e2a44; border-radius: 2px; }
+
+    /*═══════════════════════════════════════
+      FLOATING WINDOWS ENGINE (semua menu → window)
+    ═══════════════════════════════════════*/
+    #winMount{position:fixed;inset:0;pointer-events:none;z-index:300}
+    .orb-dim{position:fixed;inset:0;background:rgba(3,5,10,.55);opacity:0;pointer-events:none;transition:opacity .35s;z-index:250}
+    .orb-dim.show{opacity:1;pointer-events:auto}
+    .fwin{
+      position:fixed;display:flex;flex-direction:column;min-width:380px;min-height:300px;
+      z-index:300;opacity:0;transform:scale(.84) translateY(22px) rotateX(8deg);
+      pointer-events:none;
+      background:var(--glass);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);
+      border:1px solid var(--glass-b);border-radius:var(--r);
+      box-shadow:0 28px 90px -18px rgba(0,0,0,.85),0 0 0 1px rgba(111,216,255,.06);
+      transition:opacity .32s var(--ease),transform .32s var(--ease);
+      transform-origin:center bottom;
+    }
+    .fwin.open{opacity:1;transform:scale(1) translateY(0) rotateX(0);pointer-events:auto}
+    .fwin.closing{opacity:0;transform:scale(.9) translateY(14px);pointer-events:none}
+    .fwin.focused{z-index:400;box-shadow:0 32px 110px -18px rgba(0,0,0,.9),0 0 0 1px rgba(111,216,255,.25),0 0 50px -10px rgba(111,216,255,.25)}
+    .fwin.minimized{transform:scale(.92) translateY(24px);opacity:0;pointer-events:none}
+    .fwin-bar{display:flex;align-items:center;gap:9px;padding:10px 14px;cursor:grab;user-select:none;flex-shrink:0;border-bottom:1px solid rgba(111,216,255,.09);border-radius:var(--r) var(--r) 0 0;background:rgba(13,20,38,.65)}
+    .fwin-bar:active{cursor:grabbing}
+    .fwin-dots{display:flex;gap:6px;flex-shrink:0}
+    .fdot{width:11px;height:11px;border-radius:50%;transition:filter .15s}
+    .fdot:hover{filter:brightness(1.35)}
+    .fdot-close{background:#ef4444}.fdot-min{background:#fbbf24}.fdot-max{background:#22c55e}
+    .fwin-title{display:flex;align-items:center;gap:8px;font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.06em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1)}
+    .fwin-title i{font-size:.72rem;opacity:.95}
+    .fwin-actions{display:flex;gap:4px;flex-shrink:0}
+    .fwin-act{width:25px;height:25px;border-radius:7px;display:grid;place-items:center;font-size:.62rem;color:var(--t3);transition:background .15s,color .15s;cursor:pointer}
+    .fwin-act:hover{background:rgba(111,216,255,.14);color:var(--cy400)}
+    .fwin-body{flex:1;min-height:0;position:relative;border-radius:0 0 var(--r) var(--r);overflow:hidden;background:rgba(5,7,13,.45)}
+    .fwin-body iframe{width:100%;height:100%;border:none;display:block}
+    .fwin-loading{position:absolute;inset:0;display:grid;place-items:center;z-index:2;background:#05070d;transition:opacity .3s}
+    .fwin-loading.done{opacity:0;pointer-events:none}
+    .fwin-loading .spinner{width:38px;height:38px;border-radius:50%;border:2.5px solid var(--t4);border-top-color:var(--cy400);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .fwin-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:5;background:radial-gradient(circle at 100% 100%,rgba(111,216,255,.5) 0,transparent 45%)}
+    /* badge jumlah terbuka di menu */
+    .m-item .m-badge{display:none;margin-left:auto;font-size:.55rem;color:var(--cy400);background:rgba(111,216,255,.12);padding:1px 7px;border-radius:8px;font-family:'JetBrains Mono',monospace}
+    .m-item.on{background:rgba(111,216,255,.12);color:#eaf6ff}
+    .m-item.on .m-badge{display:inline-block}
+    /* taskbar dinamis */
+    #taskbar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:600;display:flex;align-items:center;gap:5px;padding:7px 10px;background:var(--glass);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border:1px solid var(--glass-b);border-radius:16px;box-shadow:0 12px 44px -10px rgba(0,0,0,.75);max-width:94vw;overflow-x:auto;scrollbar-width:none}
+    #taskbar::-webkit-scrollbar{display:none}
+    #taskbar .tb-brand{display:flex;align-items:center;gap:7px;padding:0 8px 0 4px;font-family:'Orbitron',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:1px;color:var(--t2);white-space:nowrap}
+    #taskbar .tb-brand i{color:var(--cy400);font-size:.72rem}
+    .tb-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:10px;font-size:.64rem;font-weight:600;color:var(--t2);transition:all .18s;white-space:nowrap;cursor:pointer;animation:tbIn .25s var(--ease)}
+    @keyframes tbIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+    .tb-btn:hover{background:rgba(111,216,255,.08);color:var(--t1)}
+    .tb-btn i{font-size:.68rem}
+    .tb-btn.open{color:var(--t1);background:rgba(111,216,255,.1);border:1px solid rgba(111,216,255,.18)}
+    .tb-btn.open::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--cy400);margin-left:2px}
+    .tb-btn.minimized{color:var(--t3);opacity:.65}
+    /* glow burst saat window terbuka */
+    .win-burst{position:fixed;width:120px;height:120px;border-radius:50%;pointer-events:none;z-index:299;background:radial-gradient(circle,rgba(111,216,255,.28),transparent 65%);transform:translate(-50%,-50%) scale(0);opacity:0;transition:transform .5s ease-out,opacity .5s ease-out}
+    .win-burst.pop{transform:translate(-50%,-50%) scale(1);opacity:1}
+    .win-burst.fade{opacity:0;transform:translate(-50%,-50%) scale(1.6)}
+    /* hint tetap di atas dim */
+    #hint,#ws-ind,#gesture-btn,#cam{transition:opacity .3s}
+    body.dimmed #hint,body.dimmed #gesture-btn{opacity:.25}
+
+    /* responsive */
+    @media (max-width: 900px) {
+      #hud { padding: 16px 16px; }
+      #hud-bottom { flex-wrap: wrap; gap: 12px; }
+      .panel { min-width: 180px; flex: 1; }
+      #title { font-size: 1.1rem; letter-spacing: 0.12em; }
+      #hint { display: none; }
+      #ws-ind { right: 8px; top: 60px; }
+    }
   </style>
 </head>
 <body>
@@ -143,7 +275,29 @@
       <div id="title">HERMES // ORB
         <small>MISSION CONTROL — NIUMINATION ECOSYSTEM</small>
       </div>
-      <button id="nav-btn" onclick="location.href='/dashboard'">⛭ DASHBOARD</button>
+      <div id="hud-actions">
+        <div id="menu-wrap">
+          <button id="menu-btn" onclick="window.__toggleMenu(event)">☰ MENU</button>
+          <div id="menu-drop">
+            <div class="m-item" data-app="dashboard"><span class="mi">📈</span>Dashboard<span class="m-badge"></span></div>
+            <div class="m-item" data-app="aios"><span class="mi">🛸</span>AIOS Holographic<span class="m-badge"></span></div>
+            <div class="m-sep"></div>
+            <div class="m-item" data-app="ecosystem"><span class="mi">🌐</span>Ecosystem<span class="m-badge"></span></div>
+            <div class="m-item" data-app="swarm"><span class="mi">🕸️</span>Swarm Topology<span class="m-badge"></span></div>
+            <div class="m-item" data-app="taskqueue"><span class="mi">📋</span>Task Kanban<span class="m-badge"></span></div>
+            <div class="m-item" data-app="terminal"><span class="mi">💻</span>Terminal Hub<span class="m-badge"></span></div>
+            <div class="m-item" data-app="telegram"><span class="mi">✈️</span>Telegram Bridge<span class="m-badge"></span></div>
+            <div class="m-sep"></div>
+            <div class="m-item" data-app="storage"><span class="mi">💾</span>USB &amp; Storage<span class="m-badge"></span></div>
+            <div class="m-item" data-app="skills"><span class="mi">🧠</span>Skill Monitor<span class="m-badge"></span></div>
+            <div class="m-item" data-app="skills-market"><span class="mi">🛒</span>Skill Market<span class="m-badge"></span></div>
+            <div class="m-item" data-app="system"><span class="mi">⚙️</span>System Config<span class="m-badge"></span></div>
+            <div class="m-item" data-app="cost"><span class="mi">💰</span>Cost Tracking<span class="m-badge"></span></div>
+            <div class="m-item" data-app="deploy"><span class="mi">🚀</span>Vercel Deploy<span class="m-badge"></span></div>
+          </div>
+        </div>
+        <button id="nav-btn" onclick="window.__openApp('dashboard')">⛭ DASHBOARD</button>
+      </div>
     </div>
 
     <div id="hud-bottom">
@@ -164,7 +318,11 @@
     </div>
   </div>
 
-  <div id="hint">DRAG = PUTAR · SCROLL = ZOOM</div>
+  <div class="orb-dim" id="orbDim"></div>
+  <div id="winMount"></div>
+  <div class="taskbar" id="taskbar"><div class="tb-brand"><i class="fa-solid fa-bolt"></i>ORB</div></div>
+
+  <div id="hint">☰ MENU = buka aplikasi · drag titlebar · resize pojok · 🟢 max / 🟡 min / 🔴 close</div>
   <div id="ws-ind">● LIVE</div>
   <button id="gesture-btn" onclick="window.__toggleGesture()" style="position:fixed;bottom:12px;right:16px;pointer-events:auto;background:rgba(111,216,255,0.08);border:1px solid rgba(111,216,255,0.3);color:#6fd8ff;font-family:'JetBrains Mono',monospace;font-size:0.62rem;padding:6px 12px;border-radius:6px;cursor:pointer;z-index:10">✋ GESTURE OFF</button>
   <video id="cam" style="position:fixed;bottom:56px;right:16px;width:160px;border:1px solid rgba(111,216,255,0.2);border-radius:8px;display:none;z-index:10"></video>
@@ -172,5 +330,298 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="/static/orb.js"></script>
+  <script>
+  /*═══════════════════════════════════════
+    ORB FUSION ENGINE — semua menu → floating window
+    (dashboard & aios TIDAK di-link keluar; semua di sini)
+  ═══════════════════════════════════════*/
+  const APPS = {
+    dashboard:     { url:'/dashboard',                 title:'AgentOS Dashboard',  ico:'fa-table-columns',  accent:'#4f46e5', w:880, h:620 },
+    aios:          { url:'/aios',                      title:'AIOS Holographic',   ico:'fa-user-astronaut', accent:'#f59e0b', w:920, h:660 },
+    ecosystem:     { url:'/dashboard#ecosystem',       title:'Ecosystem',          ico:'fa-globe',          accent:'#22d3ee', w:860, h:600 },
+    swarm:         { url:'/dashboard#swarm',           title:'Swarm Topology',     ico:'fa-network-wired',  accent:'#8b5cf6', w:860, h:600 },
+    taskqueue:     { url:'/dashboard#taskqueue',       title:'Task Kanban',        ico:'fa-list-check',     accent:'#22c55e', w:900, h:640 },
+    terminal:      { url:'/dashboard#terminal',        title:'Terminal Hub',       ico:'fa-terminal',       accent:'#f97316', w:820, h:560 },
+    telegram:      { url:'/dashboard#telegram',        title:'Telegram Bridge',    ico:'fa-paper-plane',    accent:'#38bdf8', w:860, h:620 },
+    storage:       { url:'/dashboard#storage',         title:'USB & Storage',      ico:'fa-hard-drive',     accent:'#e2e8f0', w:820, h:560 },
+    skills:        { url:'/dashboard#skills',          title:'Skill Monitor',      ico:'fa-brain',          accent:'#f472b6', w:860, h:600 },
+    'skills-market':{ url:'/dashboard#skills-market',  title:'Skill Market',       ico:'fa-store',          accent:'#a3e635', w:860, h:600 },
+    system:        { url:'/dashboard#system',          title:'System Config',      ico:'fa-sliders',        accent:'#94a3b8', w:840, h:580 },
+    cost:          { url:'/dashboard#cost',            title:'Cost Tracking',      ico:'fa-coins',          accent:'#fbbf24', w:820, h:560 },
+    deploy:        { url:'/dashboard#deploy',          title:'Vercel Deploy',      ico:'fa-rocket',         accent:'#60a5fa', w:820, h:560 },
+  };
+  const mount = document.getElementById('winMount');
+  const orbDim = document.getElementById('orbDim');
+  const taskbar = document.getElementById('taskbar');
+  let zTop = 300;
+  const openApps = new Set();
+
+  /*── Posisi kaskade ──*/
+  function cascadePos(idx){
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const w = Math.min(900, vw-60), h = Math.min(640, vh-120);
+    const x = Math.max(20, (vw - w)/2 + (idx-1)*36 - 60);
+    const y = Math.max(20, (vh - h)/2 + (idx-1)*26 - 40);
+    return { x, y, w, h };
+  }
+
+  /*── Dedup chrome di iframe dashboard (sidebar+topnav) ──*/
+  function dedupDashboardPage(iframe){
+    try{
+      const d = iframe.contentDocument; if (!d) return;
+      const sb = d.querySelector('.sidebar'); if (sb) sb.style.display = 'none';
+      const tn = d.querySelector('.topnav');  if (tn) tn.style.display = 'none';
+      const ws = d.getElementById('wsRecBtn'); if (ws) ws.style.display = 'none';
+      const mc = d.querySelector('.main-content'); if (mc) mc.style.marginLeft = '0';
+    }catch(e){}
+  }
+  /*── Dedup chrome di iframe aios (threads/swarm/stats/dock) ──*/
+  function dedupAios(iframe){
+    try{
+      const d = iframe.contentDocument; if (!d) return;
+      const pl = d.getElementById('pLeft');  if (pl) pl.style.display='none';
+      const pr = d.getElementById('pRight'); if (pr) pr.style.display='none';
+      const st = d.querySelector('.stats');  if (st) st.style.display='none';
+      d.querySelectorAll('.dock > .dock-s').forEach(s=>s.style.display='none');
+    }catch(e){}
+  }
+  window.__dedupDashboard = dedupDashboardPage;
+  window.__dedupAios = dedupAios;
+
+  /*── Glow burst di titik buka ──*/
+  function burst(x, y){
+    const b = document.createElement('div');
+    b.className = 'win-burst';
+    b.style.left = x+'px'; b.style.top = y+'px';
+    document.body.appendChild(b);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('pop')));
+    setTimeout(()=>b.classList.add('fade'), 220);
+    setTimeout(()=>b.remove(), 750);
+  }
+
+  /*── Buka window ──*/
+  function openWindow(appId){
+    if (openApps.has(appId)){ focusWindow(appId); return; }
+    const cfg = APPS[appId];
+    if (!cfg) return;
+    openApps.add(appId);
+    orbDim.classList.add('show');
+    document.body.classList.add('dimmed');
+    const idx = openApps.size;
+    const pos = cascadePos(idx);
+    // glow burst di tengah layar (asal window)
+    burst(window.innerWidth/2, window.innerHeight/2);
+
+    const win = document.createElement('div');
+    win.className = 'fwin';
+    win.dataset.app = appId;
+    win.style.left = pos.x+'px'; win.style.top = pos.y+'px';
+    win.style.width = Math.min(cfg.w, window.innerWidth-40)+'px';
+    win.style.height = Math.min(cfg.h, window.innerHeight-90)+'px';
+
+    win.innerHTML =
+      `<div class="fwin-bar">
+         <div class="fwin-dots">
+           <div class="fdot fdot-close" data-act="close" title="Tutup"></div>
+           <div class="fdot fdot-min" data-act="min" title="Minimize"></div>
+           <div class="fdot fdot-max" data-act="max" title="Maximize"></div>
+         </div>
+         <div class="fwin-title"><i class="fa-solid ${cfg.ico}" style="color:${cfg.accent}"></i>${cfg.title}</div>
+         <div class="fwin-actions">
+           <button class="fwin-act" data-act="min" title="Minimize"><i class="fa-solid fa-minus"></i></button>
+           <button class="fwin-act" data-act="max" title="Maximize"><i class="fa-solid fa-expand"></i></button>
+           <button class="fwin-act" data-act="close" title="Close"><i class="fa-solid fa-xmark"></i></button>
+         </div>
+       </div>
+       <div class="fwin-body">
+         <div class="fwin-loading"><div class="spinner"></div></div>
+         <iframe src="${cfg.url}" loading="lazy"></iframe>
+       </div>
+       <div class="fwin-resize"></div>`;
+
+    mount.appendChild(win);
+    focusWindow(appId);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>win.classList.add('open')));
+
+    // Loader + dedup chrome
+    const iframe = win.querySelector('iframe');
+    iframe.addEventListener('load', ()=>{
+      const ld = win.querySelector('.fwin-loading');
+      if (ld) setTimeout(()=>ld.classList.add('done'), 250);
+      setTimeout(()=>{
+        if (appId==='dashboard' || !APPS[appId].url.startsWith('/aios')) dedupDashboardPage(iframe);
+        if (appId==='aios') dedupAios(iframe);
+      }, 450);
+    });
+    setTimeout(()=>{ const ld = win.querySelector('.fwin-loading'); if (ld) ld.classList.add('done'); }, 5000);
+
+    // Kontrol titlebar
+    win.querySelectorAll('[data-act]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        e.stopPropagation();
+        const act = btn.dataset.act;
+        if (act==='close') closeWindow(appId);
+        else if (act==='min') minimizeWindow(appId);
+        else if (act==='max') toggleMax(appId);
+      });
+    });
+
+    // Drag
+    const bar = win.querySelector('.fwin-bar');
+    let dragging = false, dx0=0, dy0=0, ox=0, oy=0;
+    bar.addEventListener('mousedown', e=>{
+      if (e.target.closest('[data-act]')) return;
+      dragging = true;
+      const r = win.getBoundingClientRect();
+      ox = r.left; oy = r.top;
+      dx0 = e.clientX; dy0 = e.clientY;
+      bar.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', e=>{
+      if (!dragging) return;
+      win.style.left = Math.max(-win.offsetWidth+80, Math.min(ox + (e.clientX-dx0), window.innerWidth-80))+'px';
+      win.style.top  = Math.max(0, Math.min(oy + (e.clientY-dy0), window.innerHeight-60))+'px';
+    });
+    document.addEventListener('mouseup', ()=>{ dragging = false; bar.style.cursor = 'grab'; });
+
+    // Resize
+    const rz = win.querySelector('.fwin-resize');
+    let resizing = false, rx0=0, ry0=0, rw0=0, rh0=0;
+    rz.addEventListener('mousedown', e=>{
+      resizing = true;
+      rx0 = e.clientX; ry0 = e.clientY;
+      rw0 = win.offsetWidth; rh0 = win.offsetHeight;
+      e.preventDefault(); e.stopPropagation();
+    });
+    document.addEventListener('mousemove', e=>{
+      if (!resizing) return;
+      win.style.width  = Math.max(380, rw0 + (e.clientX-rx0))+'px';
+      win.style.height = Math.max(300, rh0 + (e.clientY-ry0))+'px';
+    });
+    document.addEventListener('mouseup', ()=>{ resizing = false; });
+
+    // Klik → fokus
+    win.addEventListener('mousedown', ()=>focusWindow(appId), true);
+
+    // Taskbar dinamis + menu state
+    addTaskbar(appId);
+    setMenuState(appId, true);
+  }
+
+  /*── Taskbar dinamis ──*/
+  function addTaskbar(appId){
+    if (taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)) return;
+    const cfg = APPS[appId];
+    const b = document.createElement('div');
+    b.className = 'tb-btn open';
+    b.dataset.app = appId;
+    b.innerHTML = `<i class="fa-solid ${cfg.ico}" style="color:${cfg.accent}"></i>${cfg.title.toUpperCase()}`;
+    b.addEventListener('click', ()=>{
+      const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+      if (!win) return;
+      if (win.classList.contains('minimized')) restoreWindow(appId);
+      else if (win.classList.contains('focused')) minimizeWindow(appId);
+      else focusWindow(appId);
+    });
+    taskbar.appendChild(b);
+  }
+  function removeTaskbar(appId){
+    taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.remove();
+  }
+  function setMenuState(appId, on){
+    const it = document.querySelector(`.m-item[data-app="${appId}"]`);
+    if (!it) return;
+    it.classList.toggle('on', on);
+    const badge = it.querySelector('.m-badge');
+    if (badge) badge.textContent = on ? '●' : '';
+  }
+
+  function focusWindow(appId){
+    const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+    if (!win) return;
+    if (win.classList.contains('minimized')){ restoreWindow(appId); return; }
+    zTop++;
+    win.style.zIndex = zTop;
+    win.classList.add('focused');
+    mount.querySelectorAll('.fwin').forEach(w=>{ if (w!==win) w.classList.remove('focused'); });
+    taskbar.querySelectorAll('.tb-btn').forEach(b=>b.classList.toggle('open', b.dataset.app===appId));
+  }
+
+  function closeWindow(appId){
+    const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+    if (!win) return;
+    win.classList.remove('open');
+    win.classList.add('closing');
+    setTimeout(()=>win.remove(), 280);
+    openApps.delete(appId);
+    removeTaskbar(appId);
+    setMenuState(appId, false);
+    orbDim.classList.toggle('show', openApps.size > 0);
+    document.body.classList.toggle('dimmed', openApps.size > 0);
+  }
+
+  function minimizeWindow(appId){
+    const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+    if (!win) return;
+    win.classList.add('minimized');
+    win.classList.remove('focused');
+    taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.remove('open');
+    taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.add('minimized');
+  }
+
+  function restoreWindow(appId){
+    const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+    if (!win) return;
+    win.classList.remove('minimized');
+    taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.remove('minimized');
+    focusWindow(appId);
+  }
+
+  function toggleMax(appId){
+    const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+    if (!win) return;
+    if (win.dataset.max === '1'){
+      win.style.left = win.dataset.px; win.style.top = win.dataset.py;
+      win.style.width = win.dataset.pw; win.style.height = win.dataset.ph;
+      win.dataset.max = '0';
+    } else {
+      win.dataset.px = win.style.left; win.dataset.py = win.style.top;
+      win.dataset.pw = win.style.width; win.dataset.ph = win.style.height;
+      win.style.left = '0'; win.style.top = '0';
+      win.style.width = '100vw'; win.style.height = '100vh';
+      win.dataset.max = '1';
+      zTop++; win.style.zIndex = zTop;
+      win.classList.add('focused');
+    }
+  }
+  window.__openApp = openWindow;
+
+  /*── MENU dropdown: klik → buka floating window ──*/
+  window.__toggleMenu = function(e){
+    if (e) e.stopPropagation();
+    document.getElementById('menu-drop').classList.toggle('open');
+  };
+  document.addEventListener('click', (e)=>{
+    if (!document.getElementById('menu-wrap').contains(e.target)) {
+      document.getElementById('menu-drop').classList.remove('open');
+    }
+  });
+  document.querySelectorAll('#menu-drop .m-item').forEach(it=>{
+    it.addEventListener('click', ()=>{
+      document.getElementById('menu-drop').classList.remove('open');
+      const app = it.dataset.app;
+      const win = mount.querySelector(`.fwin[data-app="${app}"]`);
+      if (win){
+        if (win.classList.contains('minimized')) restoreWindow(app);
+        else if (win.classList.contains('focused')) minimizeWindow(app);
+        else focusWindow(app);
+      } else {
+        openWindow(app);
+      }
+    });
+  });
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') document.getElementById('menu-drop').classList.remove('open'); });
+  </script>
 </body>
 </html>
