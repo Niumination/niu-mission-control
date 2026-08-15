@@ -1630,7 +1630,19 @@ async def deploy_status():
 
 @app.get("/", response_class=HTMLResponse, tags=["system"])
 async def index():
-    """Serve the ORB (main) HTML — ULTRON-inspired 3D command center."""
+    """Serve the FUSION unified desktop — all-in-one command center."""
+    fusion_path = os.path.join(FUSION_DIR, "index.html")
+    if os.path.exists(fusion_path):
+        return FileResponse(fusion_path)
+    orb_path = os.path.join(DASHBOARD_DIR, "orb.html")
+    if os.path.exists(orb_path):
+        return FileResponse(orb_path)
+    return FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
+
+
+@app.get("/orb", response_class=HTMLResponse, tags=["system"])
+async def orb_standalone():
+    """Serve the original ORB page (standalone, for reference)."""
     orb_path = os.path.join(DASHBOARD_DIR, "orb.html")
     if os.path.exists(orb_path):
         return FileResponse(orb_path)
