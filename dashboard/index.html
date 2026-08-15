@@ -3,47 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HERMES // Mission Control v2.6</title>
-  
-  <!-- Fonts: Orbitron for titles, DM Sans for UI, JetBrains Mono for terminals -->
+  <title>HERMES // MISSION CONTROL — UNIFIED</title>
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet"></noscript>
 
-  <!-- FontAwesome for Premium Icons - Local first, CDN fallback -->
+  <!-- FontAwesome -->
   <link rel="stylesheet" href="/static/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
   <noscript><link rel="stylesheet" href="/static/fontawesome/css/all.min.css"></noscript>
-  <script>
-    // FontAwesome CDN fallback if local fails
-    (function() {
-      var link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
-      link.integrity = 'sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==';
-      link.crossOrigin = 'anonymous';
-      link.referrerPolicy = 'no-referrer';
-      // Only inject if local FontAwesome hasn't loaded within 2s
-      setTimeout(function() {
-        if (!document.fonts.check('1em "Font Awesome 6 Free"')) {
-          document.head.appendChild(link);
-        }
-      }, 2000);
-    })();
-  </script>
 
-  <!-- Link Stylesheet -->
+  <!-- Dashboard theme + floating-window chrome -->
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 
-  <!-- TECH BACKGROUND MATRIX GRID GLOWS -->
-  <div class="matrix-grid"></div>
-  <div class="glow-orb glow-orb-1"></div>
-  <div class="glow-orb glow-orb-2"></div>
+  <!-- ══════ ORB BASE — fullscreen animation (selalu tampil) ══════ -->
+  <div class="orb-base">
+    <iframe src="/static/orb.html" title="ORB Command Center" id="orbFrame" loading="eager"></iframe>
+  </div>
+  <div class="orb-dim" id="orbDim"></div>
 
-  <!-- HEADER -->
-  <header class="topnav">
+  <!-- ══════ LAUNCHER — pojok kanan atas, tidak menutupi orb ══════ -->
+  <div class="launcher" id="launcher">
+  <button class="launch-btn" data-app="dashboard" title="Buka Dashboard"><span class="lb-ico" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)"><i class="fas fa-table-columns"></i></span><span class="lb-txt">DASHBOARD<small>Overview</small></span></button>
+  <button class="launch-btn" data-app="ecosystem" title="Buka Ecosystem"><span class="lb-ico" style="background:linear-gradient(135deg,#059669,#22c55e)"><i class="fas fa-globe"></i></span><span class="lb-txt">ECOSYSTEM<small>39+ Projects</small></span></button>
+  <button class="launch-btn" data-app="swarm" title="Buka Swarm"><span class="lb-ico" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6)"><i class="fas fa-network-wired"></i></span><span class="lb-txt">SWARM<small>Topology</small></span></button>
+  <button class="launch-btn" data-app="taskqueue" title="Buka Task Queue"><span class="lb-ico" style="background:linear-gradient(135deg,#d97706,#f59e0b)"><i class="fas fa-list-check"></i></span><span class="lb-txt">TASK QUEUE<small>Kanban</small></span></button>
+  <button class="launch-btn" data-app="terminal" title="Buka Terminal"><span class="lb-ico" style="background:linear-gradient(135deg,#0891b2,#06b6d4)"><i class="fas fa-terminal"></i></span><span class="lb-txt">TERMINAL<small>Shell Hub</small></span></button>
+  <button class="launch-btn" data-app="telegram" title="Buka Telegram"><span class="lb-ico" style="background:linear-gradient(135deg,#2563eb,#3b82f6)"><i class="fas fa-paper-plane"></i></span><span class="lb-txt">TELEGRAM<small>Bridge</small></span></button>
+  <button class="launch-btn" data-app="storage" title="Buka Storage"><span class="lb-ico" style="background:linear-gradient(135deg,#059669,#10b981)"><i class="fas fa-database"></i></span><span class="lb-txt">STORAGE<small>USB & WAL</small></span></button>
+  <button class="launch-btn" data-app="skills" title="Buka Skill Bank"><span class="lb-ico" style="background:linear-gradient(135deg,#db2777,#ec4899)"><i class="fas fa-brain"></i></span><span class="lb-txt">SKILL BANK<small>40 Skills</small></span></button>
+  <button class="launch-btn" data-app="skills-market" title="Buka Skill Market"><span class="lb-ico" style="background:linear-gradient(135deg,#e11d48,#f43f5e)"><i class="fas fa-store"></i></span><span class="lb-txt">SKILL MARKET<small>Sync Hub</small></span></button>
+  <button class="launch-btn" data-app="system" title="Buka System"><span class="lb-ico" style="background:linear-gradient(135deg,#475569,#94a3b8)"><i class="fas fa-gear"></i></span><span class="lb-txt">SYSTEM<small>Config</small></span></button>
+  <button class="launch-btn" data-app="cost" title="Buka Cost"><span class="lb-ico" style="background:linear-gradient(135deg,#d97706,#fbbf24)"><i class="fas fa-coins"></i></span><span class="lb-txt">COST<small>Monitor</small></span></button>
+  <button class="launch-btn" data-app="deploy" title="Buka Deploy"><span class="lb-ico" style="background:linear-gradient(135deg,#ea580c,#f97316)"><i class="fas fa-rocket"></i></span><span class="lb-txt">DEPLOY<small>Pipelines</small></span></button>
+  </div>
+
+  <!-- ══════ FLOATING WINDOWS MOUNT ══════ -->
+  <div id="winMount"></div>
+
+  <!-- ══════ PAGE VAULT — semua halaman tersimpan di sini (hidden) ══════ -->
+  <div id="pageVault">
+<section class="page active" id="page-dashboard">
+<div class="sidebar-footer" style="padding:0.6rem 0.2rem;">
+<div class="health-gauge">
+          <div class="gauge-label">
+            <span>HEALTH EXCEL</span>
+            <span id="healthPct">100%</span>
+          </div>
+          <div class="gauge-bar">
+            <div class="gauge-fill" id="healthFill" style="width: 100%;"></div>
+          </div>
+        </div>
+        <button class="btn-checkpoint" onclick="triggerCheckpoint()"><i class="fa-solid fa-rotate"></i> Checkpoint WAL</button>
+</div>
+<header class="topnav">
     <div class="brand">
       <div class="logo-icon" onclick="toggleSidebar()" title="Toggle sidebar"><i class="fa-solid fa-bolt"></i></div>
       <div class="brand-text">
@@ -91,69 +108,6 @@
       </div>
     </div>
   </header>
-
-  <!-- MAIN CONTAINER LAYOUT -->
-  <div class="layout">
-    
-    <!-- NAVIGATION SIDEBAR -->
-    <nav class="sidebar">
-      <div class="sidebar-header">OPERATIONAL PLANE</div>
-      <a href="#" class="nav-item active" data-page="dashboard">
-        <i class="fa-solid fa-chart-line nav-icon"></i> <span>Dashboard</span>
-      </a>
-      <a href="#" class="nav-item" data-page="ecosystem">
-        <i class="fa-solid fa-globe nav-icon"></i> <span>Ecosystem</span>
-      </a>
-      <a href="#" class="nav-item" data-page="swarm">
-        <i class="fa-solid fa-network-wired nav-icon"></i> <span>Swarm Topology</span>
-      </a>
-      <a href="#" class="nav-item" data-page="taskqueue">
-        <i class="fa-solid fa-list-check nav-icon"></i> <span>Task Kanban</span>
-      </a>
-      <a href="#" class="nav-item" data-page="terminal">
-        <i class="fa-solid fa-terminal nav-icon"></i> <span>Terminal Hub</span>
-      </a>
-      <a href="#" class="nav-item" data-page="telegram">
-        <i class="fa-solid fa-paper-plane nav-icon"></i> <span>Telegram Bridge</span>
-      </a>
-      <a href="#" class="nav-item" data-page="storage">
-        <i class="fa-solid fa-hard-drive nav-icon"></i> <span>USB &amp; Storage</span>
-      </a>
-      <a href="#" class="nav-item" data-page="skills">
-        <i class="fa-solid fa-brain nav-icon"></i> <span>Skill Monitor</span>
-      </a>
-      <a href="#" class="nav-item" data-page="skills-market">
-        <i class="fa-solid fa-store nav-icon"></i> <span>Skill Market</span>
-      </a>
-      <a href="#" class="nav-item" data-page="system">
-        <i class="fa-solid fa-sliders nav-icon"></i> <span>System Config</span>
-      </a>
-      <a href="#" class="nav-item" data-page="cost">
-        <i class="fa-solid fa-coins nav-icon"></i> <span>Cost Tracking</span>
-      </a>
-      <a href="#" class="nav-item" data-page="deploy">
-        <i class="fa-solid fa-rocket nav-icon"></i> <span>Vercel Deploy</span>
-      </a>
-      
-      <div class="sidebar-footer">
-        <div class="health-gauge">
-          <div class="gauge-label">
-            <span>HEALTH EXCEL</span>
-            <span id="healthPct">100%</span>
-          </div>
-          <div class="gauge-bar">
-            <div class="gauge-fill" id="healthFill" style="width: 100%;"></div>
-          </div>
-        </div>
-        <button class="btn-checkpoint" onclick="triggerCheckpoint()"><i class="fa-solid fa-rotate"></i> Checkpoint WAL</button>
-      </div>
-    </nav>
-
-    <!-- MAIN CONTENT DISPLAY VIEWPORTS -->
-    <main class="main-content">
-      
-      <!-- 1. PAGE: DASHBOARD (OPERATIONS CENTER) -->
-      <section class="page active" id="page-dashboard">
         
         <!-- TOP KPI CARDS -->
         <div class="kpi-row">
@@ -495,9 +449,7 @@
                       </section>
         </div>
       </section>
-
-      <!-- 2. PAGE: ECOSYSTEM OVERVIEW -->
-      <section class="page" id="page-ecosystem">
+<section class="page" id="page-ecosystem">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-globe"></i> Niumination Ecosystem Overview</h2>
           <p>Semua proyek, cron jobs, git activity, dan system health dalam satu halaman.</p>
@@ -560,9 +512,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 3. PAGE: SWARM TOPOLOGY -->
-      <section class="page" id="page-swarm">
+<section class="page" id="page-swarm">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-network-wired"></i> SWARM AGENT SYSTEM ORCHESTRATION</h2>
           <p>Detailed system prompts and modular profile config mapping for the 5-agent swarm topology.</p>
@@ -621,9 +571,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 3. PAGE: TASK KANBAN -->
-      <section class="page" id="page-taskqueue">
+<section class="page" id="page-taskqueue">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-list-check"></i> ADVANCED MISSION KANBAN AND TASK DISPATCHER</h2>
           <p>Full operations control board with custom payload constructor, logs audit, and complete timeline review.</p>
@@ -669,9 +617,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 4. PAGE: TERMINAL HUB -->
-      <section class="page" id="page-terminal">
+<section class="page" id="page-terminal">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-terminal"></i> INTERACTIVE TERMINAL HUBS &amp; HOST SYSTEM SHELL</h2>
           <p>Execute diagnostics on macOS host shell, review processes, run script tests, and clear database logs dynamically.</p>
@@ -703,9 +649,7 @@
           <button onclick="clearDatabaseLogs()" class="btn-tool-danger"><i class="fa-solid fa-trash-arrow-up"></i> Clear Database State DB</button>
         </div>
       </section>
-
-      <!-- 5. PAGE: TELEGRAM BRIDGE -->
-      <section class="page" id="page-telegram">
+<section class="page" id="page-telegram">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-satellite-dish"></i> TELEGRAM INTEGRATION CONSOLE</h2>
           <p>Real-time log auditing of messages flowing between user chat, Hermes gateway, and our database.</p>
@@ -750,9 +694,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 6. PAGE: STORAGE & USB -->
-      <section class="page" id="page-storage">
+<section class="page" id="page-storage">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-hard-drive"></i> STORAGE ENVIRONMENT &amp; USB PORTABILITY</h2>
           <p>Analyze read/write activities, track SQLite journal WAL mode transactions, and check storage volumes health.</p>
@@ -797,9 +739,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 7. PAGE: SYSTEM CONFIG -->
-      <section class="page" id="page-system">
+<section class="page" id="page-system">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-sliders"></i> DYNAMIC SYSTEM CONFIGURATION</h2>
           <p>Update environment settings, LLM targets, and browse the active cron schedules executed by Hermes.</p>
@@ -854,9 +794,7 @@
           </div>
         </div>
       </section>
-
-      <!-- 8. PAGE: SKILL MONITOR -->
-      <section class="page" id="page-skills">
+<section class="page" id="page-skills">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-brain"></i> SKILL MONITOR — LAYER 4</h2>
           <p>Live skill usage tracking, stale detection, conflict warnings &mdash; Bank Pusat Niumination.</p>
@@ -959,9 +897,7 @@
           </section>
         </div>
       </section>
-
-      <!-- 11. PAGE: COST TRACKING -->
-      <section class="page" id="page-deploy">
+<section class="page" id="page-deploy">
     <div class="section-title-box">
       <h2><i class="fa-solid fa-rocket"></i> VERCEL MULTI-PROJECT DEPLOY</h2>
       <p>Trigger deploys, monitor build status, and manage releases across the Niumination ecosystem.</p>
@@ -1003,8 +939,7 @@
       </div>
     </div>
   </section>
-
-  <section class="page" id="page-cost">
+<section class="page" id="page-cost">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-coins"></i> AGENT COST TRACKING</h2>
           <p>Token usage, estimated costs, and budget monitoring across all swarm agents.</p>
@@ -1095,65 +1030,7 @@
           </div>
         </div>
       </section>
-
-      <!-- WebSocket Replay Modal -->
-      <div id="wsReplayModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content" style="max-width:900px;max-height:80vh;">
-          <div class="modal-header">
-            <h3><i class="fa-solid fa-tape"></i> WEBSOCKET REPLAY</h3>
-            <button class="btn-tab-link" onclick="closeWsReplayModal()"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <div class="modal-body" style="padding:1rem;overflow:auto;">
-            <div class="ws-replay-toolbar" style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
-              <button class="btn-tool" onclick="loadWsSessions()"><i class="fa-solid fa-refresh"></i> Refresh</button>
-              <button class="btn-tool" onclick="showWsSessionForm()"><i class="fa-solid fa-plus"></i> New Session</button>
-              <div style="flex:1;"></div>
-              <select id="wsPlaybackSpeed" onchange="setWsPlaybackSpeed()" style="padding:0.2rem 0.5rem;border-radius:4px;background:var(--bg-surface);border:1px solid var(--border-muted);color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:0.6rem;">
-                <option value="0.5">0.5x</option>
-                <option value="1" selected>1x</option>
-                <option value="2">2x</option>
-                <option value="5">5x</option>
-                <option value="10">10x</option>
-              </select>
-            </div>
-
-            <!-- Session List -->
-            <div id="wsSessionList" class="ws-session-list">
-              <div class="text-dim">Loading sessions...</div>
-            </div>
-
-            <!-- Playback Controls (shown when session selected) -->
-            <div id="wsPlaybackControls" style="display:none;margin-top:1rem;padding:1rem;background:rgba(22,32,54,0.6);border-radius:6px;border:1px solid var(--border-muted);">
-              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
-                <strong id="wsPlaybackSessionName"></strong>
-                <span class="text-dim" id="wsPlaybackSessionMeta"></span>
-                <div style="flex:1;"></div>
-                <button class="btn-tool" onclick="wsPlaybackPlay()"><i class="fa-solid fa-play"></i> Play</button>
-                <button class="btn-tool" onclick="wsPlaybackPause()"><i class="fa-solid fa-pause"></i> Pause</button>
-                <button class="btn-tool" onclick="wsPlaybackStop()"><i class="fa-solid fa-stop"></i> Stop</button>
-                <button class="btn-tool-danger" onclick="wsPlaybackClose()"><i class="fa-solid fa-xmark"></i> Close</button>
-              </div>
-              <div class="ws-progress-bar" style="height:6px;background:var(--bg-deepest);border-radius:3px;overflow:hidden;">
-                <div id="wsProgressFill" style="width:0%;height:100%;background:var(--cyan);transition:width 0.1s linear;"></div>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">
-                <span id="wsProgressCurrent">0:00</span>
-                <span id="wsProgressTotal">0:00</span>
-              </div>
-            </div>
-
-            <!-- Message Log -->
-            <div id="wsMessageLog" style="max-height:400px;overflow:auto;font-family:'JetBrains Mono',monospace;font-size:0.55rem;">
-              <div class="text-dim">Select a session to view messages</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-      <!-- SKILL MARKETPLACE -->
-      <section class="page" id="page-skills-market" style="padding:1rem 1.5rem;">
+<section class="page" id="page-skills-market" style="padding:1rem 1.5rem;">
         <div class="section-title-box">
           <h2><i class="fa-solid fa-store"></i> SKILL MARKETPLACE</h2>
           <p>Browse, install, and manage skills from the Bank Pusat registry.</p>
@@ -1196,10 +1073,303 @@
           </div>
         </div>
       </section>
+  </div>
 
-  <!-- Link JavaScript -->
+  <!-- ══════ TASKBAR — bawah tengah ══════ -->
+  <div class="taskbar" id="taskbar">
+    <div class="tb-brand"><i class="fas fa-bolt"></i>MISSION CONTROL</div>
+    <div class="tb-sep"></div>
+  <div class="tb-btn" data-app="dashboard"><i class="fas fa-table-columns" style="color:#4f46e5"></i>DASHBOARD</div>
+  <div class="tb-btn" data-app="ecosystem"><i class="fas fa-globe" style="color:#22c55e"></i>ECOSYSTEM</div>
+  <div class="tb-btn" data-app="swarm"><i class="fas fa-network-wired" style="color:#8b5cf6"></i>SWARM</div>
+  <div class="tb-btn" data-app="taskqueue"><i class="fas fa-list-check" style="color:#f59e0b"></i>TASK QUEUE</div>
+  <div class="tb-btn" data-app="terminal"><i class="fas fa-terminal" style="color:#06b6d4"></i>TERMINAL</div>
+  <div class="tb-btn" data-app="telegram"><i class="fas fa-paper-plane" style="color:#3b82f6"></i>TELEGRAM</div>
+  <div class="tb-btn" data-app="storage"><i class="fas fa-database" style="color:#10b981"></i>STORAGE</div>
+  <div class="tb-btn" data-app="skills"><i class="fas fa-brain" style="color:#ec4899"></i>SKILL BANK</div>
+  <div class="tb-btn" data-app="skills-market"><i class="fas fa-store" style="color:#f43f5e"></i>SKILL MARKET</div>
+  <div class="tb-btn" data-app="system"><i class="fas fa-gear" style="color:#94a3b8"></i>SYSTEM</div>
+  <div class="tb-btn" data-app="cost"><i class="fas fa-coins" style="color:#fbbf24"></i>COST</div>
+  <div class="tb-btn" data-app="deploy"><i class="fas fa-rocket" style="color:#f97316"></i>DEPLOY</div>
+    <div class="tb-sep"></div>
+    <div class="tb-live"><span class="dot"></span>ORB LIVE</div>
+    <div class="tb-sep"></div>
+    <div class="tb-clock"><i class="far fa-clock"></i><span id="clock">00:00:00</span></div>
+  </div>
+
   <script src="/static/app.js"></script>
   <script>
+/*═══════════════════════════════════════
+  UNIFIED WINDOW MANAGER — ORB base + floating windows
+═══════════════════════════════════════*/
+(function(){
+'use strict';
+
+const PAGES = {
+  dashboard: { title: 'Dashboard', ico: 'fa-table-columns', accent: '#4f46e5', w: 940, h: 640 },
+  ecosystem: { title: 'Ecosystem', ico: 'fa-globe', accent: '#22c55e', w: 900, h: 620 },
+  swarm: { title: 'Swarm', ico: 'fa-network-wired', accent: '#8b5cf6', w: 820, h: 600 },
+  taskqueue: { title: 'Task Queue', ico: 'fa-list-check', accent: '#f59e0b', w: 920, h: 640 },
+  terminal: { title: 'Terminal', ico: 'fa-terminal', accent: '#06b6d4', w: 860, h: 580 },
+  telegram: { title: 'Telegram', ico: 'fa-paper-plane', accent: '#3b82f6', w: 860, h: 580 },
+  storage: { title: 'Storage', ico: 'fa-database', accent: '#10b981', w: 840, h: 580 },
+  skills: { title: 'Skill Bank', ico: 'fa-brain', accent: '#ec4899', w: 880, h: 620 },
+  'skills-market': { title: 'Skill Market', ico: 'fa-store', accent: '#f43f5e', w: 880, h: 620 },
+  system: { title: 'System', ico: 'fa-gear', accent: '#94a3b8', w: 860, h: 600 },
+  cost: { title: 'Cost', ico: 'fa-coins', accent: '#fbbf24', w: 840, h: 580 },
+  deploy: { title: 'Deploy', ico: 'fa-rocket', accent: '#f97316', w: 840, h: 580 }
+};
+
+const mount = document.getElementById('winMount');
+const vault = document.getElementById('pageVault');
+const orbDim = document.getElementById('orbDim');
+const taskbar = document.getElementById('taskbar');
+let zTop = 100;
+const openApps = new Set();
+const LAZY = {
+  ecosystem: () => { try { loadEcosystem(); } catch(e){} },
+  swarm: () => { try { loadTopologyPrompts(); } catch(e){} },
+  taskqueue: () => { try { loadKanban(); } catch(e){} },
+  terminal: () => { try { clearConsole(); } catch(e){} },
+  telegram: () => { try { loadTelegramFeed(); } catch(e){} },
+  storage: () => { try { loadTelemetry(); } catch(e){} },
+  skills: () => { try { loadSkills(); } catch(e){} },
+  system: () => { try { loadSystemSettings(); } catch(e){} },
+};
+
+window.PAGES = PAGES;
+window.openWindow = openWindow;
+window.closeWindow = closeWindow;
+window.minimizeWindow = minimizeWindow;
+window.restoreWindow = restoreWindow;
+window.toggleMax = toggleMax;
+
+/*── Clock ──*/
+setInterval(()=>{
+  const c = document.getElementById('clock');
+  if (c) c.textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
+}, 1000);
+
+/*── Posisi window (kaskade berantai — titlebar selalu terlihat) ──*/
+let lastPos = null;
+function cascadePos(){
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.min(880, vw-48), h = Math.min(600, vh-100);
+  if (!lastPos) lastPos = { x: Math.max(20, (vw-w)/2 - 140), y: Math.max(20, (vh-h)/2 - 100) };
+  const nx = lastPos.x + 52, ny = lastPos.y + 42;
+  if (nx + Math.min(680, w) > vw - 12 || ny + 80 > vh - 64) {
+    lastPos = { x: 20, y: 20 };
+  } else {
+    lastPos = { x: nx, y: ny };
+  }
+  return { x: lastPos.x, y: lastPos.y, w, h };
+}
+
+/*── Buka window ──*/
+function openWindow(appId){
+  if (openApps.has(appId)){ focusWindow(appId); return; }
+  const cfg = PAGES[appId];
+  if (!cfg) return;
+  const section = document.getElementById('page-' + appId);
+  if (!section) return;
+
+  openApps.add(appId);
+  orbDim.classList.add('show');
+  const pos = cascadePos();
+
+  const win = document.createElement('div');
+  win.className = 'fwin';
+  win.dataset.app = appId;
+  win.style.left = pos.x+'px';
+  win.style.top = pos.y+'px';
+  win.style.width = pos.w+'px';
+  win.style.height = pos.h+'px';
+
+  win.innerHTML =
+    `<div class="fwin-bar">
+       <div class="fwin-dots">
+         <div class="fdot fdot-close" data-act="close" title="Tutup"></div>
+         <div class="fdot fdot-min" data-act="min" title="Minimize"></div>
+         <div class="fdot fdot-max" data-act="max" title="Maximize"></div>
+       </div>
+       <div class="fwin-title"><i class="fas ${cfg.ico}" style="color:${cfg.accent}"></i>${cfg.title}</div>
+       <div class="fwin-actions">
+         <button class="fwin-act" data-act="min" title="Minimize"><i class="fas fa-minus"></i></button>
+         <button class="fwin-act" data-act="max" title="Maximize"><i class="fas fa-expand"></i></button>
+         <button class="fwin-act" data-act="close" title="Close"><i class="fas fa-xmark"></i></button>
+       </div>
+     </div>
+     <div class="fwin-body" id="fwin-body-${appId}"></div>
+     <div class="fwin-resize"></div>`;
+
+  // Pindahkan section dari vault ke window body
+  const body = win.querySelector('.fwin-body');
+  body.appendChild(section);
+  section.classList.add('active');
+
+  mount.appendChild(win);
+  focusWindow(appId);
+
+  requestAnimationFrame(()=>requestAnimationFrame(()=>win.classList.add('open')));
+
+  // Kontrol titlebar
+  win.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const act = btn.dataset.act;
+      if (act==='close') closeWindow(appId);
+      else if (act==='min') minimizeWindow(appId);
+      else if (act==='max') toggleMax(appId);
+    });
+  });
+
+  // Drag
+  const bar = win.querySelector('.fwin-bar');
+  let dragging = false, dx0=0, dy0=0, ox=0, oy=0;
+  bar.addEventListener('mousedown', e=>{
+    if (e.target.closest('[data-act]')) return;
+    dragging = true;
+    const r = win.getBoundingClientRect();
+    ox = r.left; oy = r.top;
+    dx0 = e.clientX; dy0 = e.clientY;
+    bar.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if (!dragging) return;
+    const nx = ox + (e.clientX-dx0);
+    const ny = oy + (e.clientY-dy0);
+    win.style.left = Math.max(-win.offsetWidth+80, Math.min(nx, window.innerWidth-80))+'px';
+    win.style.top = Math.max(0, Math.min(ny, window.innerHeight-60))+'px';
+  });
+  document.addEventListener('mouseup', ()=>{ dragging = false; bar.style.cursor = 'grab'; });
+
+  // Resize
+  const rz = win.querySelector('.fwin-resize');
+  let resizing = false, rx0=0, ry0=0, rw0=0, rh0=0;
+  rz.addEventListener('mousedown', e=>{
+    resizing = true;
+    rx0 = e.clientX; ry0 = e.clientY;
+    rw0 = win.offsetWidth; rh0 = win.offsetHeight;
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', e=>{
+    if (!resizing) return;
+    win.style.width = Math.max(360, rw0 + (e.clientX-rx0))+'px';
+    win.style.height = Math.max(260, rh0 + (e.clientY-ry0))+'px';
+  });
+  document.addEventListener('mouseup', ()=>{ resizing = false; });
+
+  // Klik → fokus
+  win.addEventListener('mousedown', ()=>focusWindow(appId), true);
+
+  // Taskbar + launcher state
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.add('open');
+  document.querySelector(`.launch-btn[data-app="${appId}"]`)?.classList.add('on');
+
+  // Lazy init halaman
+  if (LAZY[appId]) LAZY[appId]();
+}
+
+function focusWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  if (win.classList.contains('minimized')){ restoreWindow(appId); return; }
+  zTop++;
+  win.style.zIndex = zTop;
+  win.classList.add('focused');
+  mount.querySelectorAll('.fwin').forEach(w=>{ if(w!==win) w.classList.remove('focused'); });
+}
+
+function closeWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  win.classList.remove('open');
+  win.classList.add('closing');
+  const section = win.querySelector('.fwin-body .page');
+  setTimeout(()=>{
+    if (section) vault.appendChild(section);
+    section && section.classList.remove('active');
+    win.remove();
+  }, 240);
+  openApps.delete(appId);
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.remove('open');
+  document.querySelector(`.launch-btn[data-app="${appId}"]`)?.classList.remove('on');
+  updateDim();
+}
+
+function minimizeWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  win.classList.add('minimized');
+  win.style.display = 'none';
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.add('minimized');
+  updateDim();
+}
+
+function restoreWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  win.classList.remove('minimized');
+  win.style.display = 'flex';
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.remove('minimized');
+  focusWindow(appId);
+  updateDim();
+}
+
+function toggleMax(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  if (win.dataset.max === '1'){
+    win.dataset.max = '0';
+    win.style.left = win.dataset.ox+'px';
+    win.style.top = win.dataset.oy+'px';
+    win.style.width = win.dataset.ow+'px';
+    win.style.height = win.dataset.oh+'px';
+  } else {
+    win.dataset.max = '1';
+    win.dataset.ox = win.style.left;
+    win.dataset.oy = win.style.top;
+    win.dataset.ow = win.style.width;
+    win.dataset.oh = win.style.height;
+    win.style.left = '12px';
+    win.style.top = '12px';
+    win.style.width = (window.innerWidth-24)+'px';
+    win.style.height = (window.innerHeight-24)+'px';
+  }
+}
+
+function updateDim(){
+  orbDim.classList.toggle('show', openApps.size > 0);
+}
+
+/*── Launcher click ──*/
+document.querySelectorAll('.launch-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>openWindow(btn.dataset.app));
+});
+
+/*── Taskbar click (minimize/restore toggle) ──*/
+document.querySelectorAll('.tb-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const app = btn.dataset.app;
+    const win = mount.querySelector(`.fwin[data-app="${app}"]`);
+    if (!win){ openWindow(app); return; }
+    if (win.classList.contains('minimized')) restoreWindow(app);
+    else minimizeWindow(app);
+  });
+});
+
+/*── Sembunyikan window saat klik di luar (opsional: orb tetap interaktif) ──*/
+document.addEventListener('keydown', e=>{
+  if (e.key === 'Escape'){
+    const top = mount.querySelector('.fwin.focused');
+    if (top) closeWindow(top.dataset.app);
+  }
+});
+
+}());
+
+
   // ── Directive & Live Telemetry (template integration) ──
   const THREAD_NAMES = { '1': 'General', '802': 'Research', '803': 'Coder', '804': 'QA', '1172': 'Konten Kreator' };
   const THREAD_ORDER = ['1', '802', '803', '804', '1172'];
@@ -1376,25 +1546,10 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    // Hash routing: /dashboard#taskqueue → buka page tsb (dari ORB menu / link luar)
+    // Hash routing: /#page-XXX → buka window tersebut
     const h = location.hash.slice(1);
-    if (h) {
-      const item = document.querySelector(`.nav-item[data-page="${h}"]`);
-      if (item) {
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        const target = document.getElementById('page-' + h);
-        if (target) target.classList.add('active');
-        if (h === 'ecosystem') loadEcosystem();
-        if (h === 'swarm') loadTopologyPrompts();
-        if (h === 'taskqueue') loadKanban();
-        if (h === 'terminal') clearConsole();
-        if (h === 'telegram') loadTelegramFeed();
-        if (h === 'storage') loadTelemetry();
-        if (h === 'skills') loadSkills();
-        if (h === 'system') loadSystemSettings();
-      }
+    if (h && window.PAGES && PAGES[h]) {
+      setTimeout(() => openWindow(h), 300);
     }
     loadDirective();
     loadTelemetry();
@@ -1409,6 +1564,7 @@
       if (it2) it2.click();
     });
   });
+  
   </script>
 </body>
 </html>

@@ -16,3 +16,4 @@ data/*.db-wal
 /tmp/hermes_*
 *.log
 cookies.txt
+dashboard_backup_refactor_20260816/

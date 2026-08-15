@@ -181,6 +181,7 @@ def test_dashboard_serves_html(client):
     content = r.text
     assert "HERMES" in content
     assert "MISSION CONTROL" in content
+    assert "pageVault" in content  # unified: 12 halaman tertanam + launcher + orb
 
 
 def test_openapi_available(client):

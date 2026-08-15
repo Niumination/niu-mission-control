@@ -7,7 +7,6 @@ let ws = null;
 let reconnectTimer = null;
 let currentTgTopic = '1';
 
-// ── WebSocket Recording State ───────────────────────────
 let wsRecordingSessionId = null;
 let wsRecordingStartTime = null;
 let wsRecordingTimer = null;
@@ -79,13 +78,39 @@ function connect() {
 }
 
 // ── Render Agent Fleet Cards with LED states ─────────
+// Metadata agent (mirror swarm/agents.py AGENT_CONFIG)
+const AGENT_META = {
+  chief:      { name: 'Hermes Chief',   role: 'Orchestrator' },
+  research:   { name: 'Research',       role: 'Research & Learn' },
+  programmer: { name: 'Programmer',     role: 'Programmer & Coder' },
+  qa:         { name: 'QA',             role: 'Tester & QA' },
+  creator:    { name: 'Konten Kreator', role: 'Content Creator' },
+};
+
 function renderAgents(agents) {
   const container = document.getElementById('agentCards');
   if (!container) return;
   
   container.innerHTML = '';
   
-  agents.forEach(a => {
+  // WS /ws/swarm kirim agents sebagai DICT {agent_id: status_string} —
+  // normalisasi ke array objek dengan metadata lengkap
+  let list = [];
+  if (Array.isArray(agents)) {
+    list = agents;
+  } else if (agents && typeof agents === 'object') {
+    list = Object.entries(agents).map(([id, status]) => {
+      const meta = AGENT_META[id] || { name: id, role: '' };
+      const st = typeof status === 'object' && status !== null ? (status.status || 'idle') : status;
+      return { id, name: meta.name, role: meta.role, status: st };
+    });
+  }
+  if (!list.length) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;font-family:var(--at-font-mono)">Belum ada data agent.</div>';
+    return;
+  }
+  
+  list.forEach(a => {
     const card = document.createElement('div');
     card.className = `agent-card-premium border-${a.id}`;
     
@@ -438,8 +463,8 @@ async function loadTelemetry() {
       latencyEl.textContent = 'OK';
     }
     
-    // Render disk partitions info if on Storage Page
-    if (document.getElementById('page-storage').classList.contains('active')) {
+    // Render disk partitions info (UNIFIED: selalu render, halaman selalu di DOM)
+    if (document.getElementById('page-storage')) {
       // Convert single disk object from API ke format array
       const diskData = data.disk ? [{
         mount: '/',
@@ -512,8 +537,8 @@ async function loadKanban() {
     const failedCount = data.failed ? data.failed.length : 0;
     document.getElementById('kpiTasks').textContent = `${completedCount} Pass / ${failedCount} Fail`;
     
-    // Populate fullscreen Kanban if active
-    if (document.getElementById('page-taskqueue').classList.contains('active')) {
+    // Populate fullscreen Kanban (UNIFIED: selalu render, halaman selalu di DOM)
+    if (document.getElementById('page-taskqueue')) {
       fillFullKanbanGrid(data);
     }
   } catch (e) {
@@ -662,33 +687,9 @@ async function triggerCheckpoint() {
 }
 
 // ── Switch Main Pages Routing ─────────────────────────
+// UNIFIED: navigasi ditangani window manager (launcher) — nav sidebar tidak dipakai lagi
 function initNav() {
-  const items = document.querySelectorAll('.nav-item');
-  items.forEach(item => {
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      const page = item.dataset.page;
-      
-      // Update sidebar nav states
-      items.forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      
-      // Toggle pages
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      const target = document.getElementById('page-' + page);
-      if (target) target.classList.add('active');
-      
-      // Lazy page load initializers
-      if (page === 'ecosystem') loadEcosystem();
-      if (page === 'swarm') loadTopologyPrompts();
-      if (page === 'taskqueue') loadKanban();
-      if (page === 'terminal') clearConsole();
-      if (page === 'telegram') loadTelegramFeed();
-      if (page === 'storage') loadTelemetry();
-      if (page === 'skills') loadSkills();
-      if (page === 'system') loadSystemSettings();
-    });
-  });
+  // no-op — semua halaman selalu "active" di DOM (pageVault), window manager mengontrol visibilitas
 }
 
 // ── Swarm System Prompts viewer ───────────────────────
