@@ -144,3 +144,43 @@ Server menangani SIGTERM dan SIGINT dengan:
 - Manual checkpoint via button di dashboard atau POST /api/mc/wal-checkpoint
 - Temporary files di /tmp (RAM disk), bukan USB
 - ThrottleInterval: 30s antara restart (crash-loop protection)
+
+## Thread Dispatch Pipeline (v2.7 — 2026-08-14)
+
+Pipeline resmi untuk menugaskan agent antar-thread (general → QA/programmer/research/kreator).
+
+### Alur
+```
+1. POST /api/mc/dispatch  {to: "804", message: "...", source: "general"}
+2. Record pending di data/dispatches.json + broadcast WS (dashboard realtime)
+3. Background task:
+   a. Kirim notifikasi ke topic target (hermes send, retry 2x30s)
+   b. Trigger agent: hermes -z "<message>" --resume <session_thread> -m <model> --provider 9router
+   c. Status → done/error + simpan result di record
+   d. Kirim hasil balik ke topic target
+   e. Broadcast update WS
+```
+
+### Endpoint
+- `POST /api/mc/dispatch` — kirim + trigger (return instan, async di background)
+- `GET /api/mc/dispatches?limit=20` — riwayat + status
+- WS `/ws/swarm` — broadcast event `{type:"dispatch", dispatch:{...}}` + snapshot berisi `dispatches`
+
+### Status lifecycle
+`pending` → `sent` (notifikasi terkirim) → `done` (agent selesai, ada result) | `error`
+
+### Mapping thread (session_id + model)
+| Thread | Session | Model |
+|--------|---------|-------|
+| 1 general | 20260718_020326_cbee9e | gemini-3.5-flash-lite |
+| 802 research | 20260725_180757_8bfbcc82 | gc/gemini-2.5-pro |
+| 803 programmer | 20260725_180825_de730f23 | deepseek-r1-distill-qwen-32b |
+| 804 qa | 20260725_180822_1ff5b715 | glm-4.7-flash |
+| 1172 kreator | 20260809_114955_fe915d35 | gemma-4-31b-it |
+
+### Dashboard
+View DISPATCH di /aios: form kirim perintah + riwayat realtime (status pill + result preview).
+
+### Catatan
+- Directives thread di config.yaml (platforms.telegram.extra.channel_prompts) — thread 1 sudah diinstruksikan pakai /api/mc/dispatch untuk menugaskan agent lain.
+- Session ID berubah saat thread di-reset (/new) — update THREAD_SESSIONS di modules/dispatch_store.py.

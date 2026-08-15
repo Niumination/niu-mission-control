@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HERMES // FUSION — ORB Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/*═══════════════════════════════════════
+  FUSION — ORB CENTRIC (base = orb)
+  Dashboard & AIOS = floating windows DI ATAS orb
+═══════════════════════════════════════*/
+:root{
+  --glass:rgba(10,15,28,.82);--glass-b:rgba(111,216,255,.14);
+  --cy400:#22d3ee;--cy500:#06b6d4;--or400:#fb923c;--or500:#f97316;
+  --green:#22c55e;--red:#ef4444;--am400:#fbbf24;--violet:#8b5cf6;
+  --t1:#f1f5f9;--t2:#94a3b8;--t3:#64748b;--t4:#334155;
+  --r:14px;--rs:10px;
+  --font-head:'Space Grotesk',sans-serif;--font-body:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  --ease:cubic-bezier(.34,1.3,.4,1);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font-body);background:#05070d;color:var(--t1);font-size:13px;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--t4);border-radius:3px}
+
+/*══════ ORB BASE — fullscreen, selalu tampil ══════*/
+.orb-base{position:fixed;inset:0;z-index:1}
+.orb-base iframe{width:100%;height:100%;border:none;display:block}
+.orb-dim{position:fixed;inset:0;background:rgba(3,5,10,.45);opacity:0;pointer-events:none;transition:opacity .3s;z-index:2}
+.orb-dim.show{opacity:1;pointer-events:auto}
+
+/*══════ LAUNCHER — pojok kanan atas (di atas orb) ══════*/
+.launcher{position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:50}
+.launch-btn{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--glass-b);font-family:var(--font-head);font-size:.68rem;font-weight:600;letter-spacing:.5px;color:var(--t2);transition:all .2s;box-shadow:0 6px 24px -8px rgba(0,0,0,.6)}
+.launch-btn:hover{transform:translateY(-2px);color:var(--t1);border-color:rgba(111,216,255,.35)}
+.launch-btn i{font-size:.75rem}
+.launch-btn .lb-ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:.68rem;color:#fff}
+.lb-dash{background:linear-gradient(135deg,#7c3aed,#4f46e5)}
+.lb-aios{background:linear-gradient(135deg,#ea580c,#f59e0b)}
+.launch-btn .lb-txt{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
+.launch-btn .lb-txt small{font-size:.5rem;color:var(--t3);letter-spacing:1px;font-family:var(--font-mono)}
+.launch-btn.on{background:rgba(111,216,255,.12);border-color:rgba(111,216,255,.4);color:var(--t1)}
+
+/*══════ FLOATING WINDOWS (di atas orb) ══════*/
+.fwin{position:fixed;background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--glass-b);border-radius:var(--r);box-shadow:0 24px 80px -16px rgba(0,0,0,.75),0 0 0 1px rgba(111,216,255,.05);display:flex;flex-direction:column;min-width:340px;min-height:240px;z-index:100;opacity:0;transform:scale(.88) translateY(14px);pointer-events:none;transition:opacity .28s var(--ease),transform .28s var(--ease)}
+.fwin.open{opacity:1;transform:scale(1) translateY(0);pointer-events:auto}
+.fwin.closing{opacity:0;transform:scale(.9) translateY(10px);pointer-events:none}
+.fwin.focused{z-index:200;box-shadow:0 28px 100px -16px rgba(0,0,0,.85),0 0 0 1px rgba(111,216,255,.22),0 0 44px -10px rgba(111,216,255,.22)}
+
+/* Titlebar */
+.fwin-bar{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:grab;user-select:none;flex-shrink:0;border-bottom:1px solid rgba(111,216,255,.08);border-radius:var(--r) var(--r) 0 0;background:rgba(13,20,38,.6)}
+.fwin-bar:active{cursor:grabbing}
+.fwin-dots{display:flex;gap:6px;flex-shrink:0}
+.fdot{width:11px;height:11px;border-radius:50%;transition:filter .15s}
+.fdot:hover{filter:brightness(1.35)}
+.fdot-close{background:#ef4444}
+.fdot-min{background:#fbbf24}
+.fdot-max{background:#22c55e}
+.fwin-title{display:flex;align-items:center;gap:7px;font-family:var(--font-head);font-size:.72rem;font-weight:600;letter-spacing:.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1)}
+.fwin-title i{font-size:.68rem;opacity:.9}
+.fwin-actions{display:flex;gap:4px;flex-shrink:0}
+.fwin-act{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:.6rem;color:var(--t3);transition:background .15s,color .15s}
+.fwin-act:hover{background:rgba(111,216,255,.12);color:var(--cy400)}
+
+/* Body */
+.fwin-body{flex:1;min-height:0;position:relative;border-radius:0 0 var(--r) var(--r);overflow:hidden;background:rgba(5,7,13,.4)}
+.fwin-body iframe{width:100%;height:100%;border:none;display:block}
+.fwin-loading{position:absolute;inset:0;display:grid;place-items:center;z-index:2;background:var(--bg0,#05070d);transition:opacity .3s}
+.fwin-loading.done{opacity:0;pointer-events:none}
+.fwin-loading .spinner{width:36px;height:36px;border-radius:50%;border:2.5px solid var(--t4);border-top-color:var(--cy400);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fwin-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:5;background:radial-gradient(circle at 100% 100%,rgba(111,216,255,.5) 0,transparent 45%)}
+
+/*══════ TASKBAR ══════*/
+.taskbar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:500;display:flex;align-items:center;gap:5px;padding:7px 10px;background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--glass-b);border-radius:16px;box-shadow:0 12px 44px -10px rgba(0,0,0,.7)}
+.tb-brand{display:flex;align-items:center;gap:7px;padding:0 8px 0 4px;font-family:var(--font-head);font-size:.62rem;font-weight:700;letter-spacing:1px;color:var(--t2);white-space:nowrap}
+.tb-brand i{color:var(--cy400);font-size:.72rem}
+.tb-sep{width:1px;height:22px;background:var(--t4);margin:0 3px}
+.tb-btn{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:10px;font-size:.64rem;font-weight:600;color:var(--t2);transition:all .18s;white-space:nowrap}
+.tb-btn:hover{background:rgba(111,216,255,.08);color:var(--t1)}
+.tb-btn i{font-size:.68rem}
+.tb-btn.open{color:var(--t1);background:rgba(111,216,255,.1);border:1px solid rgba(111,216,255,.18)}
+.tb-btn.open::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--cy400);margin-left:2px}
+.tb-btn.minimized{color:var(--t3)}
+.tb-clock{display:flex;align-items:center;gap:6px;padding:0 8px;font-family:var(--font-mono);font-size:.62rem;color:var(--t2)}
+.tb-clock i{color:var(--cy400);font-size:.6rem}
+.tb-live{display:flex;align-items:center;gap:5px;padding:0 6px;font-family:var(--font-mono);font-size:.56rem;color:var(--green)}
+.tb-live .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/*═══ HINT ═══*/
+.hint{position:fixed;bottom:66px;left:50%;transform:translateX(-50%);font-size:.56rem;color:var(--t3);font-family:var(--font-mono);letter-spacing:.5px;z-index:40;text-align:center;pointer-events:none;white-space:nowrap;background:rgba(5,7,13,.5);padding:4px 12px;border-radius:8px;backdrop-filter:blur(8px)}
+
+/*═══ VOICE COMMAND PANEL (dari AIOS) ═══*/
+.voice-panel{position:fixed;left:16px;bottom:16px;z-index:300;width:340px;background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(111,216,255,.2);border-radius:14px;box-shadow:0 16px 50px -12px rgba(0,0,0,.75),0 0 30px -12px rgba(111,216,255,.25);overflow:hidden;transition:box-shadow .25s}
+.voice-panel:hover{box-shadow:0 16px 60px -12px rgba(0,0,0,.8),0 0 40px -10px rgba(111,216,255,.35)}
+.voice-panel.collapsed .vp-body{display:none}
+.voice-panel.collapsed{width:auto}
+.voice-panel.collapsed .vp-title{white-space:nowrap}
+.vp-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(111,216,255,.08);cursor:pointer;user-select:none}
+.vp-title{display:flex;align-items:center;gap:8px;font-family:'Orbitron',var(--font-head);font-size:.62rem;font-weight:700;letter-spacing:1.5px;color:#6fd8ff;text-shadow:0 0 14px rgba(111,216,255,.4)}
+.vp-title i{font-size:.68rem}
+.vp-right{display:flex;align-items:center;gap:8px}
+.vp-status{font-family:var(--font-mono);font-size:.54rem;letter-spacing:.5px;color:var(--t3);transition:color .3s}
+.vp-status.listening{color:#22c55e;animation:pulse 1.6s infinite}
+.vp-status.sending{color:var(--am400)}
+.vp-status.sent{color:#22c55e}
+.vp-status.error{color:#ef4444}
+.vp-toggle{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:.58rem;color:var(--t3);transition:all .15s}
+.vp-toggle:hover{background:rgba(111,216,255,.12);color:var(--cy400)}
+.vp-body{padding:10px 12px 12px}
+.vp-wave{display:flex;align-items:center;justify-content:center;gap:2px;height:30px;margin-bottom:8px}
+.vp-wave .wb{width:2.5px;border-radius:2px;background:linear-gradient(to top,#6fd8ff,#22d3ee);will-change:height;transition:height .1s linear;box-shadow:0 0 6px rgba(111,216,255,.3)}
+.vp-msgbox{display:flex;align-items:center;gap:6px;background:rgba(5,7,13,.6);border:1px solid rgba(111,216,255,.15);border-radius:9px;padding:0 6px;height:32px;transition:border-color .3s}
+.vp-msgbox:focus-within{border-color:rgba(111,216,255,.5)}
+.vp-msgbox input{flex:1;background:transparent;border:none;outline:none;color:var(--t1);font-size:.7rem;padding:0 .3rem;font-family:var(--font-mono)}
+.vp-msgbox input::placeholder{color:var(--t3)}
+.vp-snd{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#1e5a8a,#0e7490);color:#fff;display:grid;place-items:center;font-size:.58rem;transition:transform .15s,box-shadow .15s;flex-shrink:0}
+.vp-snd:hover{transform:translateY(-1px);box-shadow:0 3px 10px -2px rgba(111,216,255,.4)}
+.vp-mic{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:7px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;font-size:.56rem;font-weight:600;letter-spacing:.5px;transition:all .2s;flex-shrink:0}
+.vp-mic:hover{background:rgba(34,197,94,.2)}
+.vp-mic.listening{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171;animation:pulse 1.4s infinite}
+.vp-mic:disabled{opacity:.4;cursor:not-allowed}
+.vp-log{min-height:0;max-height:76px;overflow-y:auto;margin-top:8px;font-family:var(--font-mono);font-size:.56rem;line-height:1.6;scrollbar-width:thin;scrollbar-color:var(--t4) transparent}
+.vp-log::-webkit-scrollbar{width:3px}
+.vp-log::-webkit-scrollbar-thumb{background:var(--t4);border-radius:3px}
+.vp-log .vl{display:flex;gap:6px;padding:2px 0;border-bottom:1px solid rgba(111,216,255,.04);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vp-log .vl-t{color:var(--t3);flex-shrink:0}
+.vp-log .vl-ok{color:#4ade80}
+.vp-log .vl-err{color:#f87171}
+.vp-log .vl-info{color:var(--t2)}
+
+/*═══ RIGHT DOCK (panel shared dari dashboard+aios) ═══*/
+.r-dock{position:fixed;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:50}
+.r-dock-btn{width:46px;height:46px;border-radius:13px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--glass-b);display:grid;place-items:center;font-size:.95rem;color:var(--t2);transition:all .2s;box-shadow:0 6px 24px -8px rgba(0,0,0,.6);position:relative}
+.r-dock-btn:hover{transform:translateX(-3px);color:var(--t1);border-color:rgba(111,216,255,.4)}
+.r-dock-btn.on{background:rgba(111,216,255,.14);border-color:rgba(111,216,255,.45);color:#6fd8ff;box-shadow:0 0 24px -6px rgba(111,216,255,.5)}
+.r-dock-btn .rd-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:#ef4444;color:#fff;font-size:.5rem;font-weight:700;display:grid;place-items:center;padding:0 3px;font-family:var(--font-mono)}
+.r-dock-btn .rd-label{position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);white-space:nowrap;background:var(--glass);border:1px solid var(--glass-b);border-radius:8px;padding:5px 10px;font-family:var(--font-head);font-size:.6rem;font-weight:600;letter-spacing:1px;color:var(--t1);opacity:0;pointer-events:none;transition:opacity .18s}
+.r-dock-btn:hover .rd-label{opacity:1}
+
+/*═══ MISSION PANEL (isi shared views) ═══*/
+.m-panel{position:fixed;right:70px;top:50%;transform:translateY(-50%) translateX(12px);width:360px;max-height:min(560px,calc(100vh - 140px));background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(111,216,255,.22);border-radius:16px;box-shadow:0 24px 70px -14px rgba(0,0,0,.8),0 0 44px -12px rgba(111,216,255,.25);display:flex;flex-direction:column;z-index:60;opacity:0;pointer-events:none;transform-origin:right center;transition:opacity .25s var(--ease),transform .25s var(--ease)}
+.m-panel.open{opacity:1;pointer-events:auto;transform:translateY(-50%) translateX(0)}
+.m-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(111,216,255,.1);flex-shrink:0}
+.m-head-ico{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#1e5a8a,#0e7490);display:grid;place-items:center;font-size:.62rem;color:#fff;flex-shrink:0}
+.m-head-title{font-family:'Orbitron',var(--font-head);font-size:.66rem;font-weight:700;letter-spacing:1.2px;color:#6fd8ff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-head-x{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:.6rem;color:var(--t3);transition:all .15s}
+.m-head-x:hover{background:rgba(239,68,68,.15);color:#f87171}
+.m-body{flex:1;min-height:0;overflow-y:auto;padding:10px 12px;scrollbar-width:thin;scrollbar-color:var(--t4) transparent}
+.m-body::-webkit-scrollbar{width:4px}
+.m-body::-webkit-scrollbar-thumb{background:var(--t4);border-radius:4px}
+.m-foot{display:flex;gap:4px;padding:7px 10px;border-top:1px solid rgba(111,216,255,.08);flex-shrink:0}
+.m-tab{flex:1;padding:5px 4px;border-radius:7px;font-family:var(--font-mono);font-size:.54rem;letter-spacing:.5px;color:var(--t3);transition:all .15s;text-align:center;font-weight:600}
+.m-tab:hover{color:var(--t1)}
+.m-tab.on{background:rgba(111,216,255,.12);color:#6fd8ff}
+
+/*─ shared view items ─*/
+.sv-empty{font-family:var(--font-mono);font-size:.58rem;color:var(--t3);text-align:center;padding:1.2rem 0}
+.sv-card{background:rgba(5,7,13,.45);border:1px solid rgba(111,216,255,.08);border-radius:10px;padding:8px 10px;margin-bottom:7px}
+.sv-card-h{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px}
+.sv-nm{font-family:var(--font-head);font-size:.66rem;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:6px;min-width:0}
+.sv-nm i{font-size:.6rem;opacity:.8}
+.sv-st{font-size:.52rem;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:10px;flex-shrink:0}
+.sv-st.active{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.25)}
+.sv-st.idle{background:rgba(100,116,139,.12);color:#94a3b8;border:1px solid rgba(100,116,139,.25)}
+.sv-st.running{background:rgba(59,130,246,.12);color:#60a5fa;border:1px solid rgba(59,130,246,.25)}
+.sv-st.error{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25)}
+.sv-bar{height:4px;background:rgba(111,216,255,.07);border-radius:3px;overflow:hidden;margin:3px 0}
+.sv-bf{height:100%;border-radius:3px;background:linear-gradient(90deg,#0e7490,#22d3ee);transition:width .7s var(--ease)}
+.sv-meta{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:.52rem;color:var(--t3);margin-top:3px}
+.sv-meta b{color:var(--cy400);font-weight:600}
+.sv-log{font-family:var(--font-mono);font-size:.56rem;line-height:1.7;padding:2px 0;border-bottom:1px solid rgba(111,216,255,.04);display:flex;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sv-log .lt{color:var(--t3);flex-shrink:0}
+.sv-log .la{color:#6fd8ff;flex-shrink:0}
+.sv-log .INFO{color:#94a3b8}
+.sv-log .OK{color:#4ade80}
+.sv-log .ERROR{color:#f87171}
+.sv-log .WARN{color:#fbbf24}
+.sv-hstat{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+.sv-hcell{background:rgba(5,7,13,.45);border:1px solid rgba(111,216,255,.08);border-radius:10px;padding:8px 10px}
+.sv-hv{font-family:var(--font-head);font-size:.95rem;font-weight:700;color:var(--t1);line-height:1.2}
+.sv-hv small{font-size:.55rem;color:var(--t3);font-weight:500}
+.sv-hl{font-size:.52rem;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
+
+@media(max-width:768px){
+  .launcher{top:auto;bottom:70px;right:50%;transform:translateX(50%)}
+  .launch-btn .lb-txt small{display:none}
+  .tb-brand{display:none}
+  .m-panel{right:10px;width:calc(100vw - 20px);max-height:70vh}
+  .r-dock{right:8px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════ ORB BASE (fullscreen, default) ══════ -->
+<div class="orb-base">
+  <iframe src="/" title="ORB Command Center" id="orbFrame"></iframe>
+</div>
+<div class="orb-dim" id="orbDim"></div>
+
+<!-- ══════ LAUNCHER (di atas orb) ══════ -->
+<div class="launcher">
+  <button class="launch-btn" data-app="dashboard" title="Buka AgentOS Dashboard">
+    <span class="lb-ico lb-dash"><i class="fas fa-table-columns"></i></span>
+    <span class="lb-txt">DASHBOARD<small>AgentOS</small></span>
+  </button>
+  <button class="launch-btn" data-app="aios" title="Buka AIOS Holographic">
+    <span class="lb-ico lb-aios"><i class="fas fa-user-astronaut"></i></span>
+    <span class="lb-txt">AIOS<small>Holographic</small></span>
+  </button>
+</div>
+
+<!-- ══════ FLOATING WINDOWS MOUNT ══════ -->
+<div id="winMount"></div>
+
+<!-- ══════ VOICE COMMAND PANEL (dari AIOS, overlay di atas ORB) ══════ -->
+<div class="voice-panel" id="voicePanel">
+  <div class="vp-header" id="vpHeader">
+    <div class="vp-title"><i class="fas fa-microphone"></i>VOICE COMMAND</div>
+    <div class="vp-right">
+      <span class="vp-status" id="vpStatus">STANDBY</span>
+      <button class="vp-toggle" id="vpToggle" title="Collapse"><i class="fas fa-chevron-down"></i></button>
+    </div>
+  </div>
+  <div class="vp-body" id="vpBody">
+    <div class="vp-wave" id="vpWave"></div>
+    <div class="vp-msgbox">
+      <i class="fas fa-terminal" style="color:#6fd8ff;font-size:.6rem"></i>
+      <input type="text" placeholder="Perintah suara atau ketik... (kirim ke #General)" id="vpInput">
+      <button class="vp-snd" id="vpSnd" title="Kirim"><i class="fas fa-paper-plane"></i></button>
+      <button class="vp-mic" id="vpMic" title="Voice input"><i class="fas fa-circle" style="font-size:.45rem"></i>MIC</button>
+    </div>
+    <div class="vp-log" id="vpLog"></div>
+  </div>
+</div>
+
+<!-- ══════ RIGHT DOCK + MISSION PANEL (shared features) ══════ -->
+<div class="r-dock" id="rDock">
+  <button class="r-dock-btn" data-view="threads" title="Thread Orchestrator"><i class="fas fa-diagram-project"></i><span class="rd-label">THREADS</span></button>
+  <button class="r-dock-btn" data-view="swarm" title="Swarm Network"><i class="fas fa-network-wired"></i><span class="rd-label">SWARM</span></button>
+  <button class="r-dock-btn" data-view="feed" title="Live Activity"><i class="fas fa-stream"></i><span class="rd-label">LIVE FEED</span><span class="rd-badge" id="feedBadge" style="display:none">0</span></button>
+  <button class="r-dock-btn" data-view="health" title="System Health"><i class="fas fa-heart-pulse"></i><span class="rd-label">HEALTH</span></button>
+</div>
+
+<div class="m-panel" id="mPanel">
+  <div class="m-head">
+    <div class="m-head-ico" id="mIco"><i class="fas fa-diagram-project"></i></div>
+    <div class="m-head-title" id="mTitle">THREAD ORCHESTRATOR</div>
+    <button class="m-head-x" id="mClose" title="Close"><i class="fas fa-xmark"></i></button>
+  </div>
+  <div class="m-body" id="mBody"><div class="sv-empty">⟳ memuat...</div></div>
+  <div class="m-foot">
+    <button class="m-tab" data-view="threads">THREADS</button>
+    <button class="m-tab" data-view="swarm">SWARM</button>
+    <button class="m-tab" data-view="feed">FEED</button>
+    <button class="m-tab" data-view="health">HEALTH</button>
+  </div>
+</div>
+
+<div class="hint">drag titlebar · resize pojok kanan-bawah · 🟢 max / 🟡 min / 🔴 close · voice command aktif</div>
+
+<!-- ══════ TASKBAR ══════ -->
+<div class="taskbar" id="taskbar">
+  <div class="tb-brand"><i class="fas fa-bolt"></i>FUSION</div>
+  <div class="tb-sep"></div>
+  <div class="tb-btn" data-app="dashboard"><i class="fas fa-table-columns" style="color:#4f46e5"></i>DASHBOARD</div>
+  <div class="tb-btn" data-app="aios"><i class="fas fa-user-astronaut" style="color:#f59e0b"></i>AIOS</div>
+  <div class="tb-sep"></div>
+  <div class="tb-live"><span class="dot"></span>ORB LIVE</div>
+  <div class="tb-sep"></div>
+  <div class="tb-clock"><i class="far fa-clock"></i><span id="clock">00:00:00</span></div>
+</div>
+
+<script>
+/*═══════════════════════════════════════
+  FUSION ENGINE — ORB base + floating windows
+═══════════════════════════════════════*/
+(function(){
+'use strict';
+
+const APPS = {
+  dashboard: { url:'/dashboard', title:'AgentOS Dashboard', ico:'fa-table-columns', accent:'#4f46e5', x:'auto', y:'auto', w:860, h:600 },
+  aios:      { url:'/aios',      title:'AIOS Holographic',  ico:'fa-user-astronaut', accent:'#f59e0b', x:'auto', y:'auto', w:900, h:640 },
+};
+
+const mount = document.getElementById('winMount');
+const orbDim = document.getElementById('orbDim');
+const taskbar = document.getElementById('taskbar');
+let zTop = 100;
+let winCount = 0;
+const openApps = new Set();
+
+/*── Clock ──*/
+setInterval(()=>{
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
+}, 1000);
+
+/*── Posisi window (kaskade) ──*/
+function cascadePos(idx){
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const w = 860 + idx*14, h = 600 + idx*10;
+  const x = Math.max(24, (vw - w)/2 + idx*34 - 170);
+  const y = Math.max(24, (vh - h)/2 + idx*22 - 60);
+  return { x, y, w: Math.min(w, vw-40), h: Math.min(h, vh-70) };
+}
+
+/*── Buka window ──*/
+function openWindow(appId){
+  if (openApps.has(appId)){ focusWindow(appId); return; }
+  const cfg = APPS[appId];
+  if (!cfg) return;
+
+  openApps.add(appId);
+  orbDim.classList.add('show');
+  const idx = openApps.size;
+
+  const pos = cfg.x === 'auto' ? cascadePos(idx) : { x:cfg.x, y:cfg.y, w:cfg.w, h:cfg.h };
+
+  const win = document.createElement('div');
+  win.className = 'fwin';
+  win.dataset.app = appId;
+  win.style.left = pos.x+'px';
+  win.style.top = pos.y+'px';
+  win.style.width = pos.w+'px';
+  win.style.height = pos.h+'px';
+
+  win.innerHTML =
+    `<div class="fwin-bar">
+       <div class="fwin-dots">
+         <div class="fdot fdot-close" data-act="close" title="Tutup"></div>
+         <div class="fdot fdot-min" data-act="min" title="Minimize"></div>
+         <div class="fdot fdot-max" data-act="max" title="Maximize"></div>
+       </div>
+       <div class="fwin-title"><i class="fas ${cfg.ico}" style="color:${cfg.accent}"></i>${cfg.title}</div>
+       <div class="fwin-actions">
+         <button class="fwin-act" data-act="min" title="Minimize"><i class="fas fa-minus"></i></button>
+         <button class="fwin-act" data-act="max" title="Maximize"><i class="fas fa-expand"></i></button>
+         <button class="fwin-act" data-act="close" title="Close"><i class="fas fa-xmark"></i></button>
+       </div>
+     </div>
+     <div class="fwin-body">
+       <div class="fwin-loading"><div class="spinner"></div></div>
+       <iframe src="${cfg.url}" loading="lazy"></iframe>
+     </div>
+     <div class="fwin-resize"></div>`;
+
+  mount.appendChild(win);
+  winCount++;
+  focusWindow(appId);
+
+  // Animasi masuk
+  requestAnimationFrame(()=>requestAnimationFrame(()=>win.classList.add('open')));
+
+  // Loader + de-dup setelah iframe load
+  const iframe = win.querySelector('iframe');
+  iframe.addEventListener('load', ()=>{
+    const ld = win.querySelector('.fwin-loading');
+    if (ld) setTimeout(()=>ld.classList.add('done'), 250);
+    // Sembunyikan fitur duplikat (hanya di fusion)
+    setTimeout(()=>{
+      if (appId==='dashboard' && window.__dedupDashboard) window.__dedupDashboard(iframe);
+      if (appId==='aios' && window.__dedupAios) window.__dedupAios(iframe);
+    }, 400);
+  });
+  setTimeout(()=>{
+    const ld = win.querySelector('.fwin-loading');
+    if (ld) ld.classList.add('done');
+  }, 5000);
+
+  // Kontrol titlebar
+  win.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const act = btn.dataset.act;
+      if (act==='close') closeWindow(appId);
+      else if (act==='min') minimizeWindow(appId);
+      else if (act==='max') toggleMax(appId);
+    });
+  });
+
+  // Drag
+  const bar = win.querySelector('.fwin-bar');
+  let dragging = false, dx0=0, dy0=0, ox=0, oy=0;
+  bar.addEventListener('mousedown', e=>{
+    if (e.target.closest('[data-act]')) return;
+    dragging = true;
+    const r = win.getBoundingClientRect();
+    ox = r.left; oy = r.top;
+    dx0 = e.clientX; dy0 = e.clientY;
+    bar.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if (!dragging) return;
+    const nx = ox + (e.clientX-dx0);
+    const ny = oy + (e.clientY-dy0);
+    win.style.left = Math.max(-win.offsetWidth+80, Math.min(nx, window.innerWidth-80))+'px';
+    win.style.top = Math.max(0, Math.min(ny, window.innerHeight-60))+'px';
+  });
+  document.addEventListener('mouseup', ()=>{ dragging = false; bar.style.cursor = 'grab'; });
+
+  // Resize
+  const rz = win.querySelector('.fwin-resize');
+  let resizing = false, rx0=0, ry0=0, rw0=0, rh0=0;
+  rz.addEventListener('mousedown', e=>{
+    resizing = true;
+    rx0 = e.clientX; ry0 = e.clientY;
+    rw0 = win.offsetWidth; rh0 = win.offsetHeight;
+    e.preventDefault(); e.stopPropagation();
+  });
+  document.addEventListener('mousemove', e=>{
+    if (!resizing) return;
+    win.style.width = Math.max(360, rw0 + (e.clientX-rx0))+'px';
+    win.style.height = Math.max(260, rh0 + (e.clientY-ry0))+'px';
+  });
+  document.addEventListener('mouseup', ()=>{ resizing = false; });
+
+  // Klik → fokus
+  win.addEventListener('mousedown', ()=>focusWindow(appId), true);
+
+  // Taskbar
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.add('open');
+  document.querySelector(`.launch-btn[data-app="${appId}"]`)?.classList.add('on');
+  updateDim();
+}
+
+function focusWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  if (win.classList.contains('minimized')){ restoreWindow(appId); return; }
+  zTop++;
+  win.style.zIndex = zTop;
+  win.classList.add('focused');
+  win.querySelectorAll('.fwin:not(.focused)');
+  mount.querySelectorAll('.fwin').forEach(w=>{ if(w!==win) w.classList.remove('focused'); });
+}
+
+function closeWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  win.classList.remove('open');
+  win.classList.add('closing');
+  setTimeout(()=>{ win.remove(); }, 260);
+  openApps.delete(appId);
+  updateDim();
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.remove('open');
+  document.querySelector(`.launch-btn[data-app="${appId}"]`)?.classList.remove('on');
+}
+
+function minimizeWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  win.classList.add('minimized');
+  win.classList.remove('focused');
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.add('minimized');
+  updateDim();
+}
+
+function restoreWindow(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  win.classList.remove('minimized');
+  taskbar.querySelector(`.tb-btn[data-app="${appId}"]`)?.classList.remove('minimized');
+  focusWindow(appId);
+  updateDim();
+}
+
+function toggleMax(appId){
+  const win = mount.querySelector(`.fwin[data-app="${appId}"]`);
+  if (!win) return;
+  if (win.dataset.max === '1'){
+    win.style.left = win.dataset.px; win.style.top = win.dataset.py;
+    win.style.width = win.dataset.pw; win.style.height = win.dataset.ph;
+    win.dataset.max = '0';
+  } else {
+    win.dataset.px = win.style.left; win.dataset.py = win.style.top;
+    win.dataset.pw = win.style.width; win.dataset.ph = win.style.height;
+    win.style.left = '0'; win.style.top = '0';
+    win.style.width = '100vw'; win.style.height = '100vh';
+    win.dataset.max = '1';
+    zTop++; win.style.zIndex = zTop;
+    win.classList.add('focused');
+  }
+}
+
+/*── Dim orb saat ada window terbuka ──*/
+function updateDim(){
+  orbDim.classList.toggle('show', openApps.size > 0);
+}
+
+/*── Launcher click ──*/
+document.querySelectorAll('.launch-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const app = btn.dataset.app;
+    if (openApps.has(app)){
+      const win = mount.querySelector(`.fwin[data-app="${app}"]`);
+      if (win.classList.contains('minimized')) restoreWindow(app);
+      else if (win.classList.contains('focused')) minimizeWindow(app);
+      else focusWindow(app);
+    } else {
+      openWindow(app);
+    }
+  });
+});
+
+/*── Taskbar click ──*/
+taskbar.addEventListener('click', e=>{
+  const btn = e.target.closest('.tb-btn[data-app]');
+  if (!btn) return;
+  const app = btn.dataset.app;
+  if (openApps.has(app)){
+    const win = mount.querySelector(`.fwin[data-app="${app}"]`);
+    if (win.classList.contains('minimized')) restoreWindow(app);
+    else if (win.classList.contains('focused')) minimizeWindow(app);
+    else focusWindow(app);
+  } else {
+    openWindow(app);
+  }
+});
+
+/*── Default: ORB tampil penuh, tidak ada window terbuka ──*/
+// (orb-base iframe sudah default; user buka dashboard/aios via launcher)
+
+/*═══════════════════════════════════════
+  VOICE COMMAND PANEL (dari AIOS → ORB)
+═══════════════════════════════════════*/
+(function(){
+  const vpInput = document.getElementById('vpInput');
+  const vpSnd = document.getElementById('vpSnd');
+  const vpMic = document.getElementById('vpMic');
+  const vpStatus = document.getElementById('vpStatus');
+  const vpLog = document.getElementById('vpLog');
+  const vpWave = document.getElementById('vpWave');
+  const vpPanel = document.getElementById('voicePanel');
+  const vpToggle = document.getElementById('vpToggle');
+
+  //── Waveform (24 bars) ──
+  if (vpWave){
+    const frag = document.createDocumentFragment();
+    for (let i=0;i<24;i++){
+      const b = document.createElement('div');
+      b.className = 'wb';
+      b.style.height = '15%';
+      frag.appendChild(b);
+    }
+    vpWave.appendChild(frag);
+    let audioLvl = .4;
+    setInterval(()=>{ audioLvl = .25+Math.random()*.5; }, 1400);
+    (function tickWave(){
+      const bars = vpWave.children;
+      const t = performance.now()*.004;
+      for (let i=0,l=bars.length;i<l;i++){
+        bars[i].style.height = (12+Math.sin(t+i*.45)*26*audioLvl+Math.random()*9*audioLvl)+'%';
+      }
+      requestAnimationFrame(tickWave);
+    })();
+  }
+
+  //── Status + log helpers ──
+  function setStatus(txt, cls){
+    vpStatus.textContent = txt;
+    vpStatus.className = 'vp-status'+(cls?' '+cls:'');
+  }
+  function vlog(msg, cls){
+    const d = document.createElement('div');
+    d.className = 'vl';
+    d.innerHTML = `<span class="vl-t">${new Date().toLocaleTimeString('en-US',{hour12:false})}</span><span class="vl-${cls||'info'}">${msg.replace(/</g,'&lt;')}</span>`;
+    vpLog.insertBefore(d, vpLog.firstChild);
+    while (vpLog.children.length > 6) vpLog.removeChild(vpLog.lastChild);
+  }
+
+  //── Kirim perintah → Telegram #General (topic 1) via MC API ──
+  async function sendCmd(){
+    const v = vpInput.value.trim();
+    if (!v) return;
+    vpInput.value = '';
+    setStatus('SENDING...', 'sending');
+    vlog('→ kirim: '+v, 'info');
+    try {
+      const r = await fetch('/api/mc/send-telegram', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ message:v, topic_id:'1' }),
+        signal: AbortSignal.timeout(60000),
+      });
+      const data = await r.json();
+      if (data && data.status === 'sent'){
+        setStatus('SENT → #GENERAL', 'sent');
+        vlog('✓ terkirim ke #General', 'ok');
+      } else {
+        setStatus('GAGAL', 'error');
+        vlog('✗ '+(data?.message||'unknown error'), 'err');
+      }
+    } catch(e){
+      setStatus('GAGAL', 'error');
+      vlog('✗ '+e.message, 'err');
+    }
+    setTimeout(()=>setStatus('STANDBY'), 3000);
+  }
+  vpSnd.addEventListener('click', sendCmd);
+  vpInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendCmd(); });
+
+  //── Voice input (Web Speech API, id-ID) ──
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null, listening = false;
+  if (!SR){
+    vpMic.disabled = true;
+    vpMic.title = 'Voice tidak didukung browser ini';
+    vpMic.style.opacity = .4;
+  }
+  vpMic.addEventListener('click', ()=>{
+    if (!SR) return;
+    if (listening){
+      stopListen();
+    } else {
+      startListen();
+    }
+  });
+
+  function startListen(){
+    try {
+      recognition = new SR();
+      recognition.lang = 'id-ID';
+      recognition.interimResults = false;
+      recognition.onresult = ev=>{
+        const t = ev.results[0][0].transcript;
+        vpInput.value = t;
+        vlog('🎤 "'+t+'"', 'info');
+        sendCmd();
+      };
+      recognition.onerror = ()=> stopListen();
+      recognition.onend = ()=> stopListen();
+      recognition.start();
+      listening = true;
+      vpMic.classList.add('listening');
+      vpMic.innerHTML = '<i class="fas fa-stop" style="font-size:.45rem"></i>STOP';
+      setStatus('LISTENING...', 'listening');
+    } catch(e){
+      stopListen();
+    }
+  }
+  function stopListen(){
+    listening = false;
+    try { if (recognition) recognition.stop(); } catch(e){}
+    vpMic.classList.remove('listening');
+    vpMic.innerHTML = '<i class="fas fa-circle" style="font-size:.45rem"></i>MIC';
+    setStatus('STANDBY');
+  }
+
+  //── Collapse/expand ──
+  let collapsed = false;
+  vpToggle.addEventListener('click', e=>{
+    e.stopPropagation();
+    collapsed = !collapsed;
+    vpPanel.classList.toggle('collapsed', collapsed);
+    vpToggle.innerHTML = collapsed ? '<i class="fas fa-chevron-up"></i>' : '<i class="fas fa-chevron-down"></i>';
+  });
+  vpHeader.addEventListener('click', e=>{
+    if (e.target.closest('.vp-toggle')) return;
+    collapsed = !collapsed;
+    vpPanel.classList.toggle('collapsed', collapsed);
+    vpToggle.innerHTML = collapsed ? '<i class="fas fa-chevron-up"></i>' : '<i class="fas fa-chevron-down"></i>';
+  });
+
+  vlog('Voice Command siap — mic atau ketik perintah', 'info');
+})();
+
+/*═══════════════════════════════════════
+  MISSION PANEL — shared views (dari dashboard+aios)
+  THREADS · SWARM · FEED · HEALTH — data live API
+═══════════════════════════════════════*/
+(function(){
+  const mPanel = document.getElementById('mPanel');
+  const mBody = document.getElementById('mBody');
+  const mTitle = document.getElementById('mTitle');
+  const mIco = document.getElementById('mIco');
+  const mClose = document.getElementById('mClose');
+  const VIEWS = {
+    threads: { title:'THREAD ORCHESTRATOR', ico:'fa-diagram-project' },
+    swarm:   { title:'SWARM NETWORK',        ico:'fa-network-wired' },
+    feed:    { title:'LIVE ACTIVITY FEED',   ico:'fa-stream' },
+    health:  { title:'SYSTEM HEALTH',        ico:'fa-heart-pulse' },
+  };
+  let curView = null, refreshTimer = null;
+  let feedCount = 0;
+
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fmt = t => (t||'').slice(11,19);
+
+  async function jget(url, timeout=20000){
+    try {
+      const r = await fetch(url, {signal: AbortSignal.timeout(timeout)});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      return await r.json();
+    } catch(e){ return null; }
+  }
+
+  /*── THREADS (dari /api/mc/directive — context window per thread) ──*/
+  async function renderThreads(){
+    mBody.innerHTML = '<div class="sv-empty">⟳ memuat threads...</div>';
+    const d = await jget('/api/mc/directive');
+    if (!d || !Array.isArray(d.threads)){
+      mBody.innerHTML = '<div class="sv-empty">tidak ada data directive (API off)</div>';
+      return;
+    }
+    mBody.innerHTML = d.threads.map(t=>{
+      const pct = Math.min(t.context_pct||0, 100);
+      return `<div class="sv-card">
+        <div class="sv-card-h"><span class="sv-nm"><i class="fas fa-comments"></i>#${t.thread_id} · ${esc(t.directive.split(' ').slice(0,3).join(' '))}…</span>
+        <span class="sv-st ${Number(t.thread_id)>=1172?'active':'idle'}">${esc(t.model||'?')}</span></div>
+        <div class="sv-bar"><div class="sv-bf" style="width:${pct}%"></div></div>
+        <div class="sv-meta"><span>CONTEXT</span><span><b>${pct}%</b> · ${(t.context_tokens/1000).toFixed(1)}K/${(t.context_max/1000).toFixed(0)}K</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  /*── SWARM (dari /api/mc/agents — bentuk {agents:[...]}) ──*/
+  async function renderSwarm(){
+    mBody.innerHTML = '<div class="sv-empty">⟳ memuat agents...</div>';
+    const [res, sys] = await Promise.all([jget('/api/mc/agents'), jget('/api/mc/system')]);
+    const agents = (res && Array.isArray(res.agents)) ? res.agents : (Array.isArray(res) ? res : null);
+    if (!agents){
+      mBody.innerHTML = '<div class="sv-empty">tidak ada data agents (API off)</div>';
+      return;
+    }
+    const st = a => String((a.status||'idle').toLowerCase());
+    const active = agents.filter(a=>st(a)==='active'||st(a)==='running').length;
+    mBody.innerHTML = `<div class="sv-card"><div class="sv-meta"><span>AGENT FLEET</span><span><b>${active}/${agents.length}</b> aktif</span></div></div>`+
+      agents.map(a=>{
+        const s = st(a);
+        return `<div class="sv-card">
+          <div class="sv-card-h"><span class="sv-nm"><i class="fas fa-robot"></i>${esc(a.name||a.id||'?')}</span>
+          <span class="sv-st ${s}">${esc(s)}</span></div>
+          <div class="sv-meta"><span>${esc(a.role||'')}</span><span>${esc(a.id||'')}</span></div>
+        </div>`;
+      }).join('') +
+      `<div class="sv-meta" style="padding:0 2px"><span>CPU: ${sys?sys.cpu_percent+'%':'—'}</span><span>${sys?sys.platform:'—'}</span></div>`;
+  }
+
+  /*── FEED (dari /api/mc/logs — agent activity) ──*/
+  async function renderFeed(){
+    mBody.innerHTML = '<div class="sv-empty">⟳ memuat log...</div>';
+    const d = await jget('/api/mc/logs');
+    if (!d || !Array.isArray(d.logs) || !d.logs.length){
+      mBody.innerHTML = '<div class="sv-empty">belum ada log aktivitas</div>';
+      return;
+    }
+    const rows = d.logs.slice(0,18).map(l=>{
+      const lv = String(l.level||'INFO').toUpperCase();
+      return `<div class="sv-log"><span class="lt">${fmt(l.timestamp)}</span><span class="la">[${esc((l.agent_id||'?').toUpperCase())}]</span><span class="${lv}">${lv}</span><span style="color:var(--t2);overflow:hidden;text-overflow:ellipsis">${esc(l.message||'')}</span></div>`;
+    }).join('');
+    feedCount = d.logs.length;
+    const badge = document.getElementById('feedBadge');
+    if (badge){ badge.textContent = feedCount; badge.style.display = feedCount>0?'grid':'none'; }
+    mBody.innerHTML = rows;
+  }
+
+  /*── HEALTH (dari /api/mc/system) ──*/
+  async function renderHealth(){
+    mBody.innerHTML = '<div class="sv-empty">⟳ memuat health...</div>';
+    const sys = await jget('/api/mc/system');
+    if (!sys){
+      mBody.innerHTML = '<div class="sv-empty">tidak ada data system (API off)</div>';
+      return;
+    }
+    const mem = sys.memory || {};
+    const mUsed = mem.used_gb ?? (mem.total_gb ? mem.total_gb - (mem.free_gb||0) : 0);
+    const mPct = mem.percent ?? (mem.total_gb ? Math.round(mUsed/mem.total_gb*100) : 0);
+    const upStr = sys.uptime || '—';
+    const disk = sys.disk || {};
+    const cells = [
+      ['fa-microchip','CPU', sys.cpu_percent!=null ? sys.cpu_percent+'%' : '—', (sys.cpu_count||'')+' cores'],
+      ['fa-memory','RAM', mPct+'%', mUsed+'/'+(mem.total_gb||'?')+'GB'],
+      ['fa-hard-drive','DISK', disk.percent!=null ? disk.percent+'%' : '—', (disk.free_gb!=null?disk.free_gb+'GB free':'')],
+      ['fa-clock','UPTIME', upStr, sys.platform||''],
+    ];
+    mBody.innerHTML = `<div class="sv-hstat">`+cells.map(c=>
+      `<div class="sv-hcell"><div class="sv-hv">${c[2]} <small>${c[3]}</small></div><div class="sv-hl">${c[1]}</div></div>`
+    ).join('')+`</div>`+
+    `<div class="sv-card"><div class="sv-meta"><span>HOST</span><span><b>${esc(sys.hostname||'—')}</b></span></div>`+
+    `<div class="sv-meta"><span>OS</span><span>${esc(sys.os_release||sys.platform||'—')}</span></div>`+
+    `<div class="sv-meta"><span>FREQ</span><span>${sys.cpu_freq_mhz?sys.cpu_freq_mhz+' MHz':'—'}</span></div></div>`;
+  }
+
+  /*── Switch view ──*/
+  async function showView(v){
+    curView = v;
+    clearInterval(refreshTimer);
+    document.querySelectorAll('.r-dock-btn').forEach(b=>b.classList.toggle('on', b.dataset.view===v));
+    document.querySelectorAll('.m-tab').forEach(t=>t.classList.toggle('on', t.dataset.view===v));
+    const meta = VIEWS[v];
+    mTitle.textContent = meta.title;
+    mIco.innerHTML = `<i class="fas ${meta.ico}"></i>`;
+    mPanel.classList.add('open');
+    if (v==='threads') await renderThreads();
+    if (v==='swarm') await renderSwarm();
+    if (v==='feed') await renderFeed();
+    if (v==='health') await renderHealth();
+    refreshTimer = setInterval(()=>{
+      if (curView==='threads') renderThreads();
+      if (curView==='swarm') renderSwarm();
+      if (curView==='feed') renderFeed();
+      if (curView==='health') renderHealth();
+    }, 6000);
+  }
+
+  /*── Events ──*/
+  document.querySelectorAll('.r-dock-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      if (curView===b.dataset.view && mPanel.classList.contains('open')) { mPanel.classList.remove('open'); curView=null; clearInterval(refreshTimer); document.querySelectorAll('.r-dock-btn,.m-tab').forEach(x=>x.classList.remove('on')); return; }
+      showView(b.dataset.view);
+    });
+  });
+  document.querySelectorAll('.m-tab').forEach(t=>{
+    t.addEventListener('click', ()=>showView(t.dataset.view));
+  });
+  mClose.addEventListener('click', ()=>{
+    mPanel.classList.remove('open'); curView=null; clearInterval(refreshTimer);
+    document.querySelectorAll('.r-dock-btn,.m-tab').forEach(x=>x.classList.remove('on'));
+  });
+})();
+
+/*═══════════════════════════════════════
+  DE-DUP — sembunyikan fitur duplikat di iframe dashboard & aios
+  (hanya dalam fusion; halaman asli tidak berubah)
+═══════════════════════════════════════*/
+(function(){
+  function hide(doc, finder){
+    try {
+      const el = finder(doc);
+      if (el){ el.style.display='none'; return true; }
+    } catch(e){}
+    return false;
+  }
+  function bySelector(sel){ return doc=>doc.querySelector(sel); }
+  function byText(txt, maxUp=6){
+    return doc=>{
+      const tn=[...doc.querySelectorAll('h1,h2,h3,h4,div,span')].find(e=>e.children.length<3 && e.textContent.trim().startsWith(txt));
+      if (!tn) return null;
+      let p = tn.parentElement;
+      for (let i=0;i<maxUp && p;i++){
+        const cls = p.className?.toString()||'';
+        if (cls.includes('col') || cls.includes('card') || cls.includes('panel') || cls.includes('grid') || cls.includes('ops') || cls.includes('section') || p.tagName==='SECTION' || p.id){
+          return p;
+        }
+        p = p.parentElement;
+      }
+      return tn.parentElement;
+    };
+  }
+
+  function dedupDashboard(win){
+    const doc = win.contentDocument;
+    if (!doc) return;
+    const hid = [];
+    // Context Window (dup dgn THREADS) — .at-live-ops
+    hid.push(hide(doc, bySelector('.at-live-ops')));
+    // VPS / Local Health (dup dgn HEALTH) — .at-ops-col kedua
+    const opsCols = doc.querySelectorAll('.at-ops-col');
+    opsCols.forEach(c=>{
+      if (c.textContent.includes('VPS') || c.textContent.includes('Local Health') || c.textContent.includes('CPU Usage')){
+        c.style.display='none'; hid.push(true);
+      }
+    });
+    // Live Activity Feed (dup dgn FEED)
+    hid.push(hide(doc, byText('Live Activity Feed')));
+    // Agent Fleet State (dup dgn SWARM) — .col-left
+    hid.push(hide(doc, bySelector('.col-left')));
+    // Terminal Matrix Stream (dup dgn FEED) — .col-center
+    hid.push(hide(doc, bySelector('.col-center')));
+    window.__dedupDash = hid.filter(Boolean).length;
+  }
+
+  function dedupAios(win){
+    const doc = win.contentDocument;
+    if (!doc) return;
+    const hid = [];
+    // Thread Orchestrator (dup dgn THREADS)
+    const pl = doc.getElementById('pLeft'); if (pl){ pl.style.display='none'; hid.push(true); }
+    // Swarm Network (dup dgn SWARM)
+    const pr = doc.getElementById('pRight'); if (pr){ pr.style.display='none'; hid.push(true); }
+    // Stats (dup dgn HEALTH)
+    const st = doc.querySelector('.stats'); if (st){ st.style.display='none'; hid.push(true); }
+    // Dock: Live Log Stream + Activity Feed + Voice (dup dgn FEED/ORB)
+    const dockS = doc.querySelectorAll('.dock > .dock-s');
+    dockS.forEach(s=>{ s.style.display='none'; hid.push(true); });
+    // Header badges yang redundant (CONNECTED/SECURE/LAT)
+    window.__dedupAios = hid.filter(Boolean).length;
+  }
+
+  // Ekspos agar main engine bisa panggil setelah iframe load
+  window.__dedupDashboard = dedupDashboard;
+  window.__dedupAios = dedupAios;
+})();
+
+})();
+</script>
+</body>
+</html>

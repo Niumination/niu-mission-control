@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HERMES // Mission Control v3.0 — Orange Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg-0: #050505; --bg-1: #0a0a0a; --bg-2: #111; --bg-3: #1a1a1a;
+      --orange-50:#fff7ed; --orange-100:#ffedd5; --orange-200:#fed7aa; --orange-300:#fdba74;
+      --orange-400:#fb923c; --orange-500:#f97316; --orange-600:#ea580c; --orange-700:#c2410c;
+      --amber-400:#fbbf24; --amber-500:#f59e0b;
+      --text-1:#fafafa; --text-2:#a3a3a3; --text-3:#525252;
+      --glass-bg: rgba(17,17,17,0.72); --glass-border: rgba(249,115,22,0.14);
+      --r: 14px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100vh;overflow:hidden}
+    body{font-family:'Outfit',sans-serif;background:var(--bg-0);color:var(--text-1)}
+
+    /* ══════ CURSOR ══════ */
+    .cursor-ring{position:fixed;width:28px;height:28px;border:2px solid var(--orange-500);border-radius:50%;pointer-events:none;z-index:10000;transition:width .25s,height .25s,border-color .25s,background .25s;mix-blend-mode:difference;transform:translate(-50%,-50%)}
+    .cursor-dot{position:fixed;width:6px;height:6px;background:var(--orange-500);border-radius:50%;pointer-events:none;z-index:10001;transform:translate(-50%,-50%)}
+    .cursor-ring.hovering{width:52px;height:52px;background:rgba(249,115,22,.08);border-color:var(--amber-400)}
+    .particle{position:fixed;width:4px;height:4px;background:var(--orange-400);border-radius:50%;pointer-events:none;z-index:9999;opacity:0;animation:pFade .7s ease-out forwards}
+    @keyframes pFade{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(0)}}
+
+    /* ══════ BACKGROUND ══════ */
+    .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(249,115,22,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(249,115,22,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+    .glow{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+    .glow-1{width:600px;height:600px;background:var(--orange-600);opacity:.10;top:-250px;right:-200px;animation:gFloat 22s ease-in-out infinite}
+    .glow-2{width:420px;height:420px;background:var(--amber-500);opacity:.08;bottom:-180px;left:-160px;animation:gFloat 28s ease-in-out infinite reverse}
+    .glow-3{width:300px;height:300px;background:var(--orange-700);opacity:.06;top:50%;left:50%;transform:translate(-50%,-50%);animation:gPulse 8s ease-in-out infinite}
+    @keyframes gFloat{0%,100%{transform:translate(0,0)}50%{transform:translate(35px,-35px)}}
+    @keyframes gPulse{0%,100%{opacity:.06;transform:translate(-50%,-50%) scale(1)}50%{opacity:.10;transform:translate(-50%,-50%) scale(1.15)}}
+
+    /* ══════ GLASS ══════ */
+    .glass{background:var(--glass-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:var(--r);transition:border-color .3s,transform .3s,box-shadow .3s}
+    .glass:hover{border-color:rgba(249,115,22,.35);box-shadow:0 0 30px rgba(249,115,22,.06)}
+
+    /* ══════ LAYOUT ══════ */
+    .app{display:flex;flex-direction:column;height:100vh;position:relative;z-index:1}
+
+    /* ── Header ── */
+    header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.5rem;margin:.75rem .75rem 0;gap:1rem;flex-shrink:0}
+    .brand{display:flex;align-items:center;gap:.85rem}
+    .logo-box{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--orange-500),var(--amber-500));display:grid;place-items:center;font-size:1.1rem;color:#fff;animation:logoPulse 3s ease-in-out infinite}
+    @keyframes logoPulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,.4)}50%{box-shadow:0 0 0 8px rgba(249,115,22,0)}}
+    .brand h1{font-family:'Space Grotesk',sans-serif;font-size:1.15rem;font-weight:700;background:linear-gradient(135deg,var(--orange-400),var(--amber-400));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.2}
+    .brand small{font-size:.62rem;color:var(--text-3);letter-spacing:2.5px;font-weight:500}
+    .header-badges{display:flex;gap:.65rem;align-items:center}
+    .hbadge{display:flex;align-items:center;gap:.4rem;padding:.38rem .75rem;border-radius:8px;font-size:.68rem;font-weight:500;background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.12);letter-spacing:.5px}
+    .hbadge i{font-size:.65rem}
+    .pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--orange-500);animation:blink 2s ease-in-out infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+    .clock-badge{font-family:'JetBrains Mono',monospace;font-size:.72rem}
+
+    /* ── Main Grid ── */
+    .main{flex:1;display:grid;grid-template-columns:270px 1fr 260px;gap:.75rem;padding:.75rem;min-height:0;overflow:hidden}
+
+    /* ── Panels ── */
+    .panel{display:flex;flex-direction:column;gap:.65rem;overflow-y:auto;padding-right:2px;min-height:0}
+    .panel::-webkit-scrollbar{width:3px}
+    .panel::-webkit-scrollbar-thumb{background:var(--orange-600);border-radius:3px}
+    .section-label{font-family:'Space Grotesk',sans-serif;font-size:.65rem;font-weight:600;color:var(--text-3);letter-spacing:2.5px;text-transform:uppercase;padding:0 .25rem}
+
+    /* ── Thread Cards ── */
+    .tcard{padding:.85rem;cursor:pointer;position:relative;overflow:hidden}
+    .tcard::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(to bottom,var(--orange-500),transparent);opacity:0;transition:opacity .3s}
+    .tcard:hover::before{opacity:1}
+    .tcard:hover{transform:translateX(3px)}
+    .tcard-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+    .tcard-info{display:flex;align-items:center;gap:.6rem}
+    .ticon{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:rgba(249,115,22,.12);color:var(--orange-400);font-size:.75rem}
+    .tname{font-family:'Space Grotesk',sans-serif;font-size:.78rem;font-weight:600}
+    .tid{font-size:.6rem;color:var(--text-3);font-family:'JetBrains Mono',monospace}
+    .status-pill{padding:.18rem .55rem;border-radius:20px;font-size:.58rem;font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+    .s-active{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
+    .s-idle{background:rgba(163,163,163,.1);color:#737373;border:1px solid rgba(163,163,163,.2)}
+    .s-throttled{background:rgba(251,191,36,.12);color:#fbbf24;border:1px solid rgba(251,191,36,.25)}
+    .s-error{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)}
+    .tmetrics{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+    .m-label{font-size:.58rem;color:var(--text-3);display:flex;align-items:center;gap:.2rem;margin-bottom:.2rem}
+    .m-bar{height:3px;background:rgba(249,115,22,.08);border-radius:3px;overflow:hidden}
+    .m-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--orange-600),var(--amber-400));transition:width 1s ease}
+    .m-val{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--orange-400);margin-top:.15rem}
+
+    /* ── Center ── */
+    .center{display:flex;flex-direction:column;gap:.65rem;min-height:0}
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.65rem;flex-shrink:0}
+    .scard{padding:1rem .75rem;text-align:center;cursor:pointer;position:relative;overflow:hidden}
+    .scard:hover{transform:translateY(-3px)}
+    .scard::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:2px;background:var(--orange-500);transition:width .3s}
+    .scard:hover::after{width:60%}
+    .s-icon{width:36px;height:36px;margin:0 auto .5rem;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(249,115,22,.15),rgba(251,191,36,.15));color:var(--orange-400);font-size:.95rem}
+    .s-val{font-family:'Space Grotesk',sans-serif;font-size:1.25rem;font-weight:700;color:var(--text-1)}
+    .s-lbl{font-size:.62rem;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-top:.15rem}
+
+    /* ── Canvas ── */
+    .canvas-wrap{flex:1;position:relative;overflow:hidden;min-height:0}
+    #holoCanvas{width:100%;height:100%;display:block}
+    .canvas-label{position:absolute;top:.75rem;left:.75rem;font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--orange-400);opacity:.5;line-height:1.6;pointer-events:none}
+    .canvas-corner{position:absolute;width:20px;height:20px;pointer-events:none}
+    .cc-tl{top:8px;left:8px;border-top:2px solid rgba(249,115,22,.25);border-left:2px solid rgba(249,115,22,.25)}
+    .cc-tr{top:8px;right:8px;border-top:2px solid rgba(249,115,22,.25);border-right:2px solid rgba(249,115,22,.25)}
+    .cc-bl{bottom:8px;left:8px;border-bottom:2px solid rgba(249,115,22,.25);border-left:2px solid rgba(249,115,22,.25)}
+    .cc-br{bottom:8px;right:8px;border-bottom:2px solid rgba(249,115,22,.25);border-right:2px solid rgba(249,115,22,.25)}
+
+    /* ── Humanoid Assistant ── */
+    .humanoid{position:absolute;bottom:1rem;right:1rem;width:220px;padding:1rem;cursor:pointer;z-index:5}
+    .humanoid:hover{transform:scale(1.03)}
+    .h-avatar-wrap{position:relative;width:56px;height:56px;margin:0 auto .7rem}
+    .h-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--orange-500),var(--amber-500));display:grid;place-items:center;font-size:1.3rem;color:#fff;animation:breathe 3s ease-in-out infinite;position:relative;z-index:2}
+    @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+    .h-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--orange-500);opacity:.4;animation:ripple 2.5s ease-out infinite}
+    .h-ring-2{animation-delay:1.25s}
+    @keyframes ripple{0%{transform:scale(1);opacity:.4}100%{transform:scale(1.6);opacity:0}}
+    .h-name{font-family:'Space Grotesk',sans-serif;font-size:.82rem;font-weight:600;text-align:center;margin-bottom:.15rem}
+    .h-status{font-size:.65rem;color:var(--text-2);text-align:center}
+    .h-speech{position:absolute;bottom:calc(100% + 8px);right:0;background:var(--bg-2);border:1px solid var(--glass-border);border-radius:12px 12px 0 12px;padding:.6rem .8rem;font-size:.72rem;color:var(--text-2);max-width:200px;opacity:0;transform:translateY(6px);transition:all .3s;pointer-events:none;line-height:1.5}
+    .h-speech.show{opacity:1;transform:translateY(0)}
+    .h-typing{display:inline-flex;gap:3px;margin-left:4px}
+    .h-typing span{width:4px;height:4px;border-radius:50%;background:var(--orange-400);animation:dotPulse .8s ease-in-out infinite}
+    .h-typing span:nth-child(2){animation-delay:.15s}
+    .h-typing span:nth-child(3){animation-delay:.3s}
+    @keyframes dotPulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+
+    /* ── Right Panel / Agents ── */
+    .acard{padding:.75rem;cursor:pointer;position:relative;overflow:hidden}
+    .acard::before{content:'';position:absolute;top:0;right:0;width:3px;height:100%;background:linear-gradient(to bottom,var(--orange-500),transparent);opacity:0;transition:opacity .3s}
+    .acard:hover::before{opacity:1}
+    .acard:hover{transform:translateX(-3px)}
+    .ahead{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem}
+    .a-avatar{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--orange-600),var(--amber-500));display:grid;place-items:center;font-size:.7rem;color:#fff;flex-shrink:0}
+    .a-name{font-family:'Space Grotesk',sans-serif;font-size:.78rem;font-weight:600}
+    .a-type{font-size:.6rem;color:var(--text-3)}
+    .a-stats{display:flex;gap:.75rem;font-size:.62rem;color:var(--text-2)}
+    .a-stat{display:flex;align-items:center;gap:.2rem}
+    .a-stat i{font-size:.55rem;color:var(--orange-400)}
+
+    /* ── Bottom Dock ── */
+    .dock{display:grid;grid-template-columns:1fr 1fr 320px;gap:.65rem;padding:0 .75rem .75rem;flex-shrink:0;height:130px}
+    .dock-section{padding:.7rem .85rem;display:flex;flex-direction:column;overflow:hidden}
+    .dock-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-shrink:0}
+    .dock-title{display:flex;align-items:center;gap:.4rem;font-family:'Space Grotesk',sans-serif;font-size:.65rem;font-weight:600;color:var(--text-3);letter-spacing:1.5px;text-transform:uppercase}
+    .dock-title i{color:var(--orange-400);font-size:.7rem}
+
+    /* Log Console */
+    .logs{flex:1;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:.62rem;line-height:1.7}
+    .logs::-webkit-scrollbar{width:2px}
+    .logs::-webkit-scrollbar-thumb{background:var(--orange-600);border-radius:2px}
+    .log{display:flex;gap:.5rem;opacity:0;animation:logIn .35s ease forwards}
+    @keyframes logIn{to{opacity:1}}
+    .log-t{color:var(--text-3)}
+    .log-th{color:var(--orange-400)}
+    .log-info{color:#60a5fa}
+    .log-ok{color:#22c55e}
+    .log-warn{color:#fbbf24}
+    .log-err{color:#ef4444}
+
+    /* Activity Feed */
+    .activity{flex:1;overflow-y:auto;font-size:.68rem;line-height:1.8}
+    .activity::-webkit-scrollbar{width:2px}
+    .activity::-webkit-scrollbar-thumb{background:var(--orange-600);border-radius:2px}
+    .act-item{display:flex;align-items:center;gap:.5rem;padding:.2rem 0;border-bottom:1px solid rgba(249,115,22,.06)}
+    .act-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .act-time{color:var(--text-3);font-family:'JetBrains Mono',monospace;font-size:.58rem}
+
+    /* Voice Console */
+    .waveform{display:flex;align-items:center;justify-content:center;gap:2px;height:32px;flex:1}
+    .wbar{width:3px;border-radius:3px;background:linear-gradient(to top,var(--orange-500),var(--amber-400));transition:height .12s ease}
+    .voice-row{display:flex;gap:.5rem;flex-shrink:0;margin-top:.4rem}
+    .voice-row input{flex:1;background:rgba(249,115,22,.04);border:1px solid rgba(249,115,22,.15);border-radius:8px;padding:.4rem .7rem;color:var(--text-1);font-family:'Outfit',sans-serif;font-size:.75rem;outline:none;transition:border-color .3s}
+    .voice-row input:focus{border-color:var(--orange-500)}
+    .voice-row input::placeholder{color:var(--text-3)}
+    .btn-send{position:relative;width:34px;height:34px;border:none;border-radius:8px;background:linear-gradient(135deg,var(--orange-500),var(--amber-500));color:#fff;cursor:pointer;overflow:hidden;transition:transform .2s}
+    .btn-send:hover{transform:scale(1.1)}
+    .btn-send:active{transform:scale(.95)}
+
+    /* ══════ MAGNETIC EFFECT ══════ */
+    .magnetic{transition:transform .2s ease}
+
+    /* ══════ TOOLTIP ══════ */
+    [data-tip]{position:relative}
+    [data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg-2);border:1px solid var(--glass-border);padding:.3rem .6rem;border-radius:6px;font-size:.6rem;white-space:nowrap;color:var(--text-2);z-index:100;pointer-events:none;animation:tipIn .2s ease}
+    @keyframes tipIn{from{opacity:0;transform:translateX(-50%) translateY(4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+    /* ══════ SCROLL FADE ══════ */
+    .panel{mask-image:linear-gradient(to bottom,black 90%,transparent)}
+
+    /* ══════ RESPONSIVE ══════ */
+    @media(max-width:1200px){
+      .main{grid-template-columns:240px 1fr 220px}
+    }
+    @media(max-width:900px){
+      .main{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}
+      .dock{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <!-- Custom Cursor -->
+  <div class="cursor-ring" id="cRing"></div>
+  <div class="cursor-dot" id="cDot"></div>
+
+  <!-- Background -->
+  <div class="grid-bg"></div>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+  <div class="glow glow-3"></div>
+
+  <div class="app">
+    <!-- ═══ HEADER ═══ -->
+    <header class="glass">
+      <div class="brand">
+        <div class="logo-box"><i class="fas fa-bolt"></i></div>
+        <div>
+          <h1>HERMES.OS</h1>
+          <small>MISSION CONTROL v3.0</small>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <div class="hbadge"><div class="pulse-dot"></div>ONLINE</div>
+        <div class="hbadge"><i class="fas fa-wifi" style="color:var(--orange-400)"></i>CONNECTED</div>
+        <div class="hbadge"><i class="fas fa-shield-halved" style="color:var(--amber-400)"></i>SECURE</div>
+        <div class="hbadge"><i class="fas fa-microchip" style="color:var(--orange-400)"></i>LAT <span id="hdrLat" style="font-family:'JetBrains Mono',monospace;color:var(--orange-400)">12ms</span></div>
+        <div class="hbadge clock-badge"><i class="fas fa-clock"></i><span id="clock">00:00:00</span></div>
+      </div>
+    </header>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="main">
+      <!-- LEFT: Threads -->
+      <div class="panel" id="leftPanel">
+        <div class="section-label">Thread Orchestrator</div>
+        <!-- Thread cards injected by JS -->
+      </div>
+
+      <!-- CENTER -->
+      <div class="center">
+        <div class="stats-row">
+          <div class="scard glass magnetic" data-tip="Tokens processed per second">
+            <div class="s-icon"><i class="fas fa-bolt"></i></div>
+            <div class="s-val" id="svTok">18.2K</div>
+            <div class="s-lbl">Tokens/s</div>
+          </div>
+          <div class="scard glass magnetic" data-tip="Active swarm agents">
+            <div class="s-icon"><i class="fas fa-robot"></i></div>
+            <div class="s-val" id="svAg">4 / 6</div>
+            <div class="s-lbl">Agents</div>
+          </div>
+          <div class="scard glass magnetic" data-tip="Average response latency">
+            <div class="s-icon"><i class="fas fa-gauge-high"></i></div>
+            <div class="s-val" id="svLat">12.4ms</div>
+            <div class="s-lbl">Avg Latency</div>
+          </div>
+          <div class="scard glass magnetic" data-tip="Overall system utilization">
+            <div class="s-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="s-val" id="svLoad">52%</div>
+            <div class="s-lbl">Sys Load</div>
+          </div>
+        </div>
+
+        <!-- 3D Canvas -->
+        <div class="canvas-wrap glass">
+          <canvas id="holoCanvas"></canvas>
+          <div class="canvas-label">HOLOGRAPHIC CORE • REAL-TIME<br>Canvas 2D • Particle System</div>
+          <div class="canvas-corner cc-tl"></div>
+          <div class="canvas-corner cc-tr"></div>
+          <div class="canvas-corner cc-bl"></div>
+          <div class="canvas-corner cc-br"></div>
+
+          <!-- Humanoid -->
+          <div class="humanoid glass" id="humanoid">
+            <div class="h-speech" id="speech">
+              Halo, saya Hermes AI. Ada yang bisa saya bantu? <span class="h-typing"><span></span><span></span><span></span></span>
+            </div>
+            <div class="h-avatar-wrap">
+              <div class="h-avatar"><i class="fas fa-user-astronaut"></i></div>
+              <div class="h-ring"></div>
+              <div class="h-ring h-ring-2"></div>
+            </div>
+            <div class="h-name">HERMES AI</div>
+            <div class="h-status" id="hStatus">
+              <i class="fas fa-circle" style="font-size:.4rem;color:#22c55e;margin-right:4px"></i>Listening...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Agents -->
+      <div class="panel" id="rightPanel">
+        <div class="section-label">Swarm Network</div>
+        <!-- Agent cards injected by JS -->
+      </div>
+    </div>
+
+    <!-- ═══ BOTTOM DOCK ═══ -->
+    <div class="dock">
+      <div class="dock-section glass">
+        <div class="dock-head">
+          <div class="dock-title"><i class="fas fa-terminal"></i>Live Log Stream</div>
+          <span style="font-size:.58rem;color:var(--text-3);font-family:'JetBrains Mono',monospace" id="logCount">0 entries</span>
+        </div>
+        <div class="logs" id="logs"></div>
+      </div>
+
+      <div class="dock-section glass">
+        <div class="dock-head">
+          <div class="dock-title"><i class="fas fa-stream"></i>Activity Feed</div>
+          <span style="font-size:.58rem;color:var(--text-3)">Real-time</span>
+        </div>
+        <div class="activity" id="activity"></div>
+      </div>
+
+      <div class="dock-section glass">
+        <div class="dock-head">
+          <div class="dock-title"><i class="fas fa-microphone"></i>Voice Command</div>
+          <div class="hbadge" style="padding:.2rem .5rem;font-size:.58rem;cursor:pointer" id="voiceToggle">
+            <i class="fas fa-circle" style="color:var(--orange-500);font-size:.45rem"></i>
+            <span id="voiceState">LISTENING</span>
+          </div>
+        </div>
+        <div class="waveform" id="waveform"></div>
+        <div class="voice-row">
+          <input type="text" placeholder="Type command or press Space..." id="voiceInput">
+          <button class="btn-send" data-tip="Send command"><i class="fas fa-paper-plane" style="font-size:.7rem"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ═══════════════════════════════════════
+   DATA & STATE
+   ═══════════════════════════════════════ */
+const THREADS = [
+  {id:1,name:'Memory Indexer',short:'MEMORY',icon:'fa-brain',status:'active',cpu:65,mem:42,lat:14},
+  {id:2,name:'Task Planner',short:'PLANNER',icon:'fa-diagram-project',status:'active',cpu:78,mem:55,lat:9},
+  {id:3,name:'Tool Executor',short:'EXEC',icon:'fa-terminal',status:'idle',cpu:12,mem:28,lat:4},
+  {id:4,name:'Swarm Coordinator',short:'SWARM',icon:'fa-network-wired',status:'active',cpu:58,mem:47,lat:16},
+  {id:5,name:'Output Synth & TTS',short:'OUTPUT',icon:'fa-volume-high',status:'throttled',cpu:85,mem:62,lat:22},
+];
+
+const AGENTS = [
+  {id:'a1',name:'Researcher-α',type:'Web Search',icon:'fa-magnifying-glass',status:'active',tok:2450,tasks:3},
+  {id:'a2',name:'Coder-β',type:'Code Generation',icon:'fa-code',status:'active',tok:4820,tasks:5},
+  {id:'a3',name:'Analyst-γ',type:'Data Analysis',icon:'fa-chart-bar',status:'idle',tok:1200,tasks:1},
+  {id:'a4',name:'Writer-δ',type:'Content Gen',icon:'fa-pen-fancy',status:'active',tok:3100,tasks:2},
+  {id:'a5',name:'Monitor-ε',type:'System Watch',icon:'fa-eye',status:'idle',tok:800,tasks:0},
+  {id:'a6',name:'Planner-ζ',type:'Task Decomp',icon:'fa-sitemap',status:'active',tok:5600,tasks:4},
+];
+
+const LOG_POOL = [
+  {th:'MEMORY',msg:'Vector sync completed — 1,247 embeddings updated',lv:'ok'},
+  {th:'PLANNER',msg:'Chain-of-thought decomposition for task #892',lv:'info'},
+  {th:'EXEC',msg:'CLI tool executed: git status — 0 errors',lv:'info'},
+  {th:'SWARM',msg:'Agent Researcher-α dispatched to sub-task cluster',lv:'info'},
+  {th:'OUTPUT',msg:'TTS stream buffer overflow — throttling enabled',lv:'warn'},
+  {th:'MEMORY',msg:'RAG context window exceeded — pruning oldest 12 entries',lv:'warn'},
+  {th:'EXEC',msg:'Web scrape failed: timeout after 30s',lv:'err'},
+  {th:'PLANNER',msg:'Goal hierarchy recalculated — 3 new sub-goals identified',lv:'ok'},
+  {th:'SWARM',msg:'Coder-β completed batch — 12 files modified',lv:'ok'},
+  {th:'OUTPUT',msg:'Audio waveform rendered — 2.4s duration',lv:'info'},
+  {th:'MEMORY',msg:'Knowledge graph node #47 linked to context window',lv:'info'},
+  {th:'EXEC',msg:'Docker container restarted — health check passed',lv:'ok'},
+];
+
+const ACTIVITY_POOL = [
+  {text:'Researcher-α completed web search batch',color:'#22c55e'},
+  {text:'New task #893 queued for Planner',color:'var(--orange-400)'},
+  {text:'Coder-β pushed 3 commits to staging',color:'#60a5fa'},
+  {text:'Memory index pruned 12 stale entries',color:'var(--amber-400)'},
+  {text:'Swarm rebalanced — Planner-ζ took 2 tasks',color:'#a78bfa'},
+  {text:'Writer-δ generated executive summary',color:'#22c55e'},
+  {text:'System health check passed — all clear',color:'#22c55e'},
+  {text:'Monitor-ε flagged latency spike on T-005',color:'#ef4444'},
+];
+
+const SPEECHES = [
+  'Halo, saya Hermes AI. Ada yang bisa saya bantu?',
+  'Saya sedang memproses 3 task aktif sekarang.',
+  'Semua sistem berjalan normal. Load: 52%.',
+  'Agent Researcher-α baru saja menyelesaikan pencarian.',
+  'Mau saya buatkan laporan harian?',
+  'Swarm network stabil — 4 dari 6 agent aktif.',
+  'Saya bisa membantu coding, analisis, atau riset.',
+];
+
+let logCount = 0;
+
+/* ═══════════════════════════════════════
+   RENDER
+   ═══════════════════════════════════════ */
+function renderThreads() {
+  const c = document.getElementById('leftPanel');
+  const existing = c.querySelector('.section-label');
+  c.innerHTML = '';
+  c.appendChild(existing || (() => { const d = document.createElement('div'); d.className = 'section-label'; d.textContent = 'Thread Orchestrator'; return d; })());
+
+  THREADS.forEach((t, i) => {
+    const statusClass = {active:'s-active',idle:'s-idle',throttled:'s-throttled',error:'s-error'}[t.status];
+    const card = document.createElement('div');
+    card.className = 'tcard glass magnetic';
+    card.style.animationDelay = (i * 60) + 'ms';
+    card.innerHTML = `
+      <div class="tcard-head">
+        <div class="tcard-info">
+          <div class="ticon"><i class="fas ${t.icon}"></i></div>
+          <div><div class="tname">${t.name}</div><div class="tid">T-00${t.id} • ${t.short}</div></div>
+        </div>
+        <div class="status-pill ${statusClass}">${t.status}</div>
+      </div>
+      <div class="tmetrics">
+        <div><div class="m-label"><i class="fas fa-microchip"></i> CPU</div><div class="m-bar"><div class="m-fill" style="width:${t.cpu}%"></div></div><div class="m-val">${t.cpu}%</div></div>
+        <div><div class="m-label"><i class="fas fa-memory"></i> MEM</div><div class="m-bar"><div class="m-fill" style="width:${t.mem}%"></div></div><div class="m-val">${t.mem}%</div></div>
+        <div><div class="m-label"><i class="fas fa-gauge"></i> LAT</div><div class="m-bar"><div class="m-fill" style="width:${Math.min(t.lat*2,100)}%"></div></div><div class="m-val">${t.lat}ms</div></div>
+      </div>`;
+    c.appendChild(card);
+  });
+}
+
+function renderAgents() {
+  const c = document.getElementById('rightPanel');
+  const existing = c.querySelector('.section-label');
+  c.innerHTML = '';
+  c.appendChild(existing || (() => { const d = document.createElement('div'); d.className = 'section-label'; d.textContent = 'Swarm Network'; return d; })());
+
+  AGENTS.forEach((a, i) => {
+    const statusClass = {active:'s-active',idle:'s-idle',throttled:'s-throttled',error:'s-error'}[a.status];
+    const card = document.createElement('div');
+    card.className = 'acard glass magnetic';
+    card.innerHTML = `
+      <div class="ahead">
+        <div class="a-avatar"><i class="fas ${a.icon}"></i></div>
+        <div style="flex:1"><div class="a-name">${a.name}</div><div class="a-type">${a.type}</div></div>
+        <div class="status-pill ${statusClass}">${a.status}</div>
+      </div>
+      <div class="a-stats">
+        <div class="a-stat"><i class="fas fa-coins"></i> ${(a.tok/1000).toFixed(1)}K tok</div>
+        <div class="a-stat"><i class="fas fa-tasks"></i> ${a.tasks} tasks</div>
+      </div>`;
+    c.appendChild(card);
+  });
+}
+
+function renderWaveform() {
+  const wf = document.getElementById('waveform');
+  wf.innerHTML = '';
+  for (let i = 0; i < 36; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wbar';
+    bar.style.height = '10%';
+    wf.appendChild(bar);
+  }
+}
+
+renderThreads();
+renderAgents();
+renderWaveform();
+
+/* ═══════════════════════════════════════
+   CURSOR
+   ═══════════════════════════════════════ */
+const cRing = document.getElementById('cRing');
+const cDot = document.getElementById('cDot');
+let mx = 0, my = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  if (Math.random() > 0.75) spawnParticle(mx, my);
+});
+
+function spawnParticle(x, y) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = x + 'px';
+  p.style.top = y + 'px';
+  document.body.appendChild(p);
+  setTimeout(() => p.remove(), 700);
+}
+
+function animCursor() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  cRing.style.left = rx + 'px';
+  cRing.style.top = ry + 'px';
+  cDot.style.left = mx + 'px';
+  cDot.style.top = my + 'px';
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+
+// Hover detection
+document.addEventListener('mouseover', e => {
+  if (e.target.closest('.tcard,.acard,.scard,.humanoid,.btn-send,.hbadge,button,input')) {
+    cRing.classList.add('hovering');
+  }
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.closest('.tcard,.acard,.scard,.humanoid,.btn-send,.hbadge,button,input')) {
+    cRing.classList.remove('hovering');
+  }
+});
+
+// Magnetic effect
+document.querySelectorAll('.magnetic').forEach(el => {
+  el.addEventListener('mousemove', e => {
+    const rect = el.getBoundingClientRect();
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    el.style.transform = `translate(${dx * 0.08}px, ${dy * 0.08}px)`;
+  });
+  el.addEventListener('mouseleave', () => {
+    el.style.transform = '';
+  });
+});
+
+/* ═══════════════════════════════════════
+   CLOCK
+   ═══════════════════════════════════════ */
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', {hour12:false});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ═══════════════════════════════════════
+   LOGS & ACTIVITY
+   ═══════════════════════════════════════ */
+function addLog() {
+  const l = LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
+  const t = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const div = document.createElement('div');
+  div.className = 'log';
+  div.innerHTML = `<span class="log-t">${t}</span><span class="log-th">[${l.th}]</span><span class="log-${l.lv}">${l.msg}</span>`;
+  const c = document.getElementById('logs');
+  c.insertBefore(div, c.firstChild);
+  while (c.children.length > 25) c.removeChild(c.lastChild);
+  logCount++;
+  document.getElementById('logCount').textContent = logCount + ' entries';
+}
+
+function addActivity() {
+  const a = ACTIVITY_POOL[Math.floor(Math.random() * ACTIVITY_POOL.length)];
+  const t = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'act-item';
+  div.innerHTML = `<div class="act-dot" style="background:${a.color}"></div><span style="flex:1">${a.text}</span><span class="act-time">${t}</span>`;
+  const c = document.getElementById('activity');
+  c.insertBefore(div, c.firstChild);
+  while (c.children.length > 15) c.removeChild(c.lastChild);
+}
+
+for (let i = 0; i < 6; i++) setTimeout(() => addLog(), i * 80);
+for (let i = 0; i < 4; i++) setTimeout(() => addActivity(), i * 120);
+setInterval(addLog, 2200);
+setInterval(addActivity, 4000);
+
+/* ═══════════════════════════════════════
+   WAVEFORM ANIMATION
+   ═══════════════════════════════════════ */
+let audioLevel = 0.5;
+function animateWaveform() {
+  const bars = document.querySelectorAll('.wbar');
+  bars.forEach((b, i) => {
+    const h = 15 + Math.sin(Date.now() * 0.005 + i * 0.5) * 30 * audioLevel + Math.random() * 15 * audioLevel;
+    b.style.height = h + '%';
+  });
+  requestAnimationFrame(animateWaveform);
+}
+animateWaveform();
+
+/* ═══════════════════════════════════════
+   METRICS SIMULATION
+   ═══════════════════════════════════════ */
+function updateMetrics() {
+  THREADS.forEach(t => {
+    t.cpu = Math.max(5, Math.min(95, t.cpu + (Math.random() - 0.5) * 18));
+    t.mem = Math.max(10, Math.min(90, t.mem + (Math.random() - 0.5) * 10));
+    t.lat = Math.max(1, Math.min(50, t.lat + (Math.random() - 0.5) * 6));
+    t.cpu = Math.round(t.cpu);
+    t.mem = Math.round(t.mem);
+    t.lat = Math.round(t.lat);
+    if (Math.random() > 0.8) {
+      const s = ['active','idle','throttled'];
+      t.status = s[Math.floor(Math.random() * s.length)];
+    }
+  });
+  AGENTS.forEach(a => {
+    a.tok = Math.max(200, a.tok + Math.floor((Math.random() - 0.3) * 300));
+    if (Math.random() > 0.85) a.tasks = Math.max(0, a.tasks + (Math.random() > 0.5 ? 1 : -1));
+    if (Math.random() > 0.85) a.status = Math.random() > 0.4 ? 'active' : 'idle';
+  });
+
+  const avgCpu = THREADS.reduce((a, t) => a + t.cpu, 0) / THREADS.length;
+  const avgLat = THREADS.reduce((a, t) => a + t.lat, 0) / THREADS.length;
+  const activeAg = AGENTS.filter(a => a.status === 'active').length;
+  const totalTok = AGENTS.reduce((a, ag) => a + ag.tok, 0);
+
+  document.getElementById('svTok').textContent = (totalTok / 1000).toFixed(1) + 'K';
+  document.getElementById('svAg').textContent = activeAg + ' / ' + AGENTS.length;
+  document.getElementById('svLat').textContent = avgLat.toFixed(1) + 'ms';
+  document.getElementById('svLoad').textContent = Math.round(avgCpu) + '%';
+  document.getElementById('hdrLat').textContent = Math.round(avgLat) + 'ms';
+
+  renderThreads();
+  renderAgents();
+  audioLevel = 0.3 + Math.random() * 0.6;
+}
+setInterval(updateMetrics, 2500);
+
+/* ═══════════════════════════════════════
+   CANVAS — HOLOGRAPHIC CORE
+   ═══════════════════════════════════════ */
+const canvas = document.getElementById('holoCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  canvas.width = r.width * window.devicePixelRatio;
+  canvas.height = r.height * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  canvas.style.width = r.width + 'px';
+  canvas.style.height = r.height + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// Mouse relative to canvas
+let cmx = 0, cmy = 0;
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  cmx = (e.clientX - r.width / 2) / r.width;
+  cmy = (e.clientY - r.height / 2) / r.height;
+});
+
+// Particles
+const PCOUNT = 250;
+const pts = [];
+for (let i = 0; i < PCOUNT; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = 120 + Math.random() * 60;
+  pts.push({
+    x: r * Math.sin(phi) * Math.cos(theta),
+    y: r * Math.sin(phi) * Math.sin(theta),
+    z: r * Math.cos(phi),
+    s: Math.random() * 2.5 + 0.5,
+    o: Math.random()
+  });
+}
+
+let angle = 0;
+let mouseXInfluence = 0, mouseYInfluence = 0;
+
+function drawHolo() {
+  const w = canvas.width / window.devicePixelRatio;
+  const h = canvas.height / window.devicePixelRatio;
+  ctx.clearRect(0, 0, w, h);
+
+  const cx = w / 2;
+  const cy = h / 2;
+
+  // Mouse influence
+  mouseXInfluence += (cmx * 0.3 - mouseXInfluence) * 0.05;
+  mouseYInfluence += (cmy * 0.3 - mouseYInfluence) * 0.05;
+
+  // Core glow
+  const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90);
+  coreGrad.addColorStop(0, 'rgba(249,115,22,0.25)');
+  coreGrad.addColorStop(0.4, 'rgba(249,115,22,0.08)');
+  coreGrad.addColorStop(1, 'rgba(249,115,22,0)');
+  ctx.fillStyle = coreGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 90, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner core
+  const innerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 40);
+  innerGrad.addColorStop(0, 'rgba(251,191,36,0.4)');
+  innerGrad.addColorStop(0.5, 'rgba(249,115,22,0.15)');
+  innerGrad.addColorStop(1, 'rgba(249,115,22,0)');
+  ctx.fillStyle = innerGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 40, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Orbital rings
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  // Ring 1
+  ctx.strokeStyle = 'rgba(249,115,22,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 160, 55, angle + mouseXInfluence, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Ring 2
+  ctx.strokeStyle = 'rgba(251,191,36,0.22)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 185, 70, -angle * 0.6 + mouseYInfluence, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Ring 3 (thin)
+  ctx.strokeStyle = 'rgba(249,115,22,0.12)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 210, 85, angle * 0.3, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
+
+  // Particles
+  pts.forEach(p => {
+    const cosA = Math.cos(angle + mouseXInfluence);
+    const sinA = Math.sin(angle + mouseXInfluence);
+    const cosB = Math.cos(mouseYInfluence * 0.5);
+    const sinB = Math.sin(mouseYInfluence * 0.5);
+
+    let x = p.x * cosA - p.z * sinA;
+    let z = p.x * sinA + p.z * cosA;
+    let y = p.y * cosB - z * sinB;
+    z = p.y * sinB + z * cosB;
+
+    const scale = 300 / (300 + z);
+    const sx = cx + x * scale;
+    const sy = cy + y * scale;
+    const opacity = Math.max(0, (z + 200) / 400) * 0.7;
+
+    ctx.fillStyle = `rgba(249,115,22,${opacity})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.s * scale, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Connection lines to nearby particles
+    if (p.o > 0.7 && opacity > 0.3) {
+      ctx.strokeStyle = `rgba(249,115,22,${opacity * 0.15})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+    }
+  });
+
+  // Data stream lines (decorative)
+  for (let i = 0; i < 5; i++) {
+    const a2 = angle * 2 + i * (Math.PI * 2 / 5);
+    const r1 = 50;
+    const r2 = 140;
+    const x1 = cx + Math.cos(a2) * r1;
+    const y1 = cy + Math.sin(a2) * r1 * 0.4;
+    const x2 = cx + Math.cos(a2) * r2;
+    const y2 = cy + Math.sin(a2) * r2 * 0.4;
+
+    const lineGrad = ctx.createLinearGradient(x1, y1, x2, y2);
+    lineGrad.addColorStop(0, 'rgba(249,115,22,0.3)');
+    lineGrad.addColorStop(1, 'rgba(249,115,22,0)');
+    ctx.strokeStyle = lineGrad;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  angle += 0.004;
+  requestAnimationFrame(drawHolo);
+}
+drawHolo();
+
+/* ═══════════════════════════════════════
+   HUMANOID INTERACTION
+   ═══════════════════════════════════════ */
+const humanoid = document.getElementById('humanoid');
+const speech = document.getElementById('speech');
+const hStatus = document.getElementById('hStatus');
+let speechTimeout;
+
+function showSpeech(text) {
+  speech.innerHTML = text + ' <span class="h-typing"><span></span><span></span><span></span></span>';
+  speech.classList.add('show');
+  clearTimeout(speechTimeout);
+  speechTimeout = setTimeout(() => speech.classList.remove('show'), 5000);
+}
+
+humanoid.addEventListener('click', () => {
+  const msg = SPEECHES[Math.floor(Math.random() * SPEECHES.length)];
+  hStatus.innerHTML = '<i class="fas fa-circle" style="font-size:.4rem;color:var(--orange-400);margin-right:4px;animation:blink .5s ease-in-out infinite"></i>Speaking...';
+  showSpeech(msg);
+  setTimeout(() => {
+    hStatus.innerHTML = '<i class="fas fa-circle" style="font-size:.4rem;color:#22c55e;margin-right:4px"></i>Listening...';
+  }, 3000);
+});
+
+// Auto speech bubble every 15s
+setInterval(() => {
+  if (!speech.classList.contains('show')) {
+    const msg = SPEECHES[Math.floor(Math.random() * SPEECHES.length)];
+    showSpeech(msg);
+  }
+}, 15000);
+
+// Show initial speech after 2s
+setTimeout(() => showSpeech(SPEECHES[0]), 2000);
+
+/* ═══════════════════════════════════════
+   KEYBOARD
+   ═══════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    document.getElementById('voiceInput').focus();
+  }
+});
+
+/* ═══════════════════════════════════════
+   SOUND FEEDBACK (Web Audio API)
+   ═══════════════════════════════════════ */
+let audioCtx;
+function playClick() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.value = 800;
+  osc.type = 'sine';
+  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.1);
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('.tcard,.acard,.scard,.btn-send,.humanoid')) playClick();
+});
+
+</script>
+</body>
+</html>

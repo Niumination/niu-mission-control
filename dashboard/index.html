@@ -1376,11 +1376,38 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // Hash routing: /dashboard#taskqueue → buka page tsb (dari ORB menu / link luar)
+    const h = location.hash.slice(1);
+    if (h) {
+      const item = document.querySelector(`.nav-item[data-page="${h}"]`);
+      if (item) {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const target = document.getElementById('page-' + h);
+        if (target) target.classList.add('active');
+        if (h === 'ecosystem') loadEcosystem();
+        if (h === 'swarm') loadTopologyPrompts();
+        if (h === 'taskqueue') loadKanban();
+        if (h === 'terminal') clearConsole();
+        if (h === 'telegram') loadTelegramFeed();
+        if (h === 'storage') loadTelemetry();
+        if (h === 'skills') loadSkills();
+        if (h === 'system') loadSystemSettings();
+      }
+    }
     loadDirective();
     loadTelemetry();
     loadStatsStrip();
     loadActivity();
     setInterval(() => { loadDirective(); loadTelemetry(); loadStatsStrip(); loadActivity(); }, 30000);
+    // Hash berubah saat sudah di dashboard (klik link / manual) → reuse initNav
+    window.addEventListener('hashchange', () => {
+      const h2 = location.hash.slice(1);
+      if (!h2) return;
+      const it2 = document.querySelector(`.nav-item[data-page="${h2}"]`);
+      if (it2) it2.click();
+    });
   });
   </script>
 </body>

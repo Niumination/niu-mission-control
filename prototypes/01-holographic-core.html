@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype A — Holographic Core 3D</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#030712; color:#e2e8f0; font-family:'Inter',system-ui,sans-serif; overflow:hidden; }
+  #gl { position:fixed; inset:0; }
+  .hud { position:fixed; z-index:10; pointer-events:none; }
+  .hud-tl { top:20px; left:24px; }
+  .hud-tr { top:20px; right:24px; text-align:right; }
+  .hud-bl { bottom:20px; left:24px; }
+  .hud-br { bottom:20px; right:24px; text-align:right; }
+  .label { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:#64748b; }
+  .value { font-size:26px; font-weight:700; color:#00f3ff; font-family:'JetBrains Mono',monospace; text-shadow:0 0 20px rgba(0,243,255,0.5); }
+  .value.small { font-size:14px; }
+  .ring { width:8px; height:8px; border-radius:50%; background:#00f3ff; display:inline-block; box-shadow:0 0 12px #00f3ff; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+  .meta { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:10; text-align:center; font-size:11px; color:#64748b; font-family:'JetBrains Mono',monospace; }
+  .meta span { color:#00f3ff; }
+  #load { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#030712; z-index:100; font-family:'JetBrains Mono',monospace; color:#00f3ff; letter-spacing:0.3em; font-size:13px; transition:opacity .6s; }
+</style>
+</head>
+<body>
+<div id="load">INITIALIZING HOLOGRAPHIC CORE…</div>
+<div id="gl"></div>
+<div class="hud hud-tl">
+  <div class="label">System Load</div>
+  <div class="value" id="loadPct">0%</div>
+</div>
+<div class="hud hud-tr">
+  <div class="label">Audio Reactive</div>
+  <div class="value small"><span class="ring"></span> <span id="audioState">STANDBY</span></div>
+</div>
+<div class="hud hud-bl">
+  <div class="label">Neural Particles</div>
+  <div class="value small" id="particles">0</div>
+</div>
+<div class="hud hud-br">
+  <div class="label">Threads Active</div>
+  <div class="value small" id="threads">0/5</div>
+</div>
+<div class="meta">HERMES // HOLOGRAPHIC CORE — <span>drag</span> untuk rotasi · <span>scroll</span> untuk zoom</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+(function(){
+  const container = document.getElementById('gl');
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x030712, 0.0035);
+  const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
+  camera.position.set(0, 1.5, 8);
+  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 1.2;
+  controls.minDistance = 3.5; controls.maxDistance = 16;
+
+  // ── Holographic core: wireframe globe ──
+  const globeGeo = new THREE.SphereGeometry(2.2, 48, 48);
+  const globeWire = new THREE.LineSegments(
+    new THREE.WireframeGeometry(globeGeo),
+    new THREE.LineBasicMaterial({ color:0x00f3ff, transparent:true, opacity:0.28 })
+  );
+  scene.add(globeWire);
+
+  // inner glow sphere
+  const glowMat = new THREE.MeshBasicMaterial({ color:0x0891b2, transparent:true, opacity:0.08, side:THREE.DoubleSide });
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(2.16, 32, 32), glowMat);
+  scene.add(glow);
+
+  // ── Rotating ring (equator) ──
+  const ringGeo = new THREE.TorusGeometry(2.55, 0.012, 8, 128);
+  const ringMat = new THREE.MeshBasicMaterial({ color:0x00f3ff, transparent:true, opacity:0.65 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI/2.4;
+  scene.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(2.85, 0.006, 8, 128),
+    new THREE.MeshBasicMaterial({ color:0x10b981, transparent:true, opacity:0.4 }));
+  ring2.rotation.x = Math.PI/1.7;
+  scene.add(ring2);
+
+  // ── Particle field (neural net) ──
+  const N = 900;
+  const pos = new Float32Array(N*3);
+  for (let i=0;i<N;i++){
+    const r = 3.2 + Math.random()*4.5;
+    const theta = Math.random()*Math.PI*2;
+    const phi = Math.acos(2*Math.random()-1);
+    pos[i*3] = r*Math.sin(phi)*Math.cos(theta);
+    pos[i*3+1] = r*Math.sin(phi)*Math.sin(theta)*0.7;
+    pos[i*3+2] = r*Math.cos(phi);
+  }
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const pMat = new THREE.PointsMaterial({ color:0x7dd3fc, size:0.035, transparent:true, opacity:0.75 });
+  const points = new THREE.Points(pGeo, pMat);
+  scene.add(points);
+
+  // ── Audio-reactive fake: sin wave drives core scale ──
+  let audioLevel = 0, targetLevel = 0;
+  const data = [
+    { el: document.getElementById('loadPct'), v: 0 },
+    { el: document.getElementById('particles'), v: N },
+    { el: document.getElementById('threads'), v: 0 },
+  ];
+  // simulasikan load naik-turun
+  setInterval(() => { targetLevel = 0.2 + Math.random()*0.8; }, 3000);
+
+  let t = 0;
+  function animate(){
+    requestAnimationFrame(animate);
+    t += 0.005;
+    audioLevel += (targetLevel - audioLevel)*0.03;
+
+    // core breathing
+    const s = 1 + Math.sin(t*2)*0.02 + audioLevel*0.06;
+    glow.scale.set(s,s,s);
+    globeWire.rotation.y += 0.0012;
+    glow.rotation.y += 0.0008;
+    ring.rotation.z += 0.002;
+    ring2.rotation.z -= 0.0015;
+    points.rotation.y += 0.0004;
+
+    // HUD update
+    const pct = Math.round(audioLevel*100);
+    document.getElementById('loadPct').textContent = pct + '%';
+    document.getElementById('threads').textContent = Math.round(audioLevel*5) + '/5';
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  setTimeout(() => { document.getElementById('load').style.opacity='0'; setTimeout(()=>document.getElementById('load').remove(),600); }, 1200);
+})();
+</script>
+</body>
+</html>

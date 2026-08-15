@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype B — 5-Thread Orchestrator</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#05050A; color:#e2e8f0; font-family:'Inter',system-ui,sans-serif; padding:24px; min-height:100vh; }
+  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+  .header h1 { font-size:15px; letter-spacing:0.22em; text-transform:uppercase; color:#00f3ff; font-family:'JetBrains Mono',monospace; }
+  .header .sub { font-size:11px; color:#64748b; font-family:'JetBrains Mono',monospace; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+  .thread-card {
+    background:rgba(15,20,35,0.7); border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px; padding:18px; backdrop-filter:blur(12px);
+    transition:border-color .3s, box-shadow .3s;
+    position:relative; overflow:hidden;
+  }
+  .thread-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity:0; transition:opacity .4s;
+  }
+  .thread-card.active { border-color:var(--accent); box-shadow:0 0 30px -8px var(--accent); }
+  .thread-card.active::before { opacity:1; }
+  .thread-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .thread-title { font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .thread-title .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); }
+  .thread-title .num { color:#64748b; font-family:'JetBrains Mono',monospace; font-size:11px; }
+  .badge {
+    font-size:9px; font-weight:700; letter-spacing:0.12em; padding:3px 8px; border-radius:999px;
+    font-family:'JetBrains Mono',monospace; text-transform:uppercase;
+  }
+  .badge.idle { background:rgba(100,116,139,0.15); color:#94a3b8; }
+  .badge.processing { background:rgba(0,243,255,0.12); color:#00f3ff; animation:pulse 1.6s infinite; }
+  .badge.throttled { background:rgba(245,158,11,0.15); color:#f59e0b; }
+  .badge.error { background:rgba(239,68,68,0.15); color:#ef4444; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .telemetry { display:flex; gap:16px; margin-bottom:12px; }
+  .tel-item { flex:1; }
+  .tel-label { font-size:9px; color:#64748b; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:3px; }
+  .tel-value { font-size:16px; font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--accent); }
+  .meter { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; margin-bottom:8px; }
+  .meter-fill { height:100%; border-radius:3px; background:linear-gradient(90deg, var(--accent), #a5f3fc); transition:width .6s cubic-bezier(.16,1,.3,1); }
+  .latency-row { display:flex; justify-content:space-between; font-size:10px; color:#64748b; font-family:'JetBrains Mono',monospace; }
+  .latency-row .spark { color:var(--accent); }
+  .latency-graph { display:flex; align-items:flex-end; gap:2px; height:28px; margin-top:6px; }
+  .latency-graph span { flex:1; background:var(--accent); opacity:.6; border-radius:1px; min-height:2px; transition:height .5s; }
+  .foot { margin-top:20px; text-align:center; font-size:10px; color:#475569; font-family:'JetBrains Mono',monospace; }
+  .foot code { color:#00f3ff; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div><h1>Thread Orchestrator Matrix</h1><div class="sub">HERMES AGENT — 5 PIPELINE</div></div>
+  <div class="sub" id="clock">—</div>
+</div>
+
+<div class="grid" id="grid"><!-- cards rendered via JS --></div>
+<div class="foot">Data sumber: <code>/api/mc/system</code> · <code>/api/mc/tasks</code> · <code>/api/mc/logs</code> (server :5200)</div>
+
+<script>
+const THREADS = [
+  { id:'memory',     num:'T1', name:'Memory & Context Indexer', accent:'#00f3ff', desc:'RAG · vector store sync' },
+  { id:'planner',    num:'T2', name:'Task Planner & Reasoner', accent:'#a78bfa', desc:'CoT · goal decomposition' },
+  { id:'tool',       num:'T3', name:'Tool Execution Engine',   accent:'#10b981', desc:'CLI · browser · interpreter' },
+  { id:'swarm',      num:'T4', name:'Swarm Coordinator',       accent:'#f59e0b', desc:'sub-task · multi-agent' },
+  { id:'synth',      num:'T5', name:'Output Synthesizer & TTS',accent:'#f472b6', desc:'stream · voice feedback' },
+];
+const grid = document.getElementById('grid');
+const BADGE = { idle:'IDLE', processing:'PROCESSING', throttled:'THROTTLED', error:'ERROR' };
+
+function render(state){
+  grid.innerHTML = '';
+  THREADS.forEach((th, i) => {
+    // peta state: sebagian besar idle, satu acak processing utk demo
+    const st = state.threads ? state.threads[i%state.threads.length] : 'idle';
+    const status = ['idle','processing','throttled','error'][Math.floor(Math.random()*4)]; // demo — ganti dgn data live
+    const load = state.cpu ? Math.round(state.cpu*(0.7+Math.random()*0.5)) : Math.round(Math.random()*80);
+    const lat = Math.round(40 + Math.random()*160);
+    const spikes = Array.from({length:24}, () => 3 + Math.round(Math.random()*25));
+    const card = document.createElement('div');
+    card.className = 'thread-card ' + status;
+    card.style.setProperty('--accent', th.accent);
+    card.innerHTML = `
+      <div class="thread-head">
+        <div class="thread-title"><span class="dot"></span><span class="num">${th.num}</span>${th.name}</div>
+        <span class="badge ${status}">${BADGE[status]}</span>
+      </div>
+      <div class="telemetry">
+        <div class="tel-item"><div class="tel-label">Load</div><div class="tel-value">${load}%</div></div>
+        <div class="tel-item"><div class="tel-label">Latency</div><div class="tel-value">${lat}ms</div></div>
+        <div class="tel-item"><div class="tel-label">Memory</div><div class="tel-value">${(Math.random()*1.5+0.3).toFixed(1)}G</div></div>
+      </div>
+      <div class="meter"><div class="meter-fill" style="width:${load}%"></div></div>
+      <div class="latency-row"><span>${th.desc}</span><span class="spark">▁▂▃▅▂▄</span></div>
+      <div class="latency-graph">${spikes.map(h=>`<span style="height:${h}px"></span>`).join('')}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Demo: state berubah tiap 4 detik
+setInterval(() => {
+  fetch('/api/mc/system').then(r=>r.json()).then(d=>render(d)).catch(()=>render({}));
+}, 4000);
+render({});
+
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('id-ID');
+}, 1000);
+</script>
+</body>
+</html>
