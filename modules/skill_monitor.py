@@ -48,13 +48,17 @@ SKILL_CACHE_ACTIVE: dict[str, float] = {}  # skill_name -> last load timestamp
 # ── Helpers ──────────────────────────────────────────────
 
 def _get_home() -> str:
-    """Get real user home dir — handles Hermes env where HOME != /Users/user."""
+    """Get real user home dir — handles Hermes env where HOME != /Users/user.
+
+    Cek folder skills/ (bukan cuma Desktop/Niumination) karena folder kosong
+    bisa eksis di HOME cache (Hermes env) dan menyesatkan resolusi.
+    """
     home = os.path.expanduser("~")
-    if os.path.isdir(os.path.join(home, "Desktop/Niumination")):
+    if os.path.isdir(os.path.join(home, "Desktop", "Niumination", "skills")):
         return home
     user = os.environ.get("USER", "zaryu")
     alt = f"/Users/{user}"
-    if os.path.isdir(os.path.join(alt, "Desktop/Niumination")):
+    if os.path.isdir(os.path.join(alt, "Desktop", "Niumination", "skills")):
         return alt
     return home
 
