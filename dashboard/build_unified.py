@@ -98,14 +98,14 @@ APPS = [
 ]
 
 launcher_btns = '\n'.join(
-    f'  <button class="launch-btn" data-app="{pid}" title="Buka {name}">'
-    f'<span class="lb-ico" style="background:linear-gradient(135deg,{c1},{c2})"><i class="fas {ico}"></i></span>'
+    f'  <button class="launch-btn" data-app="{pid}" title="Buka {name}" aria-pressed="false">'
+    f'<span class="lb-ico" style="background:linear-gradient(135deg,{c1},{c2})"><i class="fas {ico}" aria-hidden="true"></i></span>'
     f'<span class="lb-txt">{name.upper()}<small>{sub}</small></span></button>'
     for pid, name, sub, ico, c1, c2 in APPS
 )
 
 taskbar_btns = '\n'.join(
-    f'  <div class="tb-btn" data-app="{pid}"><i class="fas {ico}" style="color:{c2}"></i>{name.upper()}</div>'
+    f'  <div class="tb-btn" data-app="{pid}" role="button" tabindex="0" aria-label="Toggle {name}"><i class="fas {ico}" style="color:{c2}" aria-hidden="true"></i>{name.upper()}</div>'
     for pid, name, sub, ico, c1, c2 in APPS
 )
 
@@ -124,6 +124,15 @@ body = f"""<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HERMES // MISSION CONTROL — UNIFIED</title>
+  <meta name="description" content="Hermes Mission Control — dashboard operasional ekosistem Niumination: ORB 3D, telemetry agent, kanban, terminal, dan 12 panel realtime.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#050811">
+  <meta name="color-scheme" content="dark">
+  <meta name="author" content="Niumination Ecosystem">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Hermes Mission Control — Unified Dashboard">
+  <meta property="og:description" content="Dashboard operasional ekosistem Niumination — ORB 3D, telemetry agent, kanban, terminal, 12 panel realtime.">
+  <meta property="og:locale" content="id_ID">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -140,22 +149,24 @@ body = f"""<!DOCTYPE html>
 </head>
 <body>
 
+  <h1 class="visually-hidden">Hermes Mission Control — Unified Dashboard</h1>
+
   <!-- ══════ ORB BASE — fullscreen animation (selalu tampil) ══════ -->
   <div class="orb-base">
     <iframe src="/static/orb.html" title="ORB Command Center" id="orbFrame" loading="eager"></iframe>
   </div>
-  <div class="orb-dim" id="orbDim"></div>
+  <div class="orb-dim" id="orbDim" aria-hidden="true"></div>
 
   <!-- ══════ LAUNCHER — pojok kanan atas, tidak menutupi orb ══════ -->
-  <div class="launcher" id="launcher">
+  <nav class="launcher" id="launcher" aria-label="Aplikasi Mission Control">
 {launcher_btns}
-  </div>
+  </nav>
 
   <!-- ══════ FLOATING WINDOWS MOUNT ══════ -->
-  <div id="winMount"></div>
+  <main id="winMount" aria-label="Jendela dashboard"></main>
 
   <!-- ══════ PAGE VAULT — semua halaman tersimpan di sini (hidden) ══════ -->
-  <div id="pageVault">
+  <div id="pageVault" aria-hidden="true">
 {sections.get('dashboard', '')}
 {sections.get('ecosystem', '')}
 {sections.get('swarm', '')}
@@ -171,14 +182,14 @@ body = f"""<!DOCTYPE html>
   </div>
 
   <!-- ══════ TASKBAR — bawah tengah ══════ -->
-  <div class="taskbar" id="taskbar">
-    <div class="tb-brand"><i class="fas fa-bolt"></i>MISSION CONTROL</div>
-    <div class="tb-sep"></div>
+  <div class="taskbar" id="taskbar" role="toolbar" aria-label="Taskbar Mission Control">
+    <div class="tb-brand"><i class="fas fa-bolt" aria-hidden="true"></i>MISSION CONTROL</div>
+    <div class="tb-sep" aria-hidden="true"></div>
 {taskbar_btns}
-    <div class="tb-sep"></div>
-    <div class="tb-live"><span class="dot"></span>ORB LIVE</div>
-    <div class="tb-sep"></div>
-    <div class="tb-clock"><i class="far fa-clock"></i><span id="clock">00:00:00</span></div>
+    <div class="tb-sep" aria-hidden="true"></div>
+    <div class="tb-live"><span class="dot" aria-hidden="true"></span>ORB LIVE</div>
+    <div class="tb-sep" aria-hidden="true"></div>
+    <div class="tb-clock"><i class="far fa-clock" aria-hidden="true"></i><span id="clock" aria-label="Jam saat ini">00:00:00</span></div>
   </div>
 
   <script src="/static/app.js"></script>
@@ -253,6 +264,9 @@ function openWindow(appId){{
   const win = document.createElement('div');
   win.className = 'fwin';
   win.dataset.app = appId;
+  win.setAttribute('role', 'dialog');
+  win.setAttribute('aria-label', cfg.title);
+  win.tabIndex = -1;
   win.style.left = pos.x+'px';
   win.style.top = pos.y+'px';
   win.style.width = pos.w+'px';
@@ -260,20 +274,20 @@ function openWindow(appId){{
 
   win.innerHTML =
     `<div class="fwin-bar">
-       <div class="fwin-dots">
+       <div class="fwin-dots" aria-hidden="true">
          <div class="fdot fdot-close" data-act="close" title="Tutup"></div>
          <div class="fdot fdot-min" data-act="min" title="Minimize"></div>
          <div class="fdot fdot-max" data-act="max" title="Maximize"></div>
        </div>
-       <div class="fwin-title"><i class="fas ${{cfg.ico}}" style="color:${{cfg.accent}}"></i>${{cfg.title}}</div>
+       <div class="fwin-title"><i class="fas ${{cfg.ico}}" style="color:${{cfg.accent}}" aria-hidden="true"></i>${{cfg.title}}</div>
        <div class="fwin-actions">
-         <button class="fwin-act" data-act="min" title="Minimize"><i class="fas fa-minus"></i></button>
-         <button class="fwin-act" data-act="max" title="Maximize"><i class="fas fa-expand"></i></button>
-         <button class="fwin-act" data-act="close" title="Close"><i class="fas fa-xmark"></i></button>
+         <button class="fwin-act" data-act="min" title="Minimize" aria-label="Minimize ${{cfg.title}}"><i class="fas fa-minus" aria-hidden="true"></i></button>
+         <button class="fwin-act" data-act="max" title="Maximize" aria-label="Maximize ${{cfg.title}}"><i class="fas fa-expand" aria-hidden="true"></i></button>
+         <button class="fwin-act" data-act="close" title="Close" aria-label="Close ${{cfg.title}}"><i class="fas fa-xmark" aria-hidden="true"></i></button>
        </div>
      </div>
      <div class="fwin-body" id="fwin-body-${{appId}}"></div>
-     <div class="fwin-resize"></div>`;
+     <div class="fwin-resize" aria-hidden="true"></div>`;
 
   // Pindahkan section dari vault ke window body
   const body = win.querySelector('.fwin-body');
@@ -282,6 +296,10 @@ function openWindow(appId){{
 
   mount.appendChild(win);
   focusWindow(appId);
+
+  // Jika dibuka via keyboard → pindah fokus ke window (WCAG 2.4.3)
+  const srcBtn = document.querySelector(`.launch-btn[data-app="${{appId}}"]`);
+  if (srcBtn && document.activeElement === srcBtn) win.focus();
 
   requestAnimationFrame(()=>requestAnimationFrame(()=>win.classList.add('open')));
 
@@ -338,7 +356,8 @@ function openWindow(appId){{
 
   // Taskbar + launcher state
   taskbar.querySelector(`.tb-btn[data-app="${{appId}}"]`)?.classList.add('open');
-  document.querySelector(`.launch-btn[data-app="${{appId}}"]`)?.classList.add('on');
+  const lbtn = document.querySelector(`.launch-btn[data-app="${{appId}}"]`);
+  if (lbtn) {{ lbtn.classList.add('on'); lbtn.setAttribute('aria-pressed', 'true'); }}
 
   // Lazy init halaman
   if (LAZY[appId]) LAZY[appId]();
@@ -367,7 +386,8 @@ function closeWindow(appId){{
   }}, 240);
   openApps.delete(appId);
   taskbar.querySelector(`.tb-btn[data-app="${{appId}}"]`)?.classList.remove('open');
-  document.querySelector(`.launch-btn[data-app="${{appId}}"]`)?.classList.remove('on');
+  const lbtn = document.querySelector(`.launch-btn[data-app="${{appId}}"]`);
+  if (lbtn) {{ lbtn.classList.remove('on'); lbtn.setAttribute('aria-pressed', 'false'); }}
   updateDim();
 }}
 
@@ -421,14 +441,17 @@ document.querySelectorAll('.launch-btn').forEach(btn=>{{
   btn.addEventListener('click', ()=>openWindow(btn.dataset.app));
 }});
 
-/*── Taskbar click (minimize/restore toggle) ──*/
+/*── Taskbar click (minimize/restore toggle) + keyboard (WCAG 2.1.1) ──*/
+function tbToggle(app){{
+  const win = mount.querySelector(`.fwin[data-app="${{app}}"]`);
+  if (!win){{ openWindow(app); return; }}
+  if (win.classList.contains('minimized')) restoreWindow(app);
+  else minimizeWindow(app);
+}}
 document.querySelectorAll('.tb-btn').forEach(btn=>{{
-  btn.addEventListener('click', ()=>{{
-    const app = btn.dataset.app;
-    const win = mount.querySelector(`.fwin[data-app="${{app}}"]`);
-    if (!win){{ openWindow(app); return; }}
-    if (win.classList.contains('minimized')) restoreWindow(app);
-    else minimizeWindow(app);
+  btn.addEventListener('click', ()=>tbToggle(btn.dataset.app));
+  btn.addEventListener('keydown', e=>{{
+    if (e.key === 'Enter' || e.key === ' '){{ e.preventDefault(); tbToggle(btn.dataset.app); }}
   }});
 }});
 
