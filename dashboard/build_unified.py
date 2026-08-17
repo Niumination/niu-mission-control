@@ -465,8 +465,103 @@ document.addEventListener('keydown', e=>{{
 
 }}());
 
+/*═══════════════════════════════════════
+  ⌘K COMMAND PALETTE
+═══════════════════════════════════════*/
+(function(){{
+'use strict';
+
+const cmds = [
+  {{name:'Dashboard', app:'dashboard', ico:'fa-chart-line'}},
+  {{name:'Ecosystem', app:'ecosystem', ico:'fa-diagram-project'}},
+  {{name:'Swarm', app:'swarm', ico:'fa-network-wired'}},
+  {{name:'Task Kanban', app:'taskqueue', ico:'fa-columns'}},
+  {{name:'Terminal', app:'terminal', ico:'fa-terminal'}},
+  {{name:'Telegram', app:'telegram', ico:'fa-paper-plane'}},
+  {{name:'Storage', app:'storage', ico:'fa-hdd'}},
+  {{name:'Skill Bank', app:'skills', ico:'fa-brain'}},
+  {{name:'Skill Market', app:'skills-market', ico:'fa-store'}},
+  {{name:'System', app:'system', ico:'fa-cog'}},
+  {{name:'Cost Monitor', app:'cost', ico:'fa-coins'}},
+  {{name:'Deploy', app:'deploy', ico:'fa-rocket'}},
+  {{name:'Close All Windows', action:'closeAll', ico:'fa-xmark'}},
+];
+
+function createPalette(){{
+  const overlay = document.createElement('div');
+  overlay.id = 'cmdPalette';
+  overlay.innerHTML = `
+    <div class="cmd-overlay" data-close></div>
+    <div class="cmd-box">
+      <div class="cmd-input-wrap">
+        <i class="fas fa-search cmd-search-ico"></i>
+        <input type="text" class="cmd-input" placeholder="Type a command..." autofocus aria-label="Command palette">
+      </div>
+      <div class="cmd-list"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const input = overlay.querySelector('.cmd-input');
+  const list = overlay.querySelector('.cmd-list');
+  const box = overlay.querySelector('.cmd-box');
+
+  function render(filter){{
+    const f = filter.toLowerCase();
+    const filtered = cmds.filter(c => c.name.toLowerCase().includes(f));
+    list.innerHTML = filtered.map((c,i) => `
+      <div class="cmd-item${{i===0?' active':''}}" data-cmd="${{JSON.stringify(c).replace(/"/g,'&quot;')}}">
+        <i class="fas ${{c.ico}}"></i> ${{c.name}}
+      </div>`).join('');
+  }}
+
+  input.addEventListener('input', ()=>render(input.value));
+
+  list.addEventListener('click', e=>{{
+    const item = e.target.closest('.cmd-item');
+    if(!item) return;
+    const cmd = JSON.parse(item.dataset.cmd);
+    if(cmd.action==='closeAll'){{
+      document.querySelectorAll('.fwin').forEach(w => closeWindow(w.dataset.app));
+    }} else if(cmd.app){{
+      openWindow(cmd.app);
+    }}
+    overlay.remove();
+  }});
+
+  input.addEventListener('keydown', e=>{{
+    const items = list.querySelectorAll('.cmd-item');
+    const active = list.querySelector('.cmd-item.active');
+    let idx = Array.from(items).indexOf(active);
+    if(e.key==='ArrowDown'){{ idx = Math.min(idx+1, items.length-1); }}
+    else if(e.key==='ArrowUp'){{ idx = Math.max(idx-1, 0); }}
+    else if(e.key==='Enter' && active){{ active.click(); return; }}
+    else if(e.key==='Escape'){{ overlay.remove(); return; }}
+    else return;
+    items.forEach(i=>i.classList.remove('active'));
+    items[idx]?.classList.add('active');
+    items[idx]?.scrollIntoView({{block:'nearest'}});
+    e.preventDefault();
+  }});
+
+  overlay.querySelector('[data-close]').addEventListener('click', ()=>overlay.remove());
+  input.focus();
+}}
+
+// Keyboard shortcut: ⌘K or Ctrl+K
+document.addEventListener('keydown', e=>{{
+  if((e.metaKey||e.ctrlKey) && e.key==='k'){{
+    e.preventDefault();
+    const existing = document.getElementById('cmdPalette');
+    if(existing) existing.remove();
+    else createPalette();
+  }}
+}});
+
+}}());
+
 {inline}
   </script>
+  <div id="cmdPalette" aria-hidden="true" style="display:none"></div>
 </body>
 </html>
 """
