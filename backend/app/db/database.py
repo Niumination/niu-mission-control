@@ -53,6 +53,7 @@ async def _create_tables(db: aiosqlite.Connection) -> None:
             agent TEXT,
             status TEXT DEFAULT 'queued',
             priority TEXT DEFAULT 'normal',
+            idempotency_key TEXT UNIQUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );

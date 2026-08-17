@@ -21,15 +21,25 @@ class Dispatcher:
         self._running = False
         self._worker_task = None
 
-    async def submit(self, title: str, agent: str = None, instruction: str = None) -> dict:
-        """Submit a new task to the queue."""
+    async def submit(self, title: str, agent: str = None, instruction: str = None,
+                     idempotency_key: str = None) -> dict:
+        """Submit a new task to the queue. Duplicate idempotency_key returns existing task."""
         db = await get_db()
+
+        # Idempotency: if same key submitted before, return existing task
+        if idempotency_key:
+            cursor = await db.execute(
+                "SELECT id, status FROM tasks WHERE idempotency_key=?", (idempotency_key,)
+            )
+            existing = await cursor.fetchone()
+            if existing:
+                return {"task_id": existing["id"], "status": existing["status"], "idempotent": True}
         task_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
 
         await db.execute(
-            "INSERT INTO tasks (id, title, agent, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (task_id, title, agent, TaskStatus.QUEUED.value, "normal", now, now),
+            "INSERT INTO tasks (id, title, agent, status, priority, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (task_id, title, agent, TaskStatus.QUEUED.value, "normal", idempotency_key, now, now),
         )
         await db.execute(
             "INSERT INTO events (type, payload, source) VALUES (?, ?, ?)",
