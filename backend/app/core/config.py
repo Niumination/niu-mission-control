@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     hermes_home: str = Field(
         default="/Volumes/HermesAgent/HermesAgentUSB/data"
     )
+    telegram_bot_token: str = Field(default="", description="Telegram bot token dari @BotFather")
     telegram_chat_id: str = Field(default="")
 
     # ── Paths ───────────────────────────────────────────────
