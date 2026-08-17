@@ -23,7 +23,7 @@ def _check_rate_limit(ip: str, max_rpm: int = 60) -> bool:
 
 # ── Public paths (exact match — NOT startswith) ────────────
 PUBLIC_PREFIXES = ("/static", "/docs", "/openapi.json", "/redoc")
-PUBLIC_EXACT = {"/", "/health", "/ws/swarm", "/orb", "/dashboard", "/aios"}
+PUBLIC_EXACT = {"/", "/health", "/ws/swarm", "/ws/orb", "/orb", "/dashboard", "/aios"}
 
 
 def _is_public(path: str) -> bool:

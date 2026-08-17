@@ -15,6 +15,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .core.config import Settings, get_settings
@@ -60,7 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         logger.info("Mission Control shut down.")
 
     # ── Static files ───────────────────────────────────────
-    static_dir = Path(__file__).parent.parent.parent / "frontend"
+    static_dir = Path(__file__).parent.parent.parent / "dashboard"
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
@@ -68,6 +69,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health", tags=["system"])
     async def health():
         return {"status": "ok", "version": "3.0.0"}
+
+    # ── Serve frontend ─────────────────────────────────────
+    @app.get("/", response_class=HTMLResponse, tags=["system"])
+    async def index():
+        return FileResponse(str(static_dir / "index.html"))
+
+    @app.get("/orb", response_class=HTMLResponse, tags=["system"])
+    async def orb():
+        return FileResponse(str(static_dir / "orb.html"))
+
+    @app.get("/dashboard", response_class=HTMLResponse, tags=["system"])
+    async def dashboard():
+        return FileResponse(str(static_dir / "index.html"))
 
     # ── Include routers ────────────────────────────────────
     from .routers import system, ecosystem, agents, tasks, terminal
@@ -89,6 +103,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(ws.router)
 
     return app
+
+
+# Module-level app for uvicorn
+app = create_app()
 
 
 if __name__ == "__main__":
