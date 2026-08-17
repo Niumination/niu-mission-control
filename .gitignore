@@ -4,10 +4,19 @@ __pycache__/
 venv/
 .venv/
 
+# Environment (berisi secrets — JANGAN commit)
+.env
+.env.local
+
 # SQLite (runtime state — jangan commit)
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/swarm_state.db*
+
+# Runtime data (berisi dispatch logs, chat ID, dll)
+data/*.json
+data/contents/
 
 # OS
 .DS_Store
@@ -16,4 +25,10 @@ data/*.db-wal
 /tmp/hermes_*
 *.log
 cookies.txt
+
+# Backups (jangan commit)
+dashboard/index.html.bak*
 dashboard_backup_refactor_20260816/
+
+# IDE
+.vscode/settings.json

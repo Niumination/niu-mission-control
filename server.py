@@ -185,9 +185,19 @@ async def auth_rate_limit_middleware(request: Request, call_next):
     """Combined API key auth + per-IP rate limiting."""
     path = request.url.path
 
-    # Public paths that skip BOTH auth and rate limiting
-    public_paths = ("/static", "/ws/swarm", "/health", "/", "/docs", "/openapi.json", "/redoc")
-    is_public = any(path.startswith(p) for p in public_paths) or path == "/ws/swarm"
+    # Public paths — exact match atau prefix aman (bukan startswith bebas)
+    # "/static" aman karena hanya serve file dari folder aman
+    # "/" HARUS cuma root persis (bukan /api, bukan /admin, dll)
+    public_prefixes = ("/static", "/docs", "/openapi.json", "/redoc")
+    is_public = (
+        path == "/"
+        or path == "/health"
+        or path == "/ws/swarm"
+        or path == "/orb"
+        or path == "/dashboard"
+        or path == "/aios"
+        or any(path.startswith(p) for p in public_prefixes)
+    )
 
     client_ip = request.client.host if request.client else "unknown"
 

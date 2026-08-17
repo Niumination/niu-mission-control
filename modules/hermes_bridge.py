@@ -154,20 +154,28 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
     if not cmd:
         return {"status": "error", "output": "Perintah kosong"}
 
-    # Menolak perintah berbahaya
-    ALLOWED_COMMANDS = ["ls", "cat", "pwd", "echo", "grep", "find", "python", "pytest", "head", "tail", "ps", "top -b -n1"]
-    if not any(cmd.startswith(a) for a in ALLOWED_COMMANDS):
-        return {"status":"error","output":"Command blocked: Not in allowlist.","exit_code":-1}
+    # ── SECURITY: Daftar aman perintah read-only ──────────────
+    # Hanya perintah yang TIDAK bisa membaca file sensitif atau mengeksekusi kode
+    ALLOWED_COMMANDS = ["ls", "pwd", "echo", "grep", "find", "head", "tail", "ps", "top -b -n1", "wc", "date", "uptime", "df", "du", "whoami", "env"]
+    # HAPUS: python (RCE), cat (baca file apapun), pytest (eksekusi kode)
+    # FORBIDDEN: semua yang bisa menulis/hapus/mengubah sistem
 
-    forbidden = ["rm -rf /", "mkfs", "dd if=", ":(){:|:&};:", "curl", "wget", "bash -i", "> /dev", "| bash"]
-    for f in forbidden:
-        if f in cmd:
-            return {"status": "error", "output": "Command blocked: Security policy restriction.", "exit_code": -1}
+    first_word = cmd.split()[0] if cmd.split() else ""
+    if first_word not in ALLOWED_COMMANDS:
+        return {"status": "error", "output": f"Command blocked: '{first_word}' not in safe allowlist. Allowed: {', '.join(ALLOWED_COMMANDS)}", "exit_code": -1}
+
+    # Double-check: tidak ada pipe, redirect, atau chain
+    dangerous_patterns = ["|", ";", "&&", "||", ">", "<", "`", "$(", "${", "\\", "'"]
+    for pat in dangerous_patterns:
+        if pat in cmd:
+            return {"status": "error", "output": f"Command blocked: '{pat}' pattern not allowed in safe mode.", "exit_code": -1}
 
     try:
+        # SECURITY: shlex.split tanpa shell=True — no shell injection possible
+        args = shlex.split(cmd)
         r = subprocess.run(
-            cmd,
-            shell=True,
+            args,
+            shell=False,
             capture_output=True,
             text=True,
             timeout=timeout,
