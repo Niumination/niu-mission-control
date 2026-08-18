@@ -370,6 +370,32 @@ async def health_check():
     }
 
 
+# ── Kubernetes-style health endpoints (probe standard) ─────
+# /healthz = liveness (proses hidup), /readyz = readiness (bisa terima request)
+
+@app.get("/healthz", tags=["system"])
+async def healthz():
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
+
+@app.get("/readyz", tags=["system"])
+async def readyz():
+    db_status = "ok"
+    try:
+        await bus.health_check()
+    except Exception:
+        db_status = "error"
+    if db_status != "ok":
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=503, content={"status": "not ready", "database": db_status})
+    return {"status": "ready", "database": db_status}
+
+
+@app.get("/version", tags=["system"])
+async def version():
+    return {"name": "niu-mission-control", "version": "2.6.2"}
+
+
 def _get_uptime() -> str:
     """Return human-readable uptime."""
     elapsed = int(time.time() - _start_time)
