@@ -112,6 +112,16 @@
   updateOverviewClock();
   setInterval(updateOverviewClock, 1000);
 
+  // Saat ORB menjadi background dashboard, gunakan window manager milik parent.
+  // Pada /orb standalone, fallback ke window engine ORB yang sudah ada.
+  window.__openFromCore = function (app, agent = '', focus = '') {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'mc:open-app', app, agent, focus }, location.origin);
+      return;
+    }
+    if (typeof window.__openApp === 'function') window.__openApp(app);
+  };
+
   // Data agent tetap berasal dari endpoint dan WebSocket yang sama.
   function renderAgentNetwork(agents) {
     const panel = document.getElementById('agents-panel');
@@ -160,7 +170,7 @@
       button.append(dot, name, model);
       button.addEventListener('click', () => {
         const app = agent.id === 'chief' ? 'dashboard' : 'swarm';
-        if (typeof window.__openApp === 'function') window.__openApp(app);
+        window.__openFromCore(app, agent.id || '');
       });
       panel.appendChild(button);
     });
@@ -176,21 +186,66 @@
   }
 
   // ── Data fetch ───────────────────────────
+  function renderSystemRows(rows) {
+    const panel = document.getElementById('system-stats');
+    if (!panel) return;
+    panel.replaceChildren();
+    rows.forEach(([labelText, valueText, stateClass = '']) => {
+      const row = document.createElement('div');
+      row.className = 'stat-row';
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = labelText;
+      const value = document.createElement('span');
+      value.className = `value ${stateClass}`.trim();
+      value.textContent = valueText;
+      row.append(label, value);
+      panel.appendChild(row);
+    });
+  }
+
   async function loadSystem() {
     try {
       const res = await fetch('/api/mc/system');
-      const d = await res.json();
-      const panel = document.getElementById('system-stats');
-      const rows = [
-        ['Status', d.status || d.data?.status || 'OK', 'ok'],
-        ['Uptime', (d.uptime ?? d.data?.uptime ?? '-') + 's', ''],
-        ['Hermes', d.hermes || d.data?.hermes || '-', ''],
-      ];
-      panel.innerHTML = rows.map(([l, v, cls]) =>
-        `<div class="stat-row"><span class="label">${l}</span><span class="value ${cls}">${v}</span></div>`).join('');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const payload = await res.json();
+      const d = payload.data || payload;
+      const cpu = d.cpu_percent ?? d.cpu ?? 0;
+      const memory = d.memory?.percent ?? d.memory_percent ?? 0;
+      const health = d.health_score ?? (String(d.status || '').toUpperCase() === 'OK' ? 100 : 0);
+      renderSystemRows([
+        ['Health', `${Math.round(Number(health) || 0)}%`, health >= 70 ? 'ok' : 'warn'],
+        ['CPU', `${Math.round(Number(cpu) || 0)}%`, cpu > 80 ? 'warn' : ''],
+        ['Memory', `${Math.round(Number(memory) || 0)}%`, memory > 85 ? 'warn' : ''],
+        ['Uptime', String(d.uptime ?? '-'), ''],
+      ]);
     } catch (e) {
-      document.getElementById('system-stats').innerHTML =
-        `<div class="stat-row"><span class="label">API offline</span></div>`;
+      renderSystemRows([['System API', 'OFFLINE', 'err']]);
+    }
+  }
+
+  async function loadGateway() {
+    const pill = document.getElementById('gateway-pill');
+    const label = document.getElementById('gateway-state');
+    if (!pill || !label) return;
+    try {
+      const res = await fetch('/api/mc/hermes');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const gateway = data.gateway || {};
+      pill.className = gateway.simulated
+        ? 'simulated'
+        : gateway.online
+          ? 'online'
+          : 'offline';
+      label.textContent = gateway.simulated
+        ? 'SIMULATED'
+        : gateway.online
+          ? 'ONLINE'
+          : 'OFFLINE';
+    } catch (e) {
+      pill.className = 'offline';
+      label.textContent = 'OFFLINE';
     }
   }
 
@@ -207,7 +262,8 @@
 
   loadSystem();
   loadAgents();
-  setInterval(() => { loadSystem(); loadAgents(); }, 15000);
+  loadGateway();
+  setInterval(() => { loadSystem(); loadAgents(); loadGateway(); }, 15000);
 
   // ── Routines (control surface) ──────────────
   const routineBtns = {

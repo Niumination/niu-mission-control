@@ -1155,6 +1155,22 @@ window.minimizeWindow = minimizeWindow;
 window.restoreWindow = restoreWindow;
 window.toggleMax = toggleMax;
 
+/*── ORB → parent window manager bridge (standalone ORB tetap punya fallback sendiri) ──*/
+window.addEventListener('message', event=>{
+  const orbFrame = document.getElementById('orbFrame');
+  const data = event.data || {};
+  if (event.origin !== location.origin || event.source !== orbFrame?.contentWindow) return;
+  if (data.type !== 'mc:open-app' || !PAGES[data.app]) return;
+  openWindow(data.app);
+
+  if (data.app === 'swarm' && ['chief','research','programmer','qa','creator'].includes(data.agent)) {
+    setTimeout(()=>{ try { switchPromptTab(data.agent); } catch(e){} }, 360);
+  }
+  if (data.app === 'taskqueue' && data.focus === 'composer') {
+    setTimeout(()=>document.getElementById('taskInstruction')?.focus(), 360);
+  }
+});
+
 /*── Clock ──*/
 setInterval(()=>{
   const c = document.getElementById('clock');

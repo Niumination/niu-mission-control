@@ -270,6 +270,19 @@
     #overview-meta { display: flex; flex-direction: column; padding: 0 0 1px 18px; border-left: 1px solid rgba(111,216,255,.18); }
     #overview-meta strong { color: #f1f5f9; font: 500 1.15rem/1 'JetBrains Mono', monospace; letter-spacing: .06em; }
     #overview-meta span { margin-top: 7px; color: #64748b; font-size: .54rem; letter-spacing: .08em; text-transform: uppercase; }
+    #gateway-pill {
+      min-height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px;
+      border: 1px solid rgba(148,163,184,.13); border-radius: 7px;
+      color: #607181; background: rgba(5,10,17,.54); font-size: .5rem; letter-spacing: .1em;
+    }
+    #gateway-pill i { width: 5px; height: 5px; border-radius: 50%; background: #fbbf24; box-shadow: 0 0 8px currentColor; }
+    #gateway-pill strong { color: #8ca0ad; font-size: .5rem; }
+    #gateway-pill.online i { color: #65d6a2; background: currentColor; }
+    #gateway-pill.online strong { color: #65d6a2; }
+    #gateway-pill.offline i { color: #f87171; background: currentColor; }
+    #gateway-pill.offline strong { color: #f87171; }
+    #gateway-pill.simulated i { color: #fbbf24; background: currentColor; }
+    #gateway-pill.simulated strong { color: #fbbf24; }
 
     #core-readout {
       position: fixed; z-index: 20; left: 50%; top: calc(50% + 142px);
@@ -281,14 +294,21 @@
     #core-state i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 9px currentColor; animation: apexPulse 2s ease-in-out infinite; }
     #core-state.busy { color: #fbbf24; }
     #core-state.error { color: #f87171; }
+    #core-actions { display: flex; align-items: center; gap: 6px; margin-top: 9px; pointer-events: auto; }
     #core-action {
-      pointer-events: auto; margin-top: 9px; padding: 7px 14px;
+      pointer-events: auto; padding: 7px 14px;
       border: 1px solid rgba(111,216,255,.2); border-radius: 999px;
       color: #eefbff; background: rgba(6,13,21,.7); backdrop-filter: blur(10px);
       font: 700 .68rem/1 'Orbitron', sans-serif; letter-spacing: .18em;
       cursor: pointer; transition: border-color .2s, background .2s, box-shadow .2s;
     }
     #core-action:hover { border-color: rgba(111,216,255,.55); background: rgba(111,216,255,.1); box-shadow: 0 0 28px rgba(111,216,255,.14); }
+    #mission-action {
+      padding: 7px 10px; border: 1px solid rgba(148,163,184,.14); border-radius: 999px;
+      color: #8193a0; background: rgba(6,13,21,.62); font: 600 .5rem/1 'JetBrains Mono', monospace;
+      letter-spacing: .1em; cursor: pointer; transition: color .2s, border-color .2s, background .2s;
+    }
+    #mission-action:hover { color: #fbbf24; border-color: rgba(251,191,36,.38); background: rgba(251,191,36,.07); }
     #core-readout small { margin-top: 9px; color: #536273; font-size: .5rem; letter-spacing: .15em; white-space: nowrap; }
 
     #agents-panel-wrap {
@@ -339,7 +359,9 @@
       #agents-panel-wrap { top: 76px; }
       #agents-panel-wrap h3 { display: none; }
       #hud-bottom { display: none; }
-      #hud-actions #nav-btn { display: none; }
+      #hud-actions #nav-btn, #gateway-pill span { display: none; }
+      #gateway-pill { padding: 0 8px; }
+      #mission-action { display: none; }
       #core-readout { top: calc(50% + 95px); }
     }
   </style>
@@ -360,6 +382,7 @@
         </div>
       </div>
       <div id="hud-actions">
+        <div id="gateway-pill" aria-live="polite"><i></i><span>GATEWAY</span><strong id="gateway-state">SYNCING</strong></div>
         <div id="menu-wrap">
           <button id="menu-btn" onclick="window.__toggleMenu(event)">☰ MENU</button>
           <div id="menu-drop">
@@ -404,7 +427,10 @@
 
   <div id="core-readout" aria-label="Hermes core controls">
     <span id="core-state"><i></i> STANDBY</span>
-    <button id="core-action" type="button" onclick="window.__openApp('dashboard')">HERMES CORE</button>
+    <div id="core-actions">
+      <button id="core-action" type="button" onclick="window.__openFromCore('dashboard')">HERMES CORE</button>
+      <button id="mission-action" type="button" onclick="window.__openFromCore('taskqueue', '', 'composer')">+ NEW MISSION</button>
+    </div>
     <small>TAP THE CORE · SELECT AN AGENT · OPEN A SYSTEM</small>
   </div>
 
@@ -685,7 +711,16 @@
       win.classList.add('focused');
     }
   }
-  window.__openApp = openWindow;
+  window.__openApp = function(appId){
+    // AIOS hanya tersedia pada window engine ORB; module lain memakai parent
+    // agar tidak membuat dashboard bertingkat saat ORB sedang di-embed.
+    if (window.parent !== window && appId !== 'aios') {
+      window.parent.postMessage({ type:'mc:open-app', app:appId }, location.origin);
+      document.getElementById('menu-drop')?.classList.remove('open');
+      return;
+    }
+    openWindow(appId);
+  };
 
   /*── MENU dropdown: klik → buka floating window ──*/
   window.__toggleMenu = function(e){
