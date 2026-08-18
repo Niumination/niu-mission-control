@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/mc", tags=["ecosystem"])
 async def ecosystem_overview(type: str = "all"):
     """Ecosystem overview."""
     try:
-        from modules.ecosystem_scanner import scan_ecosystem
-        return scan_ecosystem(type)
+        from modules.ecosystem_scanner import get_full_ecosystem
+        return get_full_ecosystem()
     except Exception as e:
         return {"error": str(e), "projects": []}

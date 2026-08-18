@@ -86,7 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # ── Include routers ────────────────────────────────────
     from .routers import system, ecosystem, agents, tasks, terminal
     from .routers import routines
-    from .routers import telegram, artifacts, config, skills, cost, deploy, ws, hermes
+    from .routers import telegram, artifacts, config, skills, cost, deploy, ws, hermes, audit
 
     app.include_router(system.router)
     app.include_router(ecosystem.router)
@@ -102,6 +102,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(deploy.router)
     app.include_router(ws.router)
     app.include_router(hermes.router)
+    app.include_router(audit.router)
 
     return app
 

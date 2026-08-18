@@ -92,6 +92,7 @@ APPS = [
     ('storage',       'Storage',         'USB & WAL',       'fa-database',      '#059669', '#10b981'),
     ('skills',        'Skill Bank',      '40 Skills',       'fa-brain',         '#db2777', '#ec4899'),
     ('skills-market', 'Skill Market',    'Sync Hub',        'fa-store',         '#e11d48', '#f43f5e'),
+    ('inspector',     'Inspector',       'L3 Trace',        'fa-search-plus',   '#0ea5e9', '#38bdf8'),
     ('system',        'System',          'Config',          'fa-gear',          '#475569', '#94a3b8'),
     ('cost',          'Cost',            'Monitor',         'fa-coins',         '#d97706', '#fbbf24'),
     ('deploy',        'Deploy',          'Pipelines',       'fa-rocket',        '#ea580c', '#f97316'),
@@ -113,7 +114,7 @@ pages_js = ',\n'.join(
     f"  {pid if pid.isidentifier() else repr(pid)}: {{ title: '{name}', ico: '{ico}', accent: '{c2}', w: {w}, h: {h} }}"
     for (pid, name, sub, ico, c1, c2), (w, h) in zip(APPS, [
         (940, 640), (900, 620), (820, 600), (920, 640), (860, 580), (860, 580),
-        (840, 580), (880, 620), (880, 620), (860, 600), (840, 580), (840, 580),
+        (840, 580), (880, 620), (880, 620), (960, 680), (860, 600), (840, 580), (840, 580),
     ])
 )
 
@@ -179,6 +180,7 @@ body = f"""<!DOCTYPE html>
 {sections.get('deploy', '')}
 {sections.get('cost', '')}
 {sections.get('skills-market', '')}
+{sections.get('inspector', '')}
   </div>
 
   <!-- ══════ TASKBAR — bawah tengah ══════ -->
@@ -254,7 +256,34 @@ function openWindow(appId){{
   if (openApps.has(appId)){{ focusWindow(appId); return; }}
   const cfg = PAGES[appId];
   if (!cfg) return;
-  const section = document.getElementById('page-' + appId);
+  let section = document.getElementById('page-' + appId);
+
+  // Dynamic page creation untuk inspector
+  if (!section && appId === 'inspector') {{
+    section = document.createElement('section');
+    section.className = 'page';
+    section.id = 'page-inspector';
+    section.innerHTML = `
+      <div class="inspector-container">
+        <div class="inspector-header">
+          <h2 style="color:var(--t1,#f1f5f9);margin:0;font-size:1.1rem"><i class="fas fa-search-plus" style="color:#38bdf8"></i> Inspector</h2>
+          <div class="inspector-search">
+            <input type="text" id="inspectorSearch" placeholder="Enter task ID..." style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f1f5f9;padding:6px 10px;border-radius:8px;font-size:.82rem;width:200px">
+            <button onclick="loadInspector()" style="background:#38bdf8;color:#000;border:none;padding:6px 12px;border-radius:8px;font-size:.75rem;cursor:pointer">Load</button>
+            <button onclick="loadInspectorAudit()" style="background:rgba(255,255,255,.1);color:#94a3b8;border:none;padding:6px 12px;border-radius:8px;font-size:.75rem;cursor:pointer">Audit Log</button>
+            <button onclick="loadInspectorCost()" style="background:rgba(255,255,255,.1);color:#94a3b8;border:none;padding:6px 12px;border-radius:8px;font-size:.75rem;cursor:pointer">Cost</button>
+          </div>
+        </div>
+        <div id="inspectorOutput" class="inspector-output">
+          <div class="inspector-placeholder">
+            <i class="fas fa-search" style="font-size:2rem;color:rgba(255,255,255,.15)"></i>
+            <p style="color:var(--t3,#7c8ba0);font-size:.82rem">Masukkan Task ID atau klik Audit Log / Cost untuk inspeksi</p>
+          </div>
+        </div>
+      </div>`;
+    vault.appendChild(section);
+  }}
+
   if (!section) return;
 
   openApps.add(appId);
@@ -390,6 +419,8 @@ function closeWindow(appId){{
   if (lbtn) {{ lbtn.classList.remove('on'); lbtn.setAttribute('aria-pressed', 'false'); }}
   updateDim();
 }}
+
+/* L3 INSPECTOR (moved inside IIFE) */
 
 function minimizeWindow(appId){{
   const win = mount.querySelector(`.fwin[data-app="${{appId}}"]`);
@@ -558,6 +589,112 @@ document.addEventListener('keydown', e=>{{
 }});
 
 }}());
+
+/*═══════════════════════════════════════
+  L3 INSPECTOR FUNCTIONS
+═══════════════════════════════════════*/
+  const taskId = document.getElementById('inspectorSearch')?.value?.trim();
+  if (!taskId) return;
+  const out = document.getElementById('inspectorOutput');
+  out.innerHTML = '<div style="color:#38bdf8;padding:1rem"><i class="fas fa-spinner fa-spin"></i> Loading task ' + taskId + '...</div>';
+  try {{
+    const r = await fetch('/api/mc/task/' + taskId);
+    const data = await r.json();
+    if (data.error) {{ out.innerHTML = '<div style="color:#ff3366;padding:1rem">Error: ' + data.error + '</div>'; return; }}
+    const t = data.task;
+    out.innerHTML = `
+      <div class="inspector-grid">
+        <div class="inspector-panel">
+          <h3 style="color:#38bdf8;font-size:.9rem;margin:0 0 8px">Task Detail</h3>
+          <div class="inspector-row"><span class="il">ID</span><span class="iv mono">${{t.id}}</span></div>
+          <div class="inspector-row"><span class="il">Title</span><span class="iv">${{t.title || t.instruction || 'N/A'}}</span></div>
+          <div class="inspector-row"><span class="il">Status</span><span class="iv"><span class="status-pill status-${{t.status}}">${{t.status}}</span></span></div>
+          <div class="inspector-row"><span class="il">Agent</span><span class="iv">${{t.agent || 'N/A'}}</span></div>
+          <div class="inspector-row"><span class="il">Created</span><span class="iv mono">${{t.created_at || 'N/A'}}</span></div>
+          <div class="inspector-row"><span class="il">Updated</span><span class="iv mono">${{t.updated_at || 'N/A'}}</span></div>
+        </div>
+        <div class="inspector-panel">
+          <h3 style="color:#38bdf8;font-size:.9rem;margin:0 0 8px">Timeline</h3>
+          ${{data.events.length ? data.events.map(e => `
+            <div class="inspector-timeline-item">
+              <span class="tl-time">${{e.ts || ''}}</span>
+              <span class="tl-type">${{e.type}}</span>
+              <span class="tl-source">${{e.source || ''}}</span>
+            </div>`).join('') : '<div class="iv" style="color:#7c8ba0">No events</div>'}}
+        </div>
+        <div class="inspector-panel">
+          <h3 style="color:#38bdf8;font-size:.9rem;margin:0 0 8px">Audit Log</h3>
+          ${{data.audit.length ? data.audit.map(a => `
+            <div class="inspector-timeline-item">
+              <span class="tl-time">${{a.ts || ''}}</span>
+              <span class="tl-type">${{a.actor}} → ${{a.action}}</span>
+            </div>`).join('') : '<div class="iv" style="color:#7c8ba0">No audit entries</div>'}}
+        </div>
+        <div class="inspector-panel">
+          <h3 style="color:#38bdf8;font-size:.9rem;margin:0 0 8px">Cost</h3>
+          ${{data.cost.length ? data.cost.map(c => `
+            <div class="inspector-timeline-item">
+              <span class="tl-type">${{c.agent || 'N/A'}}</span>
+              <span class="iv">${{c.model || ''}} — $${{(c.cost_usd || 0).toFixed(4)}}</span>
+            </div>`).join('') : '<div class="iv" style="color:#7c8ba0">No cost data</div>'}}
+        </div>
+      </div>`;
+  }} catch(e) {{
+    out.innerHTML = '<div style="color:#ff3366;padding:1rem">Error: ' + e.message + '</div>';
+  }}
+}}
+
+async function loadInspectorAudit(){{
+  const out = document.getElementById('inspectorOutput');
+  out.innerHTML = '<div style="color:#38bdf8;padding:1rem"><i class="fas fa-spinner fa-spin"></i> Loading audit log...</div>';
+  try {{
+    const r = await fetch('/api/mc/audit?limit=50');
+    const data = await r.json();
+    out.innerHTML = `
+      <h3 style="color:#38bdf8;font-size:.9rem;margin:0 0 8px">Audit Log (${{data.count}} entries)</h3>
+      <table class="inspector-table">
+        <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Result</th></tr></thead>
+        <tbody>
+          ${{data.entries.map(e => `<tr>
+            <td class="mono">${{e.ts || ''}}</td>
+            <td>${{e.actor || ''}}</td>
+            <td>${{e.action || ''}}</td>
+            <td class="mono">${{e.target || ''}}</td>
+            <td>${{e.result || ''}}</td>
+          </tr>`).join('')}}
+        </tbody>
+      </table>`;
+  }} catch(e) {{
+    out.innerHTML = '<div style="color:#ff3366;padding:1rem">Error: ' + e.message + '</div>';
+  }}
+}}
+
+async function loadInspectorCost(){{
+  const out = document.getElementById('inspectorOutput');
+  out.innerHTML = '<div style="color:#38bdf8;padding:1rem"><i class="fas fa-spinner fa-spin"></i> Loading cost breakdown...</div>';
+  try {{
+    const r = await fetch('/api/mc/cost/agents');
+    const data = await r.json();
+    const agents = data.agents || data.breakdown || [];
+    out.innerHTML = `
+      <h3 style="color:#38bdf8;font-size:.9rem;margin:0 0 8px">Cost Breakdown</h3>
+      ${{agents.length ? `
+        <table class="inspector-table">
+          <thead><tr><th>Agent</th><th>Model</th><th>Tokens In</th><th>Tokens Out</th><th>Cost (USD)</th></tr></thead>
+          <tbody>
+            ${{agents.map(a => `<tr>
+              <td>${{a.agent || a.name || 'N/A'}}</td>
+              <td>${{a.model || 'N/A'}}</td>
+              <td class="mono">${{(a.tokens_in || a.total_in || 0).toLocaleString()}}</td>
+              <td class="mono">${{(a.tokens_out || a.total_out || 0).toLocaleString()}}</td>
+              <td>$${{(a.cost_usd || a.total_cost || 0).toFixed(4)}}</td>
+            </tr>`).join('')}}
+          </tbody>
+        </table>` : '<div class="iv" style="color:#7c8ba0">No cost data yet</div>'}}
+  }} catch(e) {{
+    out.innerHTML = '<div style="color:#ff3366;padding:1rem">Error: ' + e.message + '</div>';
+  }}
+}}
 
 {inline}
   </script>
