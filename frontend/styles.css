@@ -3096,3 +3096,76 @@ html, body { height: 100%; overflow: hidden; }
   .at-ops-footer { grid-template-columns: 1fr; }
   .fwin-actions .fwin-act { min-width: 34px; min-height: 34px; } /* touch target 44px-ish */
 }
+
+
+/* ══════════════════════════════════════════════════════════
+   APEX-INSPIRED SHELL REFRESH — non-destructive
+   Seluruh 12 module, floating windows, taskbar, dan ORB tetap utuh.
+   ══════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+  .launcher {
+    top: 50%; right: 14px; width: 46px; max-width: none; max-height: calc(100vh - 108px);
+    flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; gap: 5px;
+    padding: 5px; overflow: visible auto; transform: translateY(-50%);
+    border: 1px solid rgba(148,163,184,.12); border-radius: 12px;
+    background: rgba(5,9,15,.58); backdrop-filter: blur(18px);
+    scrollbar-width: none;
+  }
+  .launcher::-webkit-scrollbar { display: none; }
+  .launch-btn {
+    position: relative; width: 34px; height: 34px; flex: 0 0 34px;
+    justify-content: center; padding: 0; border-radius: 8px;
+    border-color: transparent; background: transparent; box-shadow: none;
+  }
+  .launch-btn:hover, .launch-btn:focus-visible {
+    transform: none; color: #dff8ff; border-color: rgba(111,216,255,.28);
+    background: rgba(111,216,255,.09);
+  }
+  .launch-btn .lb-ico {
+    width: 25px; height: 25px; border-radius: 6px !important;
+    background: transparent !important; color: #7f95a6;
+  }
+  .launch-btn:hover .lb-ico, .launch-btn.on .lb-ico { color: #6fd8ff; }
+  .launch-btn .lb-txt {
+    position: absolute; top: 50%; right: calc(100% + 12px); min-width: 132px;
+    align-items: flex-end; padding: 8px 10px; border: 1px solid rgba(111,216,255,.18);
+    border-radius: 7px; color: #d8e6ed; background: rgba(5,10,17,.94);
+    box-shadow: 0 12px 32px rgba(0,0,0,.38); opacity: 0; pointer-events: none;
+    transform: translate(7px,-50%); transition: opacity .16s, transform .16s;
+  }
+  .launch-btn:hover .lb-txt, .launch-btn:focus-visible .lb-txt {
+    opacity: 1; transform: translate(0,-50%);
+  }
+  .launch-btn .lb-txt small { margin-top: 3px; color: #607181; }
+  .launch-btn.on { border-color: rgba(111,216,255,.38); background: rgba(111,216,255,.1); }
+}
+
+.fwin {
+  border-radius: 10px;
+  border-color: rgba(148,163,184,.15);
+  background: rgba(7,12,20,.9);
+  box-shadow: 0 30px 100px -22px rgba(0,0,0,.88), 0 0 0 1px rgba(111,216,255,.035);
+}
+.fwin.focused {
+  box-shadow: 0 34px 110px -24px rgba(0,0,0,.9), 0 0 0 1px rgba(111,216,255,.2), 0 0 34px -16px rgba(111,216,255,.2);
+}
+.fwin-bar { border-radius: 10px 10px 0 0; background: rgba(8,14,23,.86); }
+.fwin-body { border-radius: 0 0 10px 10px; }
+.taskbar {
+  border-radius: 10px; border-color: rgba(148,163,184,.14);
+  background: rgba(6,11,18,.82); box-shadow: 0 14px 42px -14px rgba(0,0,0,.82);
+}
+.tb-brand { letter-spacing: .15em; }
+.tb-live { color: #65d6a2; }
+.tb-live .dot { background: #65d6a2; }
+
+@media (max-width: 768px) {
+  .launcher {
+    top: auto; right: 50%; bottom: 70px; width: auto; max-width: 94vw; max-height: none;
+    flex-direction: row; flex-wrap: nowrap; padding: 5px; overflow-x: auto; overflow-y: hidden;
+    transform: translateX(50%); border: 1px solid rgba(148,163,184,.12);
+    border-radius: 12px; background: rgba(5,9,15,.82);
+  }
+  .launch-btn { width: 38px; min-width: 38px; justify-content: center; padding: 5px; }
+  .launch-btn .lb-txt { display: none; }
+}

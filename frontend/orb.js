@@ -93,6 +93,88 @@
     prevX = t.clientX; prevY = t.clientY;
   }, { passive: true });
 
+  // ── Apex-inspired overview clock ─────────
+  function updateOverviewClock() {
+    const now = new Date();
+    const time = document.getElementById('overview-time');
+    const date = document.getElementById('overview-date');
+    if (time) {
+      time.textContent = now.toLocaleTimeString('id-ID', {
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      });
+    }
+    if (date) {
+      date.textContent = now.toLocaleDateString('id-ID', {
+        weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+      });
+    }
+  }
+  updateOverviewClock();
+  setInterval(updateOverviewClock, 1000);
+
+  // Data agent tetap berasal dari endpoint dan WebSocket yang sama.
+  function renderAgentNetwork(agents) {
+    const panel = document.getElementById('agents-panel');
+    const coreState = document.getElementById('core-state');
+    if (!panel) return;
+    panel.replaceChildren();
+
+    if (!Array.isArray(agents) || !agents.length) {
+      const empty = document.createElement('div');
+      empty.className = 'stat-row';
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = 'Tidak ada agen';
+      empty.appendChild(label);
+      panel.appendChild(empty);
+      if (coreState) {
+        coreState.className = 'error';
+        coreState.lastChild.textContent = ' OFFLINE';
+      }
+      return;
+    }
+
+    let activeCount = 0;
+    let errorCount = 0;
+    agents.slice(0, 5).forEach((agent) => {
+      const status = String(agent.status || 'idle').toLowerCase();
+      const isActive = ['online', 'running', 'active', 'executing', 'thinking'].includes(status);
+      const isError = ['offline', 'error', 'failed'].includes(status);
+      if (isActive) activeCount += 1;
+      if (isError) errorCount += 1;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'agent-item';
+      button.dataset.agent = agent.id || '';
+      button.title = `Buka detail ${agent.name || agent.id || 'agent'}`;
+
+      const dot = document.createElement('span');
+      dot.className = `agent-dot ${isActive ? 'online' : isError ? 'offline' : 'idle'}`;
+      const name = document.createElement('span');
+      name.className = 'agent-name';
+      name.textContent = agent.name || agent.id || 'Unknown';
+      const model = document.createElement('span');
+      model.className = 'agent-model';
+      model.textContent = agent.role || agent.model || agent.thread || status;
+      button.append(dot, name, model);
+      button.addEventListener('click', () => {
+        const app = agent.id === 'chief' ? 'dashboard' : 'swarm';
+        if (typeof window.__openApp === 'function') window.__openApp(app);
+      });
+      panel.appendChild(button);
+    });
+
+    if (coreState) {
+      coreState.className = errorCount ? 'error' : activeCount ? 'busy' : '';
+      coreState.lastChild.textContent = errorCount
+        ? ` ATTENTION · ${errorCount}`
+        : activeCount
+          ? ` COORDINATING · ${activeCount}`
+          : ' STANDBY';
+    }
+  }
+
   // ── Data fetch ───────────────────────────
   async function loadSystem() {
     try {
@@ -117,23 +199,9 @@
       const res = await fetch('/api/mc/agents');
       const d = await res.json();
       const agents = d.agents || d.data?.agents || d.data || [];
-      const panel = document.getElementById('agents-panel');
-      if (!agents.length) {
-        panel.innerHTML = `<div class="stat-row"><span class="label">Tidak ada agen</span></div>`;
-        return;
-      }
-      panel.innerHTML = agents.map((a) => {
-        const st = (a.status || 'idle').toLowerCase();
-        const dot = st === 'online' || st === 'running' || st === 'active' ? 'online' : (st === 'offline' || st === 'error' ? 'offline' : 'idle');
-        return `<div class="agent-item">
-          <span class="agent-dot ${dot}"></span>
-          <span class="agent-name">${a.name || a.id || '?'}</span>
-          <span class="agent-model">${a.model || a.thread || ''}</span>
-        </div>`;
-      }).join('');
+      renderAgentNetwork(agents);
     } catch (e) {
-      document.getElementById('agents-panel').innerHTML =
-        `<div class="stat-row"><span class="label">API offline</span></div>`;
+      renderAgentNetwork([]);
     }
   }
 
@@ -248,17 +316,7 @@
   }
 
   function renderAgentsLive(agents) {
-    const panel = document.getElementById('agents-panel');
-    if (!agents.length) return;
-    panel.innerHTML = agents.map((a) => {
-      const st = (a.status || 'idle').toLowerCase();
-      const dot = st === 'online' || st === 'running' || st === 'active' ? 'online' : (st === 'offline' || st === 'error' ? 'offline' : 'idle');
-      return `<div class="agent-item">
-        <span class="agent-dot ${dot}"></span>
-        <span class="agent-name">${a.name || a.id || '?'}</span>
-        <span class="agent-model">${a.model || a.thread || ''}</span>
-      </div>`;
-    }).join('');
+    renderAgentNetwork(agents);
   }
 
   connectWS();

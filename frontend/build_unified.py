@@ -141,8 +141,8 @@ body = f"""<!DOCTYPE html>
   <noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet"></noscript>
 
   <!-- FontAwesome -->
-  <link rel="stylesheet" href="/static/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="/static/fontawesome/css/all.min.css"></noscript>
+  <link rel="stylesheet" href="/static/static/fontawesome/css/all.min.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="/static/static/fontawesome/css/all.min.css"></noscript>
 
   <!-- Dashboard theme + floating-window chrome -->
   <link rel="stylesheet" href="/static/styles.css">

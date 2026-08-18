@@ -256,14 +256,91 @@
     #hint,#ws-ind,#gesture-btn,#cam{transition:opacity .3s}
     body.dimmed #hint,body.dimmed #gesture-btn{opacity:.25}
 
+    /* ── APEX-INSPIRED OVERVIEW LAYER
+       Mempertahankan seluruh ORB, routines, menu, gesture, dan window engine. ── */
+    #identity-block { display: grid; grid-template-columns: auto auto; align-items: end; column-gap: 20px; }
+    #section-label {
+      grid-column: 1 / -1; display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px; color: #7c8ba0; font-size: .58rem; font-weight: 700;
+      letter-spacing: .2em;
+    }
+    #section-label span { width: 18px; height: 1px; background: #6fd8ff; box-shadow: 0 0 8px rgba(111,216,255,.6); }
+    #title { font-size: 1.22rem; letter-spacing: .28em; color: #eaf6ff; text-shadow: none; }
+    #title small { color: #64748b; font-size: .53rem; letter-spacing: .16em; }
+    #overview-meta { display: flex; flex-direction: column; padding: 0 0 1px 18px; border-left: 1px solid rgba(111,216,255,.18); }
+    #overview-meta strong { color: #f1f5f9; font: 500 1.15rem/1 'JetBrains Mono', monospace; letter-spacing: .06em; }
+    #overview-meta span { margin-top: 7px; color: #64748b; font-size: .54rem; letter-spacing: .08em; text-transform: uppercase; }
+
+    #core-readout {
+      position: fixed; z-index: 20; left: 50%; top: calc(50% + 142px);
+      display: flex; flex-direction: column; align-items: center;
+      transform: translateX(-50%); pointer-events: none;
+      transition: opacity .3s ease;
+    }
+    #core-state { display: inline-flex; align-items: center; gap: 7px; color: #6fd8ff; font-size: .55rem; font-weight: 700; letter-spacing: .22em; }
+    #core-state i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 9px currentColor; animation: apexPulse 2s ease-in-out infinite; }
+    #core-state.busy { color: #fbbf24; }
+    #core-state.error { color: #f87171; }
+    #core-action {
+      pointer-events: auto; margin-top: 9px; padding: 7px 14px;
+      border: 1px solid rgba(111,216,255,.2); border-radius: 999px;
+      color: #eefbff; background: rgba(6,13,21,.7); backdrop-filter: blur(10px);
+      font: 700 .68rem/1 'Orbitron', sans-serif; letter-spacing: .18em;
+      cursor: pointer; transition: border-color .2s, background .2s, box-shadow .2s;
+    }
+    #core-action:hover { border-color: rgba(111,216,255,.55); background: rgba(111,216,255,.1); box-shadow: 0 0 28px rgba(111,216,255,.14); }
+    #core-readout small { margin-top: 9px; color: #536273; font-size: .5rem; letter-spacing: .15em; white-space: nowrap; }
+
+    #agents-panel-wrap {
+      position: fixed; z-index: 18; top: 82px; left: 50%; width: min(720px, 62vw);
+      min-width: 0; padding: 0; transform: translateX(-50%);
+      border: 0; background: transparent; box-shadow: none; backdrop-filter: none;
+      pointer-events: auto;
+    }
+    #agents-panel-wrap:hover { border-color: transparent; box-shadow: none; }
+    #agents-panel-wrap h3 { justify-content: center; margin-bottom: 10px; color: #5f7080; font-size: .53rem; }
+    #agents-panel-wrap h3::before { width: 14px; height: 1px; background: rgba(111,216,255,.45); }
+    #agents-panel { display: flex; justify-content: center; gap: 7px; max-height: none; overflow: visible; }
+    #agents-panel .stat-row { justify-content: center; color: #64748b; }
+    .agent-item {
+      position: relative; min-width: 104px; display: grid; grid-template-columns: 7px 1fr;
+      grid-template-rows: auto auto; gap: 3px 7px; align-items: center;
+      margin: 0; padding: 8px 10px; border: 1px solid rgba(148,163,184,.13);
+      border-radius: 7px; color: inherit; background: rgba(6,10,16,.58);
+      backdrop-filter: blur(10px); text-align: left; cursor: pointer;
+      transition: border-color .18s, background .18s, transform .18s;
+    }
+    .agent-item:hover, .agent-item:focus-visible { border-color: rgba(111,216,255,.4); background: rgba(12,24,32,.82); transform: translateY(-2px); }
+    .agent-item .agent-dot { grid-row: 1 / 3; width: 5px; height: 5px; }
+    .agent-item .agent-name { align-self: end; color: #c8d5de; font-size: .62rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .agent-item .agent-model { align-self: start; max-width: 92px; margin: 0; color: #536273; font-size: .47rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    #system-panel, #routines-panel { width: min(280px, 25vw); min-width: 210px; background: rgba(7,12,20,.68); border-color: rgba(148,163,184,.12); }
+    body.dimmed #core-readout, body.dimmed #agents-panel-wrap { opacity: .14; pointer-events: none; }
+    @keyframes apexPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
     /* responsive */
     @media (max-width: 900px) {
       #hud { padding: 16px 16px; }
       #hud-bottom { flex-wrap: wrap; gap: 12px; }
       .panel { min-width: 180px; flex: 1; }
-      #title { font-size: 1.1rem; letter-spacing: 0.12em; }
+      #title { font-size: 1.05rem; letter-spacing: .16em; }
+      #overview-meta { display: none; }
+      #agents-panel-wrap { top: 70px; width: calc(100vw - 28px); }
+      #agents-panel { justify-content: flex-start; overflow-x: auto; padding: 2px 1px 7px; scrollbar-width: none; }
+      .agent-item { min-width: 108px; }
+      #core-readout { top: calc(50% + 110px); }
+      #core-readout small { display: none; }
+      #system-panel, #routines-panel { width: min(280px, 42vw); }
       #hint { display: none; }
       #ws-ind { right: 8px; top: 60px; }
+    }
+    @media (max-width: 600px) {
+      #agents-panel-wrap { top: 76px; }
+      #agents-panel-wrap h3 { display: none; }
+      #hud-bottom { display: none; }
+      #hud-actions #nav-btn { display: none; }
+      #core-readout { top: calc(50% + 95px); }
     }
   </style>
 </head>
@@ -272,8 +349,15 @@
 
   <div id="hud">
     <div id="hud-top">
-      <div id="title">HERMES // ORB
-        <small>MISSION CONTROL — NIUMINATION ECOSYSTEM</small>
+      <div id="identity-block">
+        <div id="section-label"><span></span> OVERVIEW</div>
+        <div id="title">HERMES
+          <small>AUTONOMOUS MISSION CONTROL</small>
+        </div>
+        <div id="overview-meta">
+          <strong id="overview-time">--:--</strong>
+          <span id="overview-date">Memuat waktu…</span>
+        </div>
       </div>
       <div id="hud-actions">
         <div id="menu-wrap">
@@ -312,10 +396,16 @@
         <div id="routine-output"></div>
       </div>
       <div class="panel" id="agents-panel-wrap">
-        <h3>Agents</h3>
-        <div id="agents-panel"><div class="stat-row"><span class="label">Loading...</span></div></div>
+        <h3>Specialist network</h3>
+        <div id="agents-panel" aria-live="polite"><div class="stat-row"><span class="label">Loading...</span></div></div>
       </div>
     </div>
+  </div>
+
+  <div id="core-readout" aria-label="Hermes core controls">
+    <span id="core-state"><i></i> STANDBY</span>
+    <button id="core-action" type="button" onclick="window.__openApp('dashboard')">HERMES CORE</button>
+    <small>TAP THE CORE · SELECT AN AGENT · OPEN A SYSTEM</small>
   </div>
 
   <div class="orb-dim" id="orbDim"></div>
