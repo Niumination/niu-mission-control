@@ -1493,6 +1493,7 @@ loadArtifactsList();
 loadEcosystem();
 loadCostData();
 loadDeployStatus();
+loadMarket();
 
 // Keep metrics rolling
 setInterval(loadTelemetry, 5000);
@@ -1585,7 +1586,44 @@ async function loadDeployStatus() {
 function filterMarket() {
   const search = document.getElementById('marketSearch')?.value.toLowerCase() || '';
   const filter = document.getElementById('marketFilter')?.value || 'all';
-  const cards = document.querySelectorAll('#marketGrid .agent-card-premium');
+  const grid = document.getElementById('marketGrid');
+
+  // Jika ada data API (__marketSkills), filter via re-render
+  if (grid && window.__marketSkills && window.__marketSkills.length) {
+    const filtered = window.__marketSkills.filter(s => {
+      const text = (s.name + ' ' + (s.domain || '')).toLowerCase();
+      const matchesSearch = text.includes(search);
+      const dom = (s.domain || '').toLowerCase();
+      const matchesFilter = filter === 'all' || dom.includes(filter) ||
+        (filter === 'dev' && (dom.includes('software') || dom.includes('dev'))) ||
+        (filter === 'security' && dom.includes('security')) ||
+        (filter === 'design' && dom.includes('design'));
+      return matchesSearch && matchesFilter;
+    });
+    const statMap = {};
+    // Re-render menggunakan data tersimpan
+    window.__marketStats = window.__marketStats || {};
+    grid.innerHTML = filtered.map(s => {
+      const stat = window.__marketStats[s.name] || {};
+      const badgeText = (s.domain || 'skill').toUpperCase();
+      const active = s.active ? '<span class="badge" style="background:rgba(52,211,153,.15);color:#34d399;">ACTIVE</span>' : '';
+      const total = stat.total || s.load_count || 0;
+      const week = stat.this_week || 0;
+      return `
+      <div class="agent-card-premium" onclick="alert('Skill: ${s.name} — ${s.domain || ''}')">
+        <div class="agent-card-header">
+          <span>${s.name}</span>
+          <span><span class="badge">${badgeText}</span> ${active}</span>
+        </div>
+        <div class="agent-role-desc">Domain: ${s.domain || 'unknown'} · Loaded: ${total}x (${week} this wk)</div>
+        <button class="btn-tool" style="margin-top:0.4rem;font-size:0.55rem;" onclick="event.stopPropagation();installSkill('${s.name}')">Install</button>
+      </div>`;
+    }).join('') || '<div class="text-dim" style="padding:1rem;font-size:0.75rem;">No skills match.</div>';
+    if (filter === 'all' && search === '') { loadMarket(); }
+    return;
+  }
+  // Fallback: filter cards statis
+  const cards = grid ? grid.querySelectorAll('.agent-card-premium') : [];
   cards.forEach(c => {
     const text = c.textContent.toLowerCase();
     const domain = c.querySelector('.badge')?.textContent?.toLowerCase() || '';
@@ -1597,6 +1635,58 @@ function filterMarket() {
 function installSkill(name) {
   alert('Installing skill: ' + name + '\n(Integration: add to bank pusat via skills/sync-to-agents.sh)');
 }
-function loadMarket() {
-  filterMarket();
+
+// ── Skill Marketplace (render dari /api/mc/skills) ─────
+async function loadMarket() {
+  const grid = document.getElementById('marketGrid');
+  if (!grid) return;
+  try {
+    const [skillsRes, statsRes] = await Promise.all([
+      fetch('/api/mc/skills'),
+      fetch('/api/mc/skills/stats'),
+    ]);
+    const skillsData = await skillsRes.json();
+    const statsData = await statsRes.json();
+    const skills = skillsData.skills || [];
+    const stats = statsData.stats || [];
+
+    // Build stat lookup: name -> {total, this_week}
+    const statMap = {};
+    stats.forEach(s => { statMap[s.name] = s; });
+
+    if (!skills.length) {
+      grid.innerHTML = '<div class="text-dim" style="padding:1rem;font-size:0.75rem;">Belum ada skill terdaftar.</div>';
+      return;
+    }
+
+    grid.innerHTML = skills.map(s => {
+      const stat = statMap[s.name] || {};
+      const badgeText = (s.domain || 'skill').toUpperCase();
+      const active = s.active ? '<span class="badge" style="background:rgba(52,211,153,.15);color:#34d399;">ACTIVE</span>' : '';
+      const total = stat.total || s.load_count || 0;
+      const week = stat.this_week || 0;
+      return `
+      <div class="agent-card-premium" onclick="alert('Skill: ${s.name} — ${s.domain || ''}')">
+        <div class="agent-card-header">
+          <span>${s.name}</span>
+          <span>
+            <span class="badge">${badgeText}</span>
+            ${active}
+          </span>
+        </div>
+        <div class="agent-role-desc">Domain: ${s.domain || 'unknown'} · Loaded: ${total}x (${week} this wk)</div>
+        <div style="font-size:0.55rem;color:var(--text-muted);margin-top:0.2rem;">
+          Last: ${s.last_agent || '—'} · ${s.last_timestamp ? new Date(s.last_timestamp * 1000).toLocaleString() : '—'}
+        </div>
+        <button class="btn-tool" style="margin-top:0.4rem;font-size:0.55rem;" onclick="event.stopPropagation();installSkill('${s.name}')">Install</button>
+      </div>`;
+    }).join('');
+
+    // Simpan ke window untuk filterMarket
+    window.__marketSkills = skills;
+    window.__marketStats = statMap;
+  } catch (e) {
+    console.error('Failed to load market:', e);
+    grid.innerHTML = '<div class="text-dim" style="padding:1rem;font-size:0.75rem;">Gagal load market.</div>';
+  }
 }
