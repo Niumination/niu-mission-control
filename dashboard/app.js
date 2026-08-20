@@ -1492,6 +1492,7 @@ loadTelegramFeed();
 loadArtifactsList();
 loadEcosystem();
 loadCostData();
+loadDeployStatus();
 
 // Keep metrics rolling
 setInterval(loadTelemetry, 5000);
@@ -1558,7 +1559,26 @@ async function loadDeployStatus() {
     const res = await fetch('/api/mc/deploy/status');
     const data = await res.json();
     document.getElementById('deployLiveCount').textContent = data.success || 2;
-    document.getElementById('deployLastTime').textContent = data.projects ? data.projects[0].last_deploy ? data.projects[0].last_deploy.split(' ')[1] || '--' : '--' : '--';
+    document.getElementById('deployLastTime').textContent = data.projects && data.projects[0] && data.projects[0].last_deploy ? data.projects[0].last_deploy.split(' ')[1] || '--' : '--';
+
+    // Render project grid dinamis (ganti placeholder static)
+    const grid = document.getElementById('deployProjectGrid');
+    if (grid && data.projects && data.projects.length) {
+      grid.innerHTML = data.projects.map(p => {
+        const badgeClass = (p.status === 'live' || p.status === 'success') ? 'state-executing' : 'state-error';
+        const badgeText = p.status === 'success' ? 'LIVE' : (p.status || 'UNKNOWN');
+        const url = p.url || '#';
+        const lastDeploy = p.last_deploy || '—';
+        return `
+        <div class="agent-card-premium">
+          <div class="agent-card-header"><span>${p.name}</span><span class="badge">${p.env || 'PRODUCTION'}</span></div>
+          <div>Branch: ${p.branch || 'main'} | Env: ${p.env || 'production'}</div>
+          <div>URL: <a href="${url}" target="_blank" rel="noopener">${url.replace(/^https?:\/\//, '')}</a></div>
+          <div>Status: <span class="status-badge ${badgeClass}">${badgeText}</span> · Last: ${lastDeploy}</div>
+          <button class="btn-primary-glow" style="margin-top:0.5rem;font-size:0.6rem;padding:0.3rem 0.6rem;" onclick="triggerDeploy('${p.name.replace(/'/g, "\\'")}')">Deploy</button>
+        </div>`;
+      }).join('');
+    }
   } catch (e) { console.log('Deploy status load failed:', e); }
 }
 // ── Skill Marketplace ──────────────────────────────
