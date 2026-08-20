@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import uuid
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 import aiosqlite
 
@@ -292,7 +293,12 @@ class SwarmBus:
         return {"total_cost": total_cost, "total_tokens": total_tokens, "entries": entries}
 
     async def get_agent_costs(self, agent_id: str = None, days: int = 30) -> dict:
-        """Get aggregated cost per agent over N days."""
+        """Get aggregated cost per agent over N days.
+
+        Sumber utama: tabel cost_tracking (swarm_state.db).
+        Fallback: jika kosong, aggregate dari Hermes state.db session_model_usage
+        supaya COST page tidak kosong.
+        """
         if agent_id:
             async with self._db.execute(
                 """
@@ -315,6 +321,43 @@ class SwarmBus:
                 (f"-{days} days",),
             ) as cursor:
                 rows = await cursor.fetchall()
+
+        # ── Fallback: cost_tracking kosong → baca dari Hermes state.db ──
+        if not rows:
+            try:
+                import sqlite3 as _sqlite3
+                state_db = os.environ.get(
+                    "HERMES_STATE_DB",
+                    os.path.join(
+                        os.environ.get("HERMES_HOME", "/Volumes/HermesAgent/HermesAgentUSB/data"),
+                        "state.db",
+                    ),
+                )
+                if os.path.exists(state_db):
+                    conn = _sqlite3.connect(f"file:{state_db}?mode=ro", uri=True)
+                    try:
+                        cutoff = (datetime.now() - timedelta(days=days)).timestamp()
+                        cur = conn.execute(
+                            """
+                            SELECT
+                                COALESCE(billing_provider, 'unknown') AS agent_id,
+                                model,
+                                SUM(input_tokens), SUM(output_tokens),
+                                SUM(input_tokens) + SUM(output_tokens) AS total_tokens,
+                                SUM(COALESCE(estimated_cost_usd, 0.0)),
+                                COUNT(*)
+                            FROM session_model_usage
+                            WHERE last_seen > ?
+                            GROUP BY agent_id, model
+                            ORDER BY total_tokens DESC
+                            """,
+                            (cutoff,),
+                        )
+                        rows = cur.fetchall()
+                    finally:
+                        conn.close()
+            except Exception as e:
+                logger.warning("cost fallback state.db gagal: %s", e)
 
         agents = {}
         total_cost = 0.0

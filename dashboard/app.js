@@ -369,6 +369,92 @@ async function loadTelegramFeed() {
   }
 }
 
+// ── Agent Cost Tracking (COST page) ─────────────────────
+async function loadCostData() {
+  const period = (document.getElementById('costPeriodSelect') || {}).value || '30';
+  try {
+    const res = await fetch(`/api/mc/cost/agents?days=${period}`);
+    const data = await res.json();
+    renderCostData(data);
+  } catch (e) {
+    console.error('Failed to fetch cost data:', e);
+  }
+}
+
+function renderCostData(data) {
+  const agents = data.agents || {};
+  // KPI row
+  const setKpi = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+  setKpi('costTotalCost', '$' + (data.total_cost || 0).toFixed(4));
+  setKpi('costTotalTokens', (data.total_tokens || 0).toLocaleString());
+  setKpi('costTotalRequests', (data.total_requests || 0).toLocaleString());
+  setKpi('costTasksWithCost', String(Object.keys(agents).length));
+
+  // Cost by agent
+  const agentGrid = document.getElementById('costAgentGrid');
+  if (agentGrid) {
+    const entries = Object.entries(agents).sort((a, b) => b[1].total_tokens - a[1].total_tokens);
+    if (!entries.length) {
+      agentGrid.innerHTML = '<div class="text-dim" style="padding:1rem;font-size:0.75rem;">Belum ada data cost.</div>';
+    } else {
+      agentGrid.innerHTML = entries.map(([name, a]) => `
+        <div class="agent-card" style="padding:0.6rem;margin-bottom:0.4rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:600;font-size:0.78rem;">${name}</span>
+            <span style="font-size:0.7rem;color:var(--accent, #38bdf8);">${(a.total_tokens||0).toLocaleString()} tok</span>
+          </div>
+          <div style="font-size:0.68rem;color:var(--text-dim, #7c8ba0);margin-top:2px;">
+            ${a.requests||0} req · $${(a.total_cost||0).toFixed(4)}
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // Cost by model (flat)
+  const modelGrid = document.getElementById('costModelGrid');
+  if (modelGrid) {
+    const flat = [];
+    Object.entries(agents).forEach(([agent, a]) => {
+      Object.entries(a.models || {}).forEach(([model, m]) => {
+        flat.push({ agent, model, ...m });
+      });
+    });
+    flat.sort((a, b) => (b.total_tokens||0) - (a.total_tokens||0));
+    if (!flat.length) {
+      modelGrid.innerHTML = '<div class="text-dim" style="padding:0.5rem;font-size:0.7rem;">No model data.</div>';
+    } else {
+      modelGrid.innerHTML = flat.slice(0, 12).map(m => `
+        <div class="skill-stat-card" style="padding:0.5rem;margin-bottom:0.35rem;">
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:0.7rem;font-weight:600;">${m.model || '?'}</span>
+            <span style="font-size:0.68rem;">$${(m.cost_usd||0).toFixed(4)}</span>
+          </div>
+          <div style="font-size:0.65rem;color:var(--text-dim, #7c8ba0);">
+            ${(m.total_tokens||0).toLocaleString()} tok · ${(m.requests||0)} req · ${m.agent}
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // Recent entries (top by tokens)
+  const recent = document.getElementById('costRecentList');
+  if (recent) {
+    const flat = [];
+    Object.entries(agents).forEach(([agent, a]) => {
+      Object.entries(a.models || {}).forEach(([model, m]) => flat.push({ agent, model, ...m }));
+    });
+    flat.sort((a, b) => (b.total_tokens||0) - (a.total_tokens||0));
+    recent.innerHTML = flat.slice(0, 20).map(m => `
+      <div style="padding:0.4rem 0;border-bottom:1px solid var(--border-muted, rgba(255,255,255,.06));">
+        <span style="font-size:0.68rem;color:var(--text-dim, #7c8ba0);">${m.agent} → ${m.model || '?'}</span>
+        <div style="font-size:0.65rem;">${(m.total_tokens||0).toLocaleString()} tok · ${(m.requests||0)} req · $${(m.cost_usd||0).toFixed(4)}</div>
+      </div>`).join('') || '<div class="text-dim" style="padding:0.5rem;font-size:0.7rem;">No entries</div>';
+  }
+}
+
 // ── System Host Diagnostics Terminal Shell ─────────────
 async function executeTerminalShellCommand() {
   const input = document.getElementById('terminalShellInput');
@@ -1405,6 +1491,7 @@ loadKanban();
 loadTelegramFeed();
 loadArtifactsList();
 loadEcosystem();
+loadCostData();
 
 // Keep metrics rolling
 setInterval(loadTelemetry, 5000);

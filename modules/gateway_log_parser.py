@@ -34,8 +34,10 @@ STATE_DB_CANDIDATES = [
     os.path.expanduser("~/.hermes-portable/state.db"),
 ]
 
-# Chat ID Telegram group
-TG_GROUP_CHAT_ID = "-REDACTED_CHAT_ID"
+# Chat ID Telegram group (baca dari env — jangan hardcode placeholder!)
+TG_GROUP_CHAT_ID = os.environ.get(
+    "HERMES_TELEGRAM_CHAT_ID", "-1004204696417"
+)
 
 # Topic ID → Agent mapping
 TOPIC_AGENT_MAP = {
