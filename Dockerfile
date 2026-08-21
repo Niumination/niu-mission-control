@@ -6,9 +6,12 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend
+# Copy backend, runtime adapters, and the canonical dashboard served by app.main.
 COPY backend/ ./backend/
-COPY frontend/ ./frontend/
+COPY modules/ ./modules/
+COPY swarm/ ./swarm/
+COPY config/ ./config/
+COPY dashboard/ ./dashboard/
 
 # Set working directory
 WORKDIR /app/backend
