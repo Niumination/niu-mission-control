@@ -162,12 +162,9 @@
     return { x: agent.x, y: agent.y + agent.radius + 19, anchor: 'middle' };
   }
 
+  // Shared mapping: recognises production statuses (thinking/executing) too.
   function statusKind(agent) {
-    const raw = String(agent.status || '').toLowerCase();
-    if (Number(agent.running) > 0 || ['running', 'processing', 'working'].includes(raw)) return 'busy';
-    if (['offline', 'error', 'failed', 'unavailable'].includes(raw)) return 'offline';
-    if (['active', 'online', 'ready'].includes(raw)) return 'online';
-    return 'idle';
+    return (window.NiuAgentState || { statusKind: function () { return 'idle'; } }).statusKind(agent);
   }
 
   function statusLabel(agent) {

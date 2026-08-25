@@ -22,7 +22,13 @@ def test_middleware_public_paths():
     assert _is_public("/health") is True
     assert _is_public("/static/app.js") is True
     assert _is_public("/docs") is True
-    assert _is_public("/api/mc/system") is False
+    # ORB telemetry endpoints were made public (exact match) so the dashboard
+    # never 401s when MC_API_KEY is active.
+    assert _is_public("/api/mc/system") is True
+    assert _is_public("/api/mc/agents") is True
+    assert _is_public("/api/mc/routines") is True
+    assert _is_public("/api/mc/routine/run") is True
+    # Other MC endpoints stay protected.
     assert _is_public("/api/mc/tasks") is False
     assert _is_public("/api/mc/hermes") is False
 

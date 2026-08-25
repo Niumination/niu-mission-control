@@ -23,7 +23,13 @@ def _check_rate_limit(ip: str, max_rpm: int = 60) -> bool:
 
 # ── Public paths (exact match — NOT startswith) ────────────
 PUBLIC_PREFIXES = ("/static", "/docs", "/openapi.json", "/redoc")
-PUBLIC_EXACT = {"/", "/health", "/ws/swarm", "/ws/orb", "/orb", "/dashboard", "/aios", "/api/mc/skills/event"}
+PUBLIC_EXACT = {
+    "/", "/health", "/ws/swarm", "/ws/orb", "/orb", "/dashboard", "/aios",
+    "/api/mc/skills/event",
+    # ORB / constellation telemetry endpoints (so the dashboard never 401s when
+    # MC_API_KEY is active). Exact match — see _is_public below.
+    "/api/mc/agents", "/api/mc/system", "/api/mc/routines", "/api/mc/routine/run",
+}
 
 
 def _is_public(path: str) -> bool:

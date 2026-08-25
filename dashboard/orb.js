@@ -110,9 +110,9 @@
     setVisualState('standby', `${agents.length || 5} AGENT TERHUBUNG · PILIH NODE UNTUK DETAIL`);
   }
 
+  // Shared mapping: recognises production statuses (thinking/executing) too.
   function isAgentBusy(agent) {
-    const status = String(agent.status || '').toLowerCase();
-    return Number(agent.running) > 0 || ['running', 'processing', 'working'].includes(status);
+    return (window.NiuAgentState || { isAgentBusy: function () { return false; } }).isAgentBusy(agent);
   }
 
   function shortAgentName(agent) {
