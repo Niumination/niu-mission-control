@@ -1,4 +1,5 @@
 """WebSocket router — live swarm status + log streaming."""
+
 from __future__ import annotations
 
 import asyncio
@@ -9,7 +10,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
@@ -21,6 +24,7 @@ active_connections: list[WebSocket] = []
 
 async def _get_bus():
     from swarm.bus import bus
+
     await bus.init_db()
     return bus
 
@@ -28,6 +32,7 @@ async def _get_bus():
 async def _get_skill_monitor():
     try:
         from modules import skill_monitor
+
         return skill_monitor
     except ImportError:
         return None
@@ -44,9 +49,11 @@ async def swarm_ws(websocket: WebSocket):
 
     try:
         # Initial snapshot
-        initial_skills = await loop.run_in_executor(
-            _thread_pool, lambda: sm.get_all_skills()
-        ) if sm else {"skills": [], "total": 0, "active": 0}
+        initial_skills = (
+            await loop.run_in_executor(_thread_pool, lambda: sm.get_all_skills())
+            if sm
+            else {"skills": [], "total": 0, "active": 0}
+        )
 
         initial = {
             "type": "init",
@@ -60,9 +67,11 @@ async def swarm_ws(websocket: WebSocket):
         # Tick loop — send snapshot every 1.5s
         while True:
             await asyncio.sleep(1.5)
-            tick_skills = await loop.run_in_executor(
-                _thread_pool, lambda: sm.get_all_skills()
-            ) if sm else {"skills": [], "total": 0, "active": 0}
+            tick_skills = (
+                await loop.run_in_executor(_thread_pool, lambda: sm.get_all_skills())
+                if sm
+                else {"skills": [], "total": 0, "active": 0}
+            )
 
             snapshot = {
                 "type": "tick",
@@ -84,6 +93,7 @@ async def swarm_ws(websocket: WebSocket):
 def _get_agent_status() -> list[dict]:
     """Get agent fleet status (from SwarmBus tasks)."""
     import asyncio
+
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -96,11 +106,41 @@ def _get_agent_status() -> list[dict]:
 def _get_agent_status_sync() -> list[dict]:
     """Synchronous fallback for agent status."""
     agents = [
-        {"id": "chief", "name": "Hermes Chief", "model": "big-pickle", "status": "active", "role": "orchestrator"},
-        {"id": "research", "name": "Research Agent", "model": "gemma-4-26b", "status": "idle", "role": "researcher"},
-        {"id": "programmer", "name": "Programmer Agent", "model": "deepseek-r1", "status": "idle", "role": "developer"},
-        {"id": "qa", "name": "QA Agent", "model": "glm-4.5-air", "status": "idle", "role": "tester"},
-        {"id": "creator", "name": "Creator Agent", "model": "gemma-4-26b", "status": "idle", "role": "content creator"},
+        {
+            "id": "chief",
+            "name": "Hermes Chief",
+            "model": "big-pickle",
+            "status": "active",
+            "role": "orchestrator",
+        },
+        {
+            "id": "research",
+            "name": "Research Agent",
+            "model": "gemma-4-26b",
+            "status": "idle",
+            "role": "researcher",
+        },
+        {
+            "id": "programmer",
+            "name": "Programmer Agent",
+            "model": "deepseek-r1",
+            "status": "idle",
+            "role": "developer",
+        },
+        {
+            "id": "qa",
+            "name": "QA Agent",
+            "model": "glm-4.5-air",
+            "status": "idle",
+            "role": "tester",
+        },
+        {
+            "id": "creator",
+            "name": "Creator Agent",
+            "model": "gemma-4-26b",
+            "status": "idle",
+            "role": "content creator",
+        },
     ]
     return agents
 
@@ -109,6 +149,7 @@ def _get_dispatches(limit: int = 8) -> list[dict]:
     """Get recent dispatches."""
     try:
         import json as _json
+
         dispatch_file = os.path.join(_root, "data", "dispatches.json")
         if os.path.exists(dispatch_file):
             with open(dispatch_file) as f:

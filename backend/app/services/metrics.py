@@ -1,4 +1,5 @@
 """Metrics collector — simple in-memory metrics for /metrics endpoint."""
+
 from __future__ import annotations
 
 import time
@@ -35,7 +36,12 @@ class Metrics:
                 k: {
                     "count": len(v),
                     "avg": round(sum(v) / len(v), 3) if v else 0,
-                    "p95": round(sorted(v)[int(len(v) * 0.95)] if len(v) > 1 else (v[0] if v else 0), 3),
+                    "p95": round(
+                        sorted(v)[int(len(v) * 0.95)]
+                        if len(v) > 1
+                        else (v[0] if v else 0),
+                        3,
+                    ),
                 }
                 for k, v in self.histograms.items()
             },
@@ -44,6 +50,7 @@ class Metrics:
 
 # ── Singleton ──────────────────────────────────────────────
 _metrics: Metrics | None = None
+
 
 def get_metrics() -> Metrics:
     global _metrics

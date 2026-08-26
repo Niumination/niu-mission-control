@@ -58,8 +58,7 @@ def _ensure_indexes(db_path: str):
             "ON messages(chat_id, role, compacted)"
         )
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_messages_session "
-            "ON messages(session_id)"
+            "CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id)"
         )
         conn.commit()
         conn.close()
@@ -207,21 +206,23 @@ def parse_telegram_feed(
             if role == "user":
                 # "[Afrizal Munthe] halo" → user="Afrizal Munthe", message="halo"
                 if content.startswith("[") and "] " in content:
-                    user = content[1:content.index("]")]
+                    user = content[1 : content.index("]")]
                     message = _clean_user_message(content)
                 else:
                     user = "User"
 
-            events.append({
-                "timestamp": timestamp,
-                "type": role,
-                "user": user,
-                "message": _truncate(message),
-                "topic_id": topic_id,
-                "topic_label": agent.title(),
-                "agent": agent,
-                "session_title": row["session_title"] or "",
-            })
+            events.append(
+                {
+                    "timestamp": timestamp,
+                    "type": role,
+                    "user": user,
+                    "message": _truncate(message),
+                    "topic_id": topic_id,
+                    "topic_label": agent.title(),
+                    "agent": agent,
+                    "session_title": row["session_title"] or "",
+                }
+            )
 
         conn.close()
 
@@ -257,8 +258,10 @@ def get_gateway_status() -> dict[str, Any]:
         try:
             conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
             cursor = conn.execute(
-                "SELECT COUNT(*) FROM messages m JOIN sessions s ON m.session_id = s.id "
-                "WHERE s.chat_id = ? AND m.role IN ('user', 'assistant') AND m.compacted = 0",
+                "SELECT COUNT(*) FROM messages m "
+                "JOIN sessions s ON m.session_id = s.id "
+                "WHERE s.chat_id = ? AND m.role IN ('user', 'assistant') "
+                "AND m.compacted = 0",
                 (TG_GROUP_CHAT_ID,),
             )
             total_messages = cursor.fetchone()[0]

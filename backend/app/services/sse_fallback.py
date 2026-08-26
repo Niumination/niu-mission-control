@@ -1,4 +1,5 @@
 """SSE fallback — for environments that block WebSocket."""
+
 from __future__ import annotations
 
 import asyncio
@@ -11,6 +12,7 @@ from fastapi.responses import StreamingResponse
 async def sse_endpoint(request: Request, room: str = "fleet"):
     """SSE endpoint as WS fallback."""
     from app.services.ws_hub import get_ws_hub
+
     hub = get_ws_hub()
 
     async def event_stream():

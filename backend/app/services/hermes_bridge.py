@@ -14,7 +14,6 @@ CARA KERJA:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import shutil
@@ -36,7 +35,16 @@ TELEGRAM_CHAT_ID = os.environ.get(
 )
 TELEGRAM_TOPIC_PREFIX = "thread:"
 
-HERMES_CLI = HERMES_CLI_DEFAULT if os.path.exists(HERMES_CLI_DEFAULT) else (shutil.which("hermes") or "hermes")
+HERMES_DATA_DIR = os.environ.get(
+    "HERMES_DATA_DIR",
+    "/Volumes/HermesAgent/HermesAgentUSB/data",  # lokasi state.db
+)
+
+HERMES_CLI = (
+    HERMES_CLI_DEFAULT
+    if os.path.exists(HERMES_CLI_DEFAULT)
+    else (shutil.which("hermes") or "hermes")
+)
 
 
 def _is_cli_available() -> bool:
@@ -50,7 +58,11 @@ def _run_hermes_send(text: str, topic_id: str = "1") -> dict:
     if not _is_cli_available():
         # Fallback simulator
         logger.info(f"[SIMULATED TG MESSAGE] Topic {topic_id} -> {text}")
-        return {"status": "sent", "message": "Pesan terkirim ke Telegram (SIMULATED)", "simulated": True}
+        return {
+            "status": "sent",
+            "message": "Pesan terkirim ke Telegram (SIMULATED)",
+            "simulated": True,
+        }
 
     try:
         target = f"telegram:{TELEGRAM_CHAT_ID}:{topic_id}"
@@ -132,7 +144,7 @@ def send_chat(
             "persona": persona,
             "topic_id": topic_id,
             "message": "Pesan terkirim",
-            "simulated": result.get("simulated", False)
+            "simulated": result.get("simulated", False),
         }
     return {
         "status": "error",
@@ -156,19 +168,47 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
 
     # ── SECURITY: Daftar aman perintah read-only ──────────────
     # Hanya perintah yang TIDAK bisa membaca file sensitif atau mengeksekusi kode
-    ALLOWED_COMMANDS = ["ls", "pwd", "echo", "grep", "find", "head", "tail", "ps", "top -b -n1", "wc", "date", "uptime", "df", "du", "whoami", "env"]
+    ALLOWED_COMMANDS = [
+        "ls",
+        "pwd",
+        "echo",
+        "grep",
+        "find",
+        "head",
+        "tail",
+        "ps",
+        "top -b -n1",
+        "wc",
+        "date",
+        "uptime",
+        "df",
+        "du",
+        "whoami",
+        "env",
+    ]
     # HAPUS: python (RCE), cat (baca file apapun), pytest (eksekusi kode)
     # FORBIDDEN: semua yang bisa menulis/hapus/mengubah sistem
 
     first_word = cmd.split()[0] if cmd.split() else ""
     if first_word not in ALLOWED_COMMANDS:
-        return {"status": "error", "output": f"Command blocked: '{first_word}' not in safe allowlist. Allowed: {', '.join(ALLOWED_COMMANDS)}", "exit_code": -1}
+        return {
+            "status": "error",
+            "output": (
+                f"Command blocked: '{first_word}' not in safe allowlist. "
+                f"Allowed: {', '.join(ALLOWED_COMMANDS)}"
+            ),
+            "exit_code": -1,
+        }
 
     # Double-check: tidak ada pipe, redirect, atau chain
     dangerous_patterns = ["|", ";", "&&", "||", ">", "<", "`", "$(", "${", "\\", "'"]
     for pat in dangerous_patterns:
         if pat in cmd:
-            return {"status": "error", "output": f"Command blocked: '{pat}' pattern not allowed in safe mode.", "exit_code": -1}
+            return {
+                "status": "error",
+                "output": f"Command blocked: '{pat}' pattern not allowed in safe mode.",
+                "exit_code": -1,
+            }
 
     try:
         # SECURITY: shlex.split tanpa shell=True — no shell injection possible
@@ -189,7 +229,8 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
 
         return {
             "status": "ok" if r.returncode == 0 else "error",
-            "output": output[:3000] + ("\n... [output truncated]" if len(output) > 3000 else ""),
+            "output": output[:3000]
+            + ("\n... [output truncated]" if len(output) > 3000 else ""),
             "exit_code": r.returncode,
         }
     except subprocess.TimeoutExpired:
@@ -203,7 +244,6 @@ def run_terminal(cmd: str, timeout: int = 15) -> dict[str, Any]:
 def _audit_log_terminal(cmd: str, exit_code: int, output_summary: str):
     """Log terminal command execution for audit trail."""
     import sqlite3
-    import time
     import os
 
     db_path = os.path.join(HERMES_DATA_DIR, "terminal_audit.db")
@@ -220,7 +260,8 @@ def _audit_log_terminal(cmd: str, exit_code: int, output_summary: str):
             )
         """)
         conn.execute(
-            "INSERT INTO terminal_audit (timestamp, command, exit_code, output_summary, user) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO terminal_audit (timestamp, command, exit_code, "
+            "output_summary, user) VALUES (?, ?, ?, ?, ?)",
             (time.time(), cmd, exit_code, output_summary, "dashboard"),
         )
         conn.commit()
@@ -284,6 +325,7 @@ def get_activity_log(limit: int = 20) -> list[dict[str, Any]]:
     """
     try:
         from modules.agent_log import get_recent
+
         return get_recent(limit=limit)
     except ImportError:
         return []

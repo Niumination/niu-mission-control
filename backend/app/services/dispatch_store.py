@@ -114,7 +114,9 @@ def add_dispatch(
     return record
 
 
-def update_status(dispatch_id: str, status: str, error: Optional[str] = None) -> Optional[dict]:
+def update_status(
+    dispatch_id: str, status: str, error: Optional[str] = None
+) -> Optional[dict]:
     """Update status dispatch (misal pending → sent)."""
     records = _load()
     for r in records:
@@ -147,5 +149,8 @@ def get_dispatches(limit: int = 20) -> list[dict[str, Any]]:
 def validate_target(thread_id: str) -> tuple[bool, str]:
     """Validasi target thread. Return (ok, error_message)."""
     if thread_id not in VALID_THREADS:
-        return False, f"Thread target tidak valid: {thread_id}. Valid: {sorted(VALID_THREADS)}"
+        return (
+            False,
+            f"Thread target tidak valid: {thread_id}. Valid: {sorted(VALID_THREADS)}",
+        )
     return True, ""

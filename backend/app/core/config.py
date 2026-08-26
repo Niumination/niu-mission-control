@@ -1,7 +1,7 @@
 """Configuration via pydantic-settings — all from env vars."""
+
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -19,16 +19,18 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default=["http://localhost:5200"])
 
     # ── Rate Limiting ───────────────────────────────────────
-    rate_limit_rpm: int = Field(default=60, description="Max requests per minute per IP")
+    rate_limit_rpm: int = Field(
+        default=60, description="Max requests per minute per IP"
+    )
 
     # ── Database ────────────────────────────────────────────
     database_url: str = Field(default="sqlite+aiosqlite:///data/mission_control.db")
 
     # ── Hermes ──────────────────────────────────────────────
-    hermes_home: str = Field(
-        default="/Volumes/HermesAgent/HermesAgentUSB/data"
+    hermes_home: str = Field(default="/Volumes/HermesAgent/HermesAgentUSB/data")
+    telegram_bot_token: str = Field(
+        default="", description="Telegram bot token dari @BotFather"
     )
-    telegram_bot_token: str = Field(default="", description="Telegram bot token dari @BotFather")
     telegram_chat_id: str = Field(default="")
 
     # ── Paths ───────────────────────────────────────────────

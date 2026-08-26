@@ -3,7 +3,8 @@ Ecosystem Scanner — Scan seluruh Niumination project dari filesystem
 =====================================================================
 
 Data sources:
-- v4.0 maturity pipeline directories (apps/, services/, sites/, desktop/, agents/, labs/, sandbox/)
+- v4.0 maturity pipeline directories (apps/, services/, sites/,
+  desktop/, agents/, labs/, sandbox/)
 - Git metadata (branch, last commit, dirty, remote)
 - LaunchD plist files (macOS cron jobs)
 - BACKLOG.md (task counts)
@@ -59,8 +60,6 @@ DEPLOY_MAP = {
 }
 
 
-
-
 def _parse_git_date(date_str: str) -> datetime:
     """Parse git date string with multiple format support.
 
@@ -103,6 +102,7 @@ def _detect_deploy_url(project_path: str) -> str | None:
         try:
             with open(vercel_path, "r") as f:
                 import json
+
                 data = json.load(f)
                 if "alias" in data:
                     aliases = data["alias"]
@@ -122,6 +122,7 @@ def _detect_deploy_url(project_path: str) -> str | None:
     if os.path.isfile(netlify_path):
         try:
             import tomllib
+
             with open(netlify_path, "rb") as f:
                 data = tomllib.load(f)
         except Exception:
@@ -133,6 +134,7 @@ def _detect_deploy_url(project_path: str) -> str | None:
         try:
             with open(package_path, "r") as f:
                 import json
+
                 data = json.load(f)
                 if "homepage" in data and data["homepage"]:
                     return data["homepage"]
@@ -172,16 +174,26 @@ def _git_cmd(cwd: str, *args: str) -> str:
 
 
 def _get_git_info(project_path: str) -> dict[str, Any]:
-    """ all git commands in one subprocess for speed."""
+    """all git commands in one subprocess for speed."""
     if not os.path.isdir(os.path.join(project_path, ".git")):
         return {"is_git": False}
 
     try:
         # Single shell command with cd for cwd
-        cmd = f'cd {project_path} && git log -1 --pretty="%D|%h|%s|%ci" 2>/dev/null; echo "---"; git status --porcelain 2>/dev/null; echo "---"; git remote get-url origin 2>/dev/null'
+        cmd = (
+            f'cd {project_path} && git log -1 --pretty="%D|%h|%s|%ci" '
+            '2>/dev/null; echo "---"; git status --porcelain 2>/dev/null; '
+            'echo "---"; git remote get-url origin 2>/dev/null'
+        )
         output = os.popen(cmd).read()
     except Exception:
-        return {"is_git": True, "branch": "unknown", "last_commit": {"hash": "", "message": "", "date": ""}, "dirty": False, "remote_url": ""}
+        return {
+            "is_git": True,
+            "branch": "unknown",
+            "last_commit": {"hash": "", "message": "", "date": ""},
+            "dirty": False,
+            "remote_url": "",
+        }
 
     sections = output.split("---\n")
     log_line = sections[0].strip() if sections else ""
@@ -284,8 +296,13 @@ def scan_projects() -> list[dict[str, Any]]:
 
     # Sort: by maturity pipeline order, then alphabetically
     category_order = {
-        "sandbox": 0, "labs": 1, "services": 2, "sites": 3,
-        "desktop": 4, "agents": 5, "apps": 6
+        "sandbox": 0,
+        "labs": 1,
+        "services": 2,
+        "sites": 3,
+        "desktop": 4,
+        "agents": 5,
+        "apps": 6,
     }
     projects.sort(key=lambda p: (category_order.get(p["category"], 99), p["name"]))
 
@@ -363,24 +380,28 @@ def scan_launchd_cron() -> list[dict[str, Any]]:
             # Last run (from stdout log if exists)
             last_run = _get_last_launchd_run(label)
 
-            jobs.append({
-                "label": label,
-                "program": program,
-                "args": args[:120],
-                "schedule": schedule_str,
-                "interval_seconds": interval_seconds,
-                "status": status,
-                "keep_alive": keep_alive,
-                "last_run": last_run,
-                "plist_file": fname,
-            })
+            jobs.append(
+                {
+                    "label": label,
+                    "program": program,
+                    "args": args[:120],
+                    "schedule": schedule_str,
+                    "interval_seconds": interval_seconds,
+                    "status": status,
+                    "keep_alive": keep_alive,
+                    "last_run": last_run,
+                    "plist_file": fname,
+                }
+            )
 
         except Exception as e:
-            jobs.append({
-                "label": fname,
-                "error": str(e)[:100],
-                "status": "error",
-            })
+            jobs.append(
+                {
+                    "label": fname,
+                    "error": str(e)[:100],
+                    "status": "error",
+                }
+            )
 
     return jobs
 
@@ -392,7 +413,6 @@ def _parse_plist_dict(root: ET.Element) -> dict:
     if plist_dict is None:
         return result
 
-    keys = plist_dict.findall("key")
     values = list(plist_dict)
 
     key_idx = 0
@@ -467,13 +487,18 @@ def _get_last_launchd_run(label: str) -> str | None:
     return None
 
 
-def _scan_single_repo_git(name: str, category: str, project_path: str, limit: int) -> dict[str, Any] | None:
+def _scan_single_repo_git(
+    name: str, category: str, project_path: str, limit: int
+) -> dict[str, Any] | None:
     """Get git activity for a single repo — runs in thread pool."""
     if not os.path.isdir(os.path.join(project_path, ".git")):
         return None
 
     try:
-        cmd = f'cd {project_path} && git log -{limit} --pretty="%h|%s|%ci|%an" 2>/dev/null'
+        cmd = (
+            f'cd {project_path} && git log -{limit} '
+            '--pretty="%h|%s|%ci|%an" 2>/dev/null'
+        )
         output = os.popen(cmd).read()
     except Exception:
         return None
@@ -483,12 +508,14 @@ def _scan_single_repo_git(name: str, category: str, project_path: str, limit: in
         for line in output.splitlines():
             parts = line.split("|", 3)
             if len(parts) >= 3:
-                commits.append({
-                    "hash": parts[0],
-                    "message": parts[1][:100],
-                    "date": parts[2].strip(),
-                    "author": parts[3] if len(parts) > 3 else "unknown",
-                })
+                commits.append(
+                    {
+                        "hash": parts[0],
+                        "message": parts[1][:100],
+                        "date": parts[2].strip(),
+                        "author": parts[3] if len(parts) > 3 else "unknown",
+                    }
+                )
 
     if commits:
         return {"name": name, "category": category, "commits": commits}
@@ -515,7 +542,9 @@ def get_git_activity(limit_per_repo: int = 3) -> list[dict[str, Any]]:
     repos = []
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
-            executor.submit(_scan_single_repo_git, name, cat, path, limit_per_repo): name
+            executor.submit(
+                _scan_single_repo_git, name, cat, path, limit_per_repo
+            ): name
             for name, cat, path in tasks
         }
         for future in as_completed(futures):
@@ -562,7 +591,16 @@ _STATUS_TOKENS = [
     ("done", "✅"),
 ]
 
-_TABLE_HEADER_CELLS = {"proyek", "name", "project", "status", "priority", "kategori", "#", "url"}
+_TABLE_HEADER_CELLS = {
+    "proyek",
+    "name",
+    "project",
+    "status",
+    "priority",
+    "kategori",
+    "#",
+    "url",
+}
 
 
 def _classify_status(text: str) -> str | None:
@@ -585,7 +623,16 @@ def get_backlog_summary() -> dict[str, Any]:
     - KANBAN table rows: `| **Name** | 🟢 Active | ...` (status di cell 1-3)
     - Prioritas P1/P2/P3 dari baris yang sama (dedupe per nama proyek)
     """
-    zeros = {"total": 0, "done": 0, "active": 0, "todo": 0, "cancelled": 0, "p1": 0, "p2": 0, "p3": 0}
+    zeros = {
+        "total": 0,
+        "done": 0,
+        "active": 0,
+        "todo": 0,
+        "cancelled": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0,
+    }
     backlog_path = os.path.join(NIUMINATION, "BACKLOG.md")
     if not os.path.isfile(backlog_path):
         return zeros
@@ -630,7 +677,9 @@ def get_backlog_summary() -> dict[str, Any]:
     # Pass 2: KANBAN table rows — hanya dari section "KANBAN SYSTEM"
     # (tabel deployment/AI ecosystem di luar section ini bukan proyek).
     # Status dicari di cell 1-3; nama URL/numerik di-skip.
-    kanban_section = re.search(r"##\s*🎯\s*KANBAN SYSTEM.*?(?=\n##\s|\Z)", content, re.DOTALL)
+    kanban_section = re.search(
+        r"##\s*🎯\s*KANBAN SYSTEM.*?(?=\n##\s|\Z)", content, re.DOTALL
+    )
     table_source = kanban_section.group(0) if kanban_section else ""
     for line in table_source.splitlines():
         line = line.strip()

@@ -1,4 +1,5 @@
 """Task state machine — validates transitions, persists state, emits events."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -29,7 +30,9 @@ TRANSITIONS = {
 }
 
 
-async def transition_task(task_id: str, new_status: TaskStatus, result: str = None) -> dict:
+async def transition_task(
+    task_id: str, new_status: TaskStatus, result: str = None
+) -> dict:
     """Validate and apply task status transition."""
     db = await get_db()
     cursor = await db.execute("SELECT status FROM tasks WHERE id=?", (task_id,))

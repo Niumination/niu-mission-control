@@ -1,4 +1,5 @@
 """System router — health, status, config, WAL."""
+
 from __future__ import annotations
 
 import os
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/api/mc", tags=["system"])
 async def system_health():
     """System info — uptime, OS, Python, disk, memory."""
     import psutil
+
     try:
         mem = psutil.virtual_memory()
         disk = shutil.disk_usage("/")
@@ -59,4 +61,5 @@ def _get_uptime() -> str:
         return f"{days}d {hours}h"
     except (FileNotFoundError, ValueError):
         import time
+
         return f"{int(time.time() - os.path.getmtime('/'))}s"

@@ -1,4 +1,5 @@
 """Auth + Rate Limiting middleware (extracted from server.py)."""
+
 from __future__ import annotations
 
 import time
@@ -24,11 +25,20 @@ def _check_rate_limit(ip: str, max_rpm: int = 60) -> bool:
 # ── Public paths (exact match — NOT startswith) ────────────
 PUBLIC_PREFIXES = ("/static", "/docs", "/openapi.json", "/redoc")
 PUBLIC_EXACT = {
-    "/", "/health", "/ws/swarm", "/ws/orb", "/orb", "/dashboard", "/aios",
+    "/",
+    "/health",
+    "/ws/swarm",
+    "/ws/orb",
+    "/orb",
+    "/dashboard",
+    "/aios",
     "/api/mc/skills/event",
     # ORB / constellation telemetry endpoints (so the dashboard never 401s when
     # MC_API_KEY is active). Exact match — see _is_public below.
-    "/api/mc/agents", "/api/mc/system", "/api/mc/routines", "/api/mc/routine/run",
+    "/api/mc/agents",
+    "/api/mc/system",
+    "/api/mc/routines",
+    "/api/mc/routine/run",
 }
 
 
@@ -47,6 +57,7 @@ async def auth_rate_limit_middleware(request: Request, call_next):
 
     # Rate limiting
     from app.core.config import get_settings
+
     cfg = get_settings()
     if not _check_rate_limit(client_ip, cfg.rate_limit_rpm):
         return JSONResponse(

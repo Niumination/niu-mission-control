@@ -1,4 +1,5 @@
 """Telegram notifier — send status updates (service, not IPC)."""
+
 from __future__ import annotations
 
 import httpx
