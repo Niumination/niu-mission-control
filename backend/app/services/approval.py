@@ -1,16 +1,22 @@
 """Approval gate — dangerous actions require explicit approval."""
+
 from __future__ import annotations
 
 from datetime import datetime
 
 from app.db.database import get_db
-from app.services.state_machine import TaskStatus, transition_task
 
 
 # Actions that require approval before execution
 DANGEROUS_ACTIONS = {
-    "shell", "terminal", "deploy", "send_telegram", "wal_checkpoint",
-    "delete", "restart", "migrate",
+    "shell",
+    "terminal",
+    "deploy",
+    "send_telegram",
+    "wal_checkpoint",
+    "delete",
+    "restart",
+    "migrate",
 }
 
 
@@ -30,7 +36,8 @@ async def request_approval(task_id: str, action: str, details: str = None) -> di
         "task_id": task_id,
         "action": action,
         "status": "awaiting_approval",
-        "message": f"Action '{action}' requires approval. POST /api/mc/approve/{task_id} to approve.",
+        "message": f"Action '{action}' requires approval. "
+        f"POST /api/mc/approve/{task_id} to approve.",
     }
 
 

@@ -266,9 +266,80 @@
       #ws-ind { right: 8px; top: 60px; }
     }
   </style>
+  <link rel="stylesheet" href="/static/apex-adaptation.css?v=20260821-1">
 </head>
 <body>
-  <canvas id="orb-canvas"></canvas>
+  <canvas id="orb-canvas" aria-hidden="true"></canvas>
+
+  <!-- APEX-inspired mission core: gold frame + live Niumination reasoning graph. -->
+  <div id="mission-core-world" data-state="standby">
+    <svg id="reasoning-web" viewBox="0 0 1000 640" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+
+    <div id="core-frame" aria-hidden="true">
+      <svg viewBox="0 0 500 500" fill="none">
+        <defs>
+          <filter id="core-ring-glow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="2.4" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="core-ring-blur" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="7"/>
+          </filter>
+        </defs>
+        <circle class="core-sound-wave wave-a" cx="250" cy="250" r="166"/>
+        <circle class="core-sound-wave wave-b" cx="250" cy="250" r="166"/>
+        <circle class="core-sound-wave wave-c" cx="250" cy="250" r="166"/>
+        <circle class="core-ring-outer" cx="250" cy="250" r="208"/>
+        <circle class="core-ring-dashed" cx="250" cy="250" r="196"/>
+        <circle class="core-ring-outer" cx="250" cy="250" r="182" stroke-dasharray="3 10"/>
+        <circle class="core-ring-glow" cx="250" cy="250" r="166"/>
+        <circle class="core-ring-main" cx="250" cy="250" r="166"/>
+        <line class="core-crosshair" x1="250" y1="28" x2="250" y2="48"/>
+        <line class="core-crosshair" x1="250" y1="452" x2="250" y2="472"/>
+        <line class="core-crosshair" x1="28" y1="250" x2="48" y2="250"/>
+        <line class="core-crosshair" x1="452" y1="250" x2="472" y2="250"/>
+      </svg>
+    </div>
+
+    <button id="core-activation" type="button" aria-label="Aktifkan visualisasi Mission Core">
+      <span class="visually-hidden">Tekan untuk mengaktifkan visualisasi pemrosesan Mission Core.</span>
+    </button>
+
+    <div id="core-status-bar" role="status" aria-live="polite">
+      <div class="core-equalizer" id="core-equalizer" aria-hidden="true"></div>
+      <span id="core-state-label">STANDBY</span>
+      <span id="core-state-detail">5 AGENT TERHUBUNG · PILIH NODE UNTUK DETAIL</span>
+      <span class="core-state-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    </div>
+
+    <nav class="visually-hidden" aria-label="Agent Niumination">
+      <ul id="core-agent-list"></ul>
+    </nav>
+
+    <section id="core-agent-dialog" role="dialog" aria-modal="true" aria-labelledby="core-agent-name" hidden>
+      <div class="core-dialog-head">
+        <span class="core-dialog-node" aria-hidden="true"></span>
+        <div class="core-dialog-title">
+          <div id="core-agent-name">Agent</div>
+          <div id="core-agent-role">Role</div>
+        </div>
+        <button id="core-agent-close" type="button" aria-label="Tutup detail agent">✕</button>
+      </div>
+      <div class="core-dialog-body">
+        <div class="core-dialog-kicker">LIVE AGENT TELEMETRY</div>
+        <div class="core-dialog-grid">
+          <div class="core-dialog-stat"><small>Model</small><strong id="core-agent-model">—</strong></div>
+          <div class="core-dialog-stat"><small>Running</small><strong id="core-agent-running">0</strong></div>
+          <div class="core-dialog-stat"><small>Completed</small><strong id="core-agent-completed">0</strong></div>
+          <div class="core-dialog-stat"><small>Failed</small><strong id="core-agent-failed">0</strong></div>
+        </div>
+        <div class="core-dialog-status"><i aria-hidden="true"></i><span id="core-agent-status-text">Siap menerima delegasi</span></div>
+        <button id="core-agent-open" type="button">BUKA SWARM TOPOLOGY →</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="core-attribution">VISUAL CORE ADAPTED FROM APEX-UI · MIT</div>
 
   <div id="hud">
     <div id="hud-top">
@@ -322,14 +393,17 @@
   <div id="winMount"></div>
   <div class="taskbar" id="taskbar"><div class="tb-brand"><i class="fa-solid fa-bolt"></i>ORB</div></div>
 
-  <div id="hint">☰ MENU = buka aplikasi · drag titlebar · resize pojok · 🟢 max / 🟡 min / 🔴 close</div>
-  <div id="ws-ind">● LIVE</div>
+  <div id="hint">KLIK CORE = energy pulse · KLIK NODE = detail agent · ☰ MENU = aplikasi</div>
+  <div id="ws-ind" class="off">○ CONNECTING</div>
   <button id="gesture-btn" onclick="window.__toggleGesture()" style="position:fixed;bottom:12px;right:16px;pointer-events:auto;background:rgba(111,216,255,0.08);border:1px solid rgba(111,216,255,0.3);color:#6fd8ff;font-family:'JetBrains Mono',monospace;font-size:0.62rem;padding:6px 12px;border-radius:6px;cursor:pointer;z-index:10">✋ GESTURE OFF</button>
   <video id="cam" style="position:fixed;bottom:56px;right:16px;width:160px;border:1px solid rgba(111,216,255,0.2);border-radius:8px;display:none;z-index:10"></video>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-  <script src="/static/orb.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="/static/agent-state.js?v=20260821-1"></script>
+  <script src="/static/reasoning-web.js?v=20260821-1"></script>
+  <script src="/static/orb.js?v=20260821-1"></script>
   <script>
   /*═══════════════════════════════════════
     ORB FUSION ENGINE — semua menu → floating window

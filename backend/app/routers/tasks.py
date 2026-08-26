@@ -1,4 +1,5 @@
 """Tasks router — migrasi dari server.py, delegasi ke SwarmBus."""
+
 from __future__ import annotations
 
 import os
@@ -6,22 +7,26 @@ import sys
 from datetime import datetime
 
 # Add root to path for swarm/ import
-_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from fastapi import APIRouter, Query
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
 
 router = APIRouter(prefix="/api/mc", tags=["tasks"])
 
 # Lazy import bus (hindari circular import saat startup)
 _bus = None
 
+
 async def _get_bus():
     global _bus
     if _bus is None:
         from swarm.bus import bus
+
         await bus.init_db()
         _bus = bus
     return _bus
@@ -100,17 +105,28 @@ async def delegate_task(payload: dict):
     """Delegate task to agent."""
     import json
     import asyncio
+
     bus = await _get_bus()
     agent = payload.get("agent")
     instruction = payload.get("instruction")
     parent_id = payload.get("parent_id")
 
     if not agent or not instruction:
-        return JSONResponse({"error": "agent and instruction required"}, status_code=400)
+        return JSONResponse(
+            {"error": "agent and instruction required"}, status_code=400
+        )
 
     # Load topic map
-    topic_map = {"chief": "1", "research": "802", "programmer": "803", "qa": "804", "creator": "1172"}
-    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "swarm_config.json")
+    topic_map = {
+        "chief": "1",
+        "research": "802",
+        "programmer": "803",
+        "qa": "804",
+        "creator": "1172",
+    }
+    config_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "data", "swarm_config.json"
+    )
     if os.path.exists(config_path):
         try:
             with open(config_path) as f:
@@ -127,15 +143,18 @@ async def delegate_task(payload: dict):
         except Exception:
             pass
 
-    task_id = await bus.create_task(agent, {"instruction": instruction}, parent_id=parent_id)
+    task_id = await bus.create_task(
+        agent, {"instruction": instruction}, parent_id=parent_id
+    )
 
     from modules.hermes_bridge import send_chat
+
     callback = "http://localhost:5200/api/mc/task-update"
     bridge_msg = (
         f"[MC Swarm] Agent {agent.upper()} (task_id: {task_id}): {instruction}\n"
         f"Setelah selesai, update status via:\n"
         f"curl -s -X POST {callback} -H 'Content-Type: application/json' "
-        f"-d '{{\"task_id\":\"{task_id}\",\"status\":\"completed\",\"result\":\"<ringkasan>\"}}'"
+        f'-d \'{{"task_id":"{task_id}","status":"completed","result":"<ringkasan>"}}\''
     )
     result = send_chat(bridge_msg, topic_id=topic_map.get(agent, "1"))
 
@@ -143,15 +162,24 @@ async def delegate_task(payload: dict):
         await bus.log_event(task_id, "chief", "INFO", f"Delegasi ke {agent} sukses")
         await bus.update_task_status(task_id, "running")
         if result.get("simulated"):
+
             async def simulate():
                 await asyncio.sleep(4)
-                await bus.update_task_status(task_id, "completed", result={"output": "Simulated completion"})
+                await bus.update_task_status(
+                    task_id, "completed", result={"output": "Simulated completion"}
+                )
+
             asyncio.create_task(simulate())
     else:
-        await bus.log_event(task_id, "chief", "ERROR", f"Gagal kirim: {result.get('message')}")
+        await bus.log_event(
+            task_id, "chief", "ERROR", f"Gagal kirim: {result.get('message')}"
+        )
         await bus.update_task_status(task_id, "failed")
 
-    return {"task_id": task_id, "status": "dispatched" if result["status"] == "sent" else "failed"}
+    return {
+        "task_id": task_id,
+        "status": "dispatched" if result["status"] == "sent" else "failed",
+    }
 
 
 @router.post("/clear-logs")

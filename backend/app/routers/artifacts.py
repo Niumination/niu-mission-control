@@ -1,15 +1,17 @@
 """Artifacts router — migrasi dari server.py."""
+
 from __future__ import annotations
 
 import os
 import sys
-import json
 
-_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from fastapi import APIRouter
+from fastapi import APIRouter  # noqa: E402
 
 router = APIRouter(prefix="/api/mc", tags=["artifacts"])
 
@@ -23,7 +25,11 @@ async def list_artifacts():
         for category in sorted(os.listdir(base)):
             cat_dir = os.path.join(base, category)
             if os.path.isdir(cat_dir):
-                files = [f for f in os.listdir(cat_dir) if os.path.isfile(os.path.join(cat_dir, f))]
+                files = [
+                    f
+                    for f in os.listdir(cat_dir)
+                    if os.path.isfile(os.path.join(cat_dir, f))
+                ]
                 result[category] = files
     return {"artifacts": result, "count": sum(len(v) for v in result.values())}
 

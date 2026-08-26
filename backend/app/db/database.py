@@ -1,4 +1,5 @@
 """Database layer — aiosqlite + repository pattern."""
+
 from __future__ import annotations
 
 import logging

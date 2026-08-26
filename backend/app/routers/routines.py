@@ -1,14 +1,17 @@
 """Routines router — migrasi dari server.py."""
+
 from __future__ import annotations
 
 import os
 import sys
 
-_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from fastapi import APIRouter
+from fastapi import APIRouter  # noqa: E402
 
 router = APIRouter(prefix="/api/mc", tags=["routines"])
 
@@ -19,6 +22,7 @@ BRAIN = "/Users/zaryu/Desktop/Niumination/brain"
 async def list_routines():
     """Daftar routine yang tersedia + status brain."""
     from datetime import datetime
+
     projects = []
     pdir = os.path.join(BRAIN, "projects")
     if os.path.isdir(pdir):
@@ -27,11 +31,13 @@ async def list_routines():
             if os.path.isfile(sf):
                 try:
                     with open(sf) as f:
-                        lines = [l for l in f.read().split("\n") if l.strip()]
+                        lines = [line for line in f.read().split("\n") if line.strip()]
                     status = ""
                     if "## Status Saat Ini" in lines:
                         idx = lines.index("## Status Saat Ini")
-                        status = lines[idx + 1].strip()[:80] if idx + 1 < len(lines) else ""
+                        status = (
+                            lines[idx + 1].strip()[:80] if idx + 1 < len(lines) else ""
+                        )
                     projects.append({"name": name, "status": status})
                 except Exception:
                     pass
@@ -42,7 +48,7 @@ async def list_routines():
     if os.path.isfile(daily):
         try:
             with open(daily) as f:
-                capture_count = sum(1 for l in f if l.startswith("- ["))
+                capture_count = sum(1 for line in f if line.startswith("- ["))
         except Exception:
             pass
 
@@ -60,5 +66,8 @@ async def run_routine(payload: dict):
     name = payload.get("name")
     whitelist = {"rekap-harian", "morning-brief", "sync-proyek"}
     if name not in whitelist:
-        return {"status": "error", "output": f"Routine '{name}' tidak dikenal. Tersedia: {sorted(whitelist)}"}
+        return {
+            "status": "error",
+            "output": f"Routine '{name}' tidak dikenal. Tersedia: {sorted(whitelist)}",
+        }
     return {"status": "started", "routine": name}

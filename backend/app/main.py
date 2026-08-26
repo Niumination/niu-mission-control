@@ -5,11 +5,11 @@ Usage:
     app = create_app()
     uvicorn.run(app)
 """
+
 from __future__ import annotations
 
 import logging
 import os
-import sys
 from pathlib import Path
 
 import uvicorn
@@ -86,7 +86,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # ── Include routers ────────────────────────────────────
     from .routers import system, ecosystem, agents, tasks, terminal
     from .routers import routines
-    from .routers import telegram, artifacts, config, skills, cost, deploy, ws, hermes, audit
+    from .routers import (
+        telegram,
+        artifacts,
+        config,
+        skills,
+        cost,
+        deploy,
+        ws,
+        hermes,
+        audit,
+    )
 
     app.include_router(system.router)
     app.include_router(ecosystem.router)

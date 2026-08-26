@@ -1,7 +1,7 @@
 """Dispatcher — SQLite-backed queue with claim/execute/ack pattern."""
+
 from __future__ import annotations
 
-import asyncio
 import json
 import uuid
 from datetime import datetime
@@ -21,29 +21,57 @@ class Dispatcher:
         self._running = False
         self._worker_task = None
 
-    async def submit(self, title: str, agent: str = None, instruction: str = None,
-                     idempotency_key: str = None) -> dict:
-        """Submit a new task to the queue. Duplicate idempotency_key returns existing task."""
+    async def submit(
+        self,
+        title: str,
+        agent: str = None,
+        instruction: str = None,
+        idempotency_key: str = None,
+    ) -> dict:
+        """Submit a new task to the queue.
+
+        Duplicate idempotency_key returns existing task.
+        """
         db = await get_db()
 
         # Idempotency: if same key submitted before, return existing task
         if idempotency_key:
             cursor = await db.execute(
-                "SELECT id, status FROM tasks WHERE idempotency_key=?", (idempotency_key,)
+                "SELECT id, status FROM tasks WHERE idempotency_key=?",
+                (idempotency_key,),
             )
             existing = await cursor.fetchone()
             if existing:
-                return {"task_id": existing["id"], "status": existing["status"], "idempotent": True}
+                return {
+                    "task_id": existing["id"],
+                    "status": existing["status"],
+                    "idempotent": True,
+                }
         task_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
 
         await db.execute(
-            "INSERT INTO tasks (id, title, agent, status, priority, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (task_id, title, agent, TaskStatus.QUEUED.value, "normal", idempotency_key, now, now),
+            "INSERT INTO tasks (id, title, agent, status, priority, "
+            "idempotency_key, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                task_id,
+                title,
+                agent,
+                TaskStatus.QUEUED.value,
+                "normal",
+                idempotency_key,
+                now,
+                now,
+            ),
         )
         await db.execute(
             "INSERT INTO events (type, payload, source) VALUES (?, ?, ?)",
-            ("task.created", json.dumps({"task_id": task_id, "title": title, "agent": agent}), "dispatcher"),
+            (
+                "task.created",
+                json.dumps({"task_id": task_id, "title": title, "agent": agent}),
+                "dispatcher",
+            ),
         )
         await db.commit()
         return {"task_id": task_id, "status": "queued"}
@@ -68,7 +96,9 @@ class Dispatcher:
         """Get tasks, optionally filtered by status."""
         db = await get_db()
         if status:
-            cursor = await db.execute("SELECT * FROM tasks WHERE status=? ORDER BY created_at DESC", (status,))
+            cursor = await db.execute(
+                "SELECT * FROM tasks WHERE status=? ORDER BY created_at DESC", (status,)
+            )
         else:
             cursor = await db.execute("SELECT * FROM tasks ORDER BY created_at DESC")
         return [dict(row) for row in await cursor.fetchall()]

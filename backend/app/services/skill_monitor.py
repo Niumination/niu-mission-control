@@ -20,9 +20,7 @@ import logging
 import os
 import sqlite3
 import time
-from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 logger = logging.getLogger("skill-monitor")
 
@@ -32,9 +30,12 @@ DB_PATH = os.path.join(BASE_DIR, "data", "mission_control.db")
 # Thresholds
 STALE_DAYS = 30
 CONFLICT_PAIRS = [
-    ("ultrathink", "ponytail-core"),           # Craftsmanship vs Minimalism
-    ("impeccable", "ui-ux-pro-max"),           # UI/UX Build vs Research
-    ("systematic-debugging", "hermes-zero-defect-architect"),  # Debugging Generic vs Aggressive
+    ("ultrathink", "ponytail-core"),  # Craftsmanship vs Minimalism
+    ("impeccable", "ui-ux-pro-max"),  # UI/UX Build vs Research
+    (
+        "systematic-debugging",
+        "hermes-zero-defect-architect",
+    ),  # Debugging Generic vs Aggressive
 ]
 
 # Skill bank cache with TTL
@@ -46,6 +47,7 @@ SKILL_CACHE_ACTIVE: dict[str, float] = {}  # skill_name -> last load timestamp
 
 
 # ── Helpers ──────────────────────────────────────────────
+
 
 def _get_home() -> str:
     """Get real user home dir — handles Hermes env where HOME != /Users/user.
@@ -64,6 +66,7 @@ def _get_home() -> str:
 
 
 # ── DB Init ──────────────────────────────────────────────
+
 
 def init_db():
     """Create skill_events table if not exists, then auto-seed bank skills."""
@@ -97,12 +100,17 @@ def init_db():
 
 # ── Bank Pusat Scanner (TTL-based, no permanent cache) ──
 
+
 def _scan_skill_bank(force: bool = False) -> list[dict]:
     """Scan ~/Desktop/Niumination/skills/ — TTL cache 30s, refresh otomatis."""
     global _skill_bank_cache, _skill_bank_cache_time
 
     now = time.time()
-    if not force and _skill_bank_cache is not None and (now - _skill_bank_cache_time) < SKILL_BANK_CACHE_TTL:
+    if (
+        not force
+        and _skill_bank_cache is not None
+        and (now - _skill_bank_cache_time) < SKILL_BANK_CACHE_TTL
+    ):
         return _skill_bank_cache
 
     home = _get_home()
@@ -116,11 +124,13 @@ def _scan_skill_bank(force: bool = False) -> list[dict]:
                 parts = rel.split("/")
                 domain = parts[0] if len(parts) >= 3 else "unknown"
                 skill_name = parts[1] if len(parts) >= 3 else parts[0]
-                skills.append({
-                    "name": skill_name,
-                    "domain": domain,
-                    "path": sk_path,
-                })
+                skills.append(
+                    {
+                        "name": skill_name,
+                        "domain": domain,
+                        "path": sk_path,
+                    }
+                )
 
     _skill_bank_cache = skills
     _skill_bank_cache_time = now
@@ -129,6 +139,7 @@ def _scan_skill_bank(force: bool = False) -> list[dict]:
 
 
 # ── Auto-Seed: all bank skills get a registration event in DB ──
+
 
 def _seed_all_skills():
     """Ensure every skill from bank pusat has a 'seed' event in DB.
@@ -149,7 +160,8 @@ def _seed_all_skills():
             ).fetchone()[0]
             if existing == 0:
                 conn.execute(
-                    "INSERT INTO skill_events (skill_name, agent, event_type, timestamp, metadata) "
+                    "INSERT INTO skill_events "
+                    "(skill_name, agent, event_type, timestamp, metadata) "
                     "VALUES (?, ?, ?, ?, ?)",
                     (name, "system", "seed", now, json.dumps({"source": "auto-seed"})),
                 )
@@ -164,8 +176,13 @@ def _seed_all_skills():
 
 # ── Event Recording ─────────────────────────────────────
 
-def record_event(skill_name: str, agent: str = "unknown",
-                 event_type: str = "load", metadata: dict = None) -> dict:
+
+def record_event(
+    skill_name: str,
+    agent: str = "unknown",
+    event_type: str = "load",
+    metadata: dict = None,
+) -> dict:
     """Record a skill load/unload event and return current status."""
     now = time.time()
     conn = sqlite3.connect(DB_PATH)
@@ -188,6 +205,7 @@ def record_event(skill_name: str, agent: str = "unknown",
 
 
 # ── Stats ────────────────────────────────────────────────
+
 
 def get_all_skills():
     """Get all skills from bank + latest event status.
@@ -213,15 +231,17 @@ def get_all_skills():
         ).fetchone()
 
         active = name in SKILL_CACHE_ACTIVE
-        results.append({
-            "name": name,
-            "domain": sk["domain"],
-            "active": active,
-            "last_event": row["event_type"] if row else "seed",
-            "last_timestamp": row["timestamp"] if row else None,
-            "last_agent": row["agent"] if row else "system",
-            "load_count": count_row["cnt"] if count_row else 0,
-        })
+        results.append(
+            {
+                "name": name,
+                "domain": sk["domain"],
+                "active": active,
+                "last_event": row["event_type"] if row else "seed",
+                "last_timestamp": row["timestamp"] if row else None,
+                "last_agent": row["agent"] if row else "system",
+                "load_count": count_row["cnt"] if count_row else 0,
+            }
+        )
 
     conn.close()
     return {"skills": results, "total": len(results), "active": len(SKILL_CACHE_ACTIVE)}
@@ -233,7 +253,9 @@ def get_stats():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
 
-    today_start = time.mktime(datetime.now().replace(hour=0, minute=0, second=0).timetuple())
+    today_start = time.mktime(
+        datetime.now().replace(hour=0, minute=0, second=0).timetuple()
+    )
     week_start = today_start - 7 * 86400
 
     stats = []
@@ -257,13 +279,15 @@ def get_stats():
             (name,),
         ).fetchone()["cnt"]
 
-        stats.append({
-            "name": name,
-            "domain": sk["domain"],
-            "today": today,
-            "this_week": this_week,
-            "total": total,
-        })
+        stats.append(
+            {
+                "name": name,
+                "domain": sk["domain"],
+                "today": today,
+                "this_week": this_week,
+                "total": total,
+            }
+        )
 
     conn.close()
     return {"stats": stats}
@@ -275,7 +299,6 @@ def get_stale():
     conn.row_factory = sqlite3.Row
     bank_skills = _scan_skill_bank()
     now_ts = time.time()
-    stale_threshold = now_ts - STALE_DAYS * 86400
 
     stale_list = []
     for sk in bank_skills:
@@ -290,16 +313,17 @@ def get_stale():
         days_since = (now_ts - last_ts) / 86400 if last_ts else STALE_DAYS * 2
 
         if days_since > STALE_DAYS:
-            stale_list.append({
-                "name": name,
-                "domain": sk["domain"],
-                "days_since_last_load": round(days_since, 1),
-                "never_loaded": last_ts == 0,
-            })
+            stale_list.append(
+                {
+                    "name": name,
+                    "domain": sk["domain"],
+                    "days_since_last_load": round(days_since, 1),
+                    "never_loaded": last_ts == 0,
+                }
+            )
 
     conn.close()
-    return {"stale": stale_list, "count": len(stale_list),
-            "threshold_days": STALE_DAYS}
+    return {"stale": stale_list, "count": len(stale_list), "threshold_days": STALE_DAYS}
 
 
 def get_conflicts():
@@ -311,25 +335,30 @@ def get_conflicts():
         a_active = a in loaded
         b_active = b in loaded
         if a_active and b_active:
-            conflicts.append({
-                "skills": [a, b],
-                "reason": f"Conflict pair: {a} vs {b}",
-                "both_active": True,
-            })
+            conflicts.append(
+                {
+                    "skills": [a, b],
+                    "reason": f"Conflict pair: {a} vs {b}",
+                    "both_active": True,
+                }
+            )
 
     bank_skills = {s["name"] for s in _scan_skill_bank()}
     for name in loaded:
         if name not in bank_skills:
-            conflicts.append({
-                "skills": [name],
-                "reason": f"Skill '{name}' is loaded but NOT in bank pusat",
-                "both_active": False,
-            })
+            conflicts.append(
+                {
+                    "skills": [name],
+                    "reason": f"Skill '{name}' is loaded but NOT in bank pusat",
+                    "both_active": False,
+                }
+            )
 
     return {"conflicts": conflicts, "count": len(conflicts)}
 
 
 # ── Cleanup old events (keep last 90 days) ──────────────
+
 
 def cleanup_old_events():
     """Delete skill events older than 90 days, preserving seed events."""
@@ -348,10 +377,15 @@ def cleanup_old_events():
 
 # ── Integration helper: called by sync-to-agents.sh ─────
 
+
 def notify_sync_completed():
     """Record that sync happened (called from sync-to-agents.sh hook)."""
-    record_event("__sync__", agent="system", event_type="sync",
-                 metadata={"source": "sync-to-agents.sh"})
+    record_event(
+        "__sync__",
+        agent="system",
+        event_type="sync",
+        metadata={"source": "sync-to-agents.sh"},
+    )
 
     # Re-scan bank and seed any new skills
     _seed_all_skills()

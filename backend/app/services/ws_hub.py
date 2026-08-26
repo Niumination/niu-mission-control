@@ -1,12 +1,11 @@
 """WebSocket hub — rooms, subscribe, broadcast, replay."""
+
 from __future__ import annotations
 
-import asyncio
-import json
 import time
 from collections import defaultdict
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 
 
 class WSHub:
@@ -32,7 +31,7 @@ class WSHub:
 
     def disconnect(self, ws: WebSocket, rooms: list[str] = None):
         """Remove a WebSocket from all rooms."""
-        for room in (rooms or list(self.connections.keys())):
+        for room in rooms or list(self.connections.keys()):
             self.connections[room].discard(ws)
 
     async def broadcast(self, room: str, event: dict):
@@ -40,7 +39,7 @@ class WSHub:
         event["ts"] = time.time()
         self.event_log.append(event)
         if len(self.event_log) > self.max_log:
-            self.event_log = self.event_log[-self.max_log:]
+            self.event_log = self.event_log[-self.max_log :]
 
         dead = set()
         for ws in self.connections.get(room, set()):
@@ -61,6 +60,7 @@ class WSHub:
 
 # ── Singleton ──────────────────────────────────────────────
 _hub: WSHub | None = None
+
 
 def get_ws_hub() -> WSHub:
     global _hub

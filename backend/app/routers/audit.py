@@ -1,19 +1,24 @@
 """Audit + Inspector router — L3 view endpoints."""
+
 from __future__ import annotations
 
 import os
 import sys
 
-_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter  # noqa: E402
 
 router = APIRouter(prefix="/api/mc", tags=["audit"])
 
+
 async def _get_db():
     from app.db.database import get_db
+
     return await get_db()
 
 
@@ -79,7 +84,7 @@ async def task_detail(task_id: str):
     # Events
     cursor = await db.execute(
         "SELECT * FROM events WHERE payload LIKE ? ORDER BY ts",
-        (f'%{task_id}%',),
+        (f"%{task_id}%",),
     )
     events = [dict(r) for r in await cursor.fetchall()]
 
@@ -92,7 +97,8 @@ async def task_detail(task_id: str):
 
     # Cost
     cursor = await db.execute(
-        "SELECT * FROM cost WHERE task_id=?", (task_id,),
+        "SELECT * FROM cost WHERE task_id=?",
+        (task_id,),
     )
     cost = [dict(r) for r in await cursor.fetchall()]
 

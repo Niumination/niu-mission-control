@@ -3,11 +3,11 @@
 Internal connection: MC server → hermes_bridge → hermes CLI → gateway.
 External connection: hermes CLI → Telegram gateway → Hermes Agent.
 
-Fungsi ini dieksekusi sebagai subprocess dengan fallback mock data yang realistis 
+Fungsi ini dieksekusi sebagai subprocess dengan fallback mock data yang realistis
 jika CLI tidak terpasang (untuk kenyamanan development dan demo).
 """
+
 from __future__ import annotations
-import json
 import logging
 import os
 import shutil
@@ -21,7 +21,11 @@ HERMES_CLI_DEFAULT = "/Users/zaryu/.hermes-portable/venv/bin/hermes"
 HERMES_HOME = os.environ.get("HERMES_HOME", "/Volumes/HermesAgent/HermesAgentUSB/data")
 
 # Cari path CLI yang valid (check default path, lalu check PATH system)
-HERMES_CLI = HERMES_CLI_DEFAULT if os.path.exists(HERMES_CLI_DEFAULT) else (shutil.which("hermes") or "hermes")
+HERMES_CLI = (
+    HERMES_CLI_DEFAULT
+    if os.path.exists(HERMES_CLI_DEFAULT)
+    else (shutil.which("hermes") or "hermes")
+)
 
 # Simple in-memory cache (hindari spam CLI tiap poll)
 _cache: dict[str, Any] = {}
@@ -45,14 +49,17 @@ def _cached(key: str) -> Optional[dict]:
 def _run(cmd: list[str], timeout: int = 10) -> dict:
     if not _is_cli_available():
         return {"rc": -2, "out": "", "err": "Hermes CLI not found"}
-        
+
     env = dict(os.environ)
     env["HERMES_HOME"] = HERMES_HOME
     env["HOME"] = "/Users/zaryu"
     try:
         r = subprocess.run(
             [HERMES_CLI, *cmd],
-            capture_output=True, text=True, timeout=timeout, env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
         )
         return {"rc": r.returncode, "out": r.stdout, "err": r.stderr}
     except subprocess.TimeoutExpired:
@@ -65,14 +72,14 @@ def gateway_status() -> dict:
     cached = _cached("gw")
     if cached:
         return cached
-        
+
     if not _is_cli_available():
         # Fallback Mock Data yang realistis
         data = {
             "online": True,
             "raw": "PID 41203 | supervised | active (SIMULATED)",
             "pid": 41203,
-            "simulated": True
+            "simulated": True,
         }
     else:
         res = _run(["gateway", "status"])
@@ -81,13 +88,14 @@ def gateway_status() -> dict:
             "online": online,
             "raw": res["out"].strip()[:300],
             "pid": None,
-            "simulated": False
+            "simulated": False,
         }
         import re
+
         m = re.search(r"PID (\d+)", res["out"])
         if m:
             data["pid"] = int(m.group(1))
-            
+
     _cache["gw"] = data
     _cache_ttl["gw"] = time.time()
     return data
@@ -97,7 +105,7 @@ def cron_jobs() -> dict:
     cached = _cached("cron")
     if cached:
         return cached
-        
+
     if not _is_cli_available():
         # Fallback Mock Data
         jobs = [
@@ -110,7 +118,7 @@ def cron_jobs() -> dict:
                 "next_run": "In 1 hour 42 minutes",
                 "last_run": "3 hours ago",
                 "last_status": "ok",
-                "script": "python3 scripts/sentiment_scan.py"
+                "script": "python3 scripts/sentiment_scan.py",
             },
             {
                 "id": "423fbc06ea12",
@@ -121,7 +129,7 @@ def cron_jobs() -> dict:
                 "next_run": "In 12 minutes",
                 "last_run": "18 minutes ago",
                 "last_status": "ok",
-                "script": "git push origin main"
+                "script": "git push origin main",
             },
             {
                 "id": "0d826a7e029c",
@@ -132,19 +140,20 @@ def cron_jobs() -> dict:
                 "next_run": "Next Sunday 00:00",
                 "last_run": "Last Sunday 00:00",
                 "last_status": "ok",
-                "script": "vacuum_db.sh"
-            }
+                "script": "vacuum_db.sh",
+            },
         ]
         data = {
             "count": len(jobs),
             "jobs": jobs,
             "raw": "Mocked cron listing",
-            "simulated": True
+            "simulated": True,
         }
     else:
         res = _run(["cron", "list"])
         jobs = []
         import re
+
         blocks = re.split(r"\n\s*(?=[0-9a-f]{12}\s)", res["out"])
         for b in blocks[1:]:
             lines = b.strip().split("\n")
@@ -158,20 +167,22 @@ def cron_jobs() -> dict:
                     name = ln.split("Name:")[1].strip()
                 elif "Schedule:" in ln:
                     schedule = ln.split("Schedule:")[1].strip()
-            jobs.append({
-                "id": job_id, 
-                "status": "active" if active else "paused", 
-                "name": name, 
-                "schedule": schedule,
-                "last_status": "ok"
-            })
+            jobs.append(
+                {
+                    "id": job_id,
+                    "status": "active" if active else "paused",
+                    "name": name,
+                    "schedule": schedule,
+                    "last_status": "ok",
+                }
+            )
         data = {
-            "count": len(jobs), 
-            "jobs": jobs, 
+            "count": len(jobs),
+            "jobs": jobs,
             "raw": res["out"].strip()[:200],
-            "simulated": False
+            "simulated": False,
         }
-        
+
     _cache["cron"] = data
     _cache_ttl["cron"] = time.time()
     return data

@@ -10,7 +10,7 @@
 
 Niu-MissionControl adalah pusat komando (command center) untuk ekosistem Niumination. Menyediakan:
 
-- **ORB 3D** — animasi command center fullscreen
+- **Mission Core 3D** — ORB gold/cyan fullscreen dengan reasoning graph 5 agent, telemetry live, dan state `standby`/`processing`/`degraded`
 - **12 Floating Windows** — Dashboard, Ecosystem, Swarm, Task Kanban, Terminal, Telegram, Storage, Skill Bank, Skill Market, System, Cost, Deploy
 - **WebSocket realtime** — swarm topology, live telemetry
 - **Skill Monitor** — integritas SHA-256, deteksi conflict, stale skills
@@ -44,7 +44,10 @@ niu-mission-control/
 │   ├── build_unified.py    # Generator: 12 halaman → index.html
 │   ├── app.js              # Business logic (agent cards, kanban, telemetry)
 │   ├── styles.css          # Dark glassmorphism theme (WCAG 2.1 AA)
-│   └── static/             # orb.html, fontawesome, app.js served
+│   ├── orb.html / orb.js   # Mission Core Three.js + live telemetry
+│   ├── reasoning-web.js    # SVG topology 5 agent + accessible detail dialog
+│   ├── apex-adaptation.css # Gold/cyan visual layer + reduced-motion fallback
+│   └── static/             # Font Awesome assets
 ├── modules/                # Backend modules
 │   ├── hermes_bridge.py    # Hermes CLI bridge (terminal + Telegram)
 │   ├── hermes_status.py    # Gateway status detection
@@ -71,6 +74,12 @@ niu-mission-control/
 | `/api/mc/directive` | GET | Telegram thread data |
 | `/api/mc/dispatch` | POST | Dispatch task ke Hermes |
 | `/ws/swarm` | WS | Live swarm topology |
+
+## Adaptasi APEX-UI
+
+Visual **Mission Core** mengadaptasi pola orb + reasoning graph dari [RubenM1990/APEX-UI](https://github.com/RubenM1990/APEX-UI) (MIT) tanpa membawa runtime Next.js/React-nya. Implementasi ditulis ulang dalam stack vanilla repo ini dan dihubungkan ke `/api/mc/agents` serta `/ws/swarm`, sehingga node yang tampil adalah fleet Niumination nyata—bukan roster demo APEX.
+
+Lihat [ADR-004](docs/adr/004-apex-ui-adaptation.md) untuk keputusan arsitektur dan [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) untuk atribusi/lisensi.
 
 ## Testing
 

@@ -1,8 +1,8 @@
 """Structured logging — JSON format with correlation IDs."""
+
 from __future__ import annotations
 
 import logging
-import uuid
 from contextvars import ContextVar
 from datetime import datetime
 

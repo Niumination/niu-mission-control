@@ -1,4 +1,5 @@
 """Skills router — migrasi dari server.py via skill_monitor."""
+
 from __future__ import annotations
 
 import asyncio
@@ -8,16 +9,20 @@ from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Request
 
-_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
 router = APIRouter(prefix="/api/mc", tags=["skills"])
 _thread_pool = ThreadPoolExecutor(max_workers=4)
 
+
 def _get_skill_monitor():
     try:
         from modules import skill_monitor
+
         return skill_monitor
     except ImportError:
         return None
@@ -68,13 +73,13 @@ async def skill_event(request: Request):
     """Record a skill event."""
     body = await request.json()
     sm = _get_skill_monitor()
-    if sm and hasattr(sm, 'record_event'):
+    if sm and hasattr(sm, "record_event"):
         try:
             sm.record_event(
                 body.get("skill_name", ""),
                 body.get("agent", ""),
                 body.get("event_type", "load"),
-                body.get("metadata", {})
+                body.get("metadata", {}),
             )
         except Exception:
             pass
