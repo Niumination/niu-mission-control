@@ -42,6 +42,8 @@
   --purple-glow: rgba(139, 92, 246, 0.4);
   --pink: #f472b6;
   --pink-glow: rgba(244, 114, 182, 0.4);
+  --blue: #00e5ff;            /* restore: dipakai .icon-blue & .level-info */
+  --blue-glow: rgba(0, 229, 255, 0.40);
   --red: #ff3366;
   --red-glow: rgba(255, 51, 102, 0.4);
   --slate: #334155;
