@@ -10,22 +10,34 @@
   --bg-surface: rgba(13, 20, 35, 0.8);
   --bg-surface-opaque: #0f1524;
   --bg-surface-elevated: rgba(22, 32, 54, 0.85);
-  --border-glow: rgba(0, 240, 255, 0.15);
+  --border-glow: rgba(245, 166, 35, 0.22);
   --border-muted: rgba(255, 255, 255, 0.08);
+
+  /* ═══ Mission Core tokens (APEX benang merah — Issue #5) ═══ */
+  --core-gold: #f5a623;
+  --core-gold-bright: #ffd080;
+  --core-cyan: #00e5ff;
+  --core-cyan-soft: #6ee7f9;
+  --core-green: #34d399;
+  --core-red: #fb7185;
+  --core-navy: #07111f;
+  --core-ink: #03070d;
+
+  /* Aliases: token lama → nilai Mission Core (satu sumber visual) */
+  --cyan: #00e5ff;
+  --cyan-glow: rgba(0, 229, 255, 0.40);
+  --amber: #f5a623;
+  --amber-glow: rgba(245, 166, 35, 0.45);
+  --emerald: #34d399;
+  --emerald-glow: rgba(52, 211, 153, 0.40);
+  --red: #fb7185;
+  --red-glow: rgba(251, 113, 133, 0.40);
 
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted: #7c8ba0;  /* AA 5.77:1 on #050811 (WCAG 2.1) */
 
-  /* Accent Neon Lights */
-  --cyan: #00f0ff;
-  --cyan-glow: rgba(0, 240, 255, 0.4);
-  --blue: #3b82f6;
-  --blue-glow: rgba(59, 130, 246, 0.4);
-  --emerald: #00ff87;
-  --emerald-glow: rgba(0, 255, 135, 0.4);
-  --amber: #ffb800;
-  --amber-glow: rgba(255, 184, 0, 0.4);
+  /* Accent Neon Lights (legacy names, Mission Core values) */
   --purple: #8b5cf6;
   --purple-glow: rgba(139, 92, 246, 0.4);
   --pink: #f472b6;
@@ -643,9 +655,11 @@ body {
 }
 
 .state-idle { background: rgba(51, 65, 85, 0.2); color: var(--text-secondary); border: 1px solid rgba(51, 65, 85, 0.4); }
-.state-thinking { background: rgba(255, 184, 0, 0.15); color: var(--amber); border: 1px solid rgba(255, 184, 0, 0.3); }
-.state-executing { background: rgba(0, 255, 135, 0.15); color: var(--emerald); border: 1px solid rgba(0, 255, 135, 0.3); }
-.state-error { background: rgba(255, 51, 102, 0.15); color: var(--red); border: 1px solid rgba(255, 51, 102, 0.3); }
+.state-thinking { background: rgba(245, 166, 35, 0.15); color: var(--core-gold-bright); border: 1px solid rgba(245, 166, 35, 0.3); }
+.state-executing { background: rgba(52, 211, 153, 0.15); color: var(--core-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+.state-processing { background: rgba(52, 211, 153, 0.15); color: var(--core-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+.state-error { background: rgba(251, 113, 133, 0.15); color: var(--core-red); border: 1px solid rgba(251, 113, 133, 0.3); }
+.state-degraded { background: rgba(245, 166, 35, 0.18); color: var(--core-gold-bright); border: 1px solid rgba(245, 166, 35, 0.35); }
 
 .status-pulse-amber { width: 5px; height: 5px; background: var(--amber); border-radius: 50%; box-shadow: 0 0 8px var(--amber); animation: blinker 1s linear infinite; }
 .status-pulse-emerald { width: 5px; height: 5px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 8px var(--emerald); animation: blinker 1s linear infinite; }
@@ -3125,3 +3139,73 @@ html, body { height: 100%; overflow: hidden; }
   background: rgba(111,216,255,.12); color: #f1f5f9;
 }
 .cmd-item i { width: 18px; text-align: center; font-size: .75rem; }
+
+/* ════════════════════════════════════════════════════════════════
+   MISSION CORE RETHEME (Issue #5) — lapisan visual APEX benang merah
+   Token: gold-ring + cyan-core di atas navy→ink. Tanpa logika baru.
+   ════════════════════════════════════════════════════════════════ */
+
+body {
+  background:
+    radial-gradient(1200px 800px at 70% -10%, rgba(0, 229, 255, 0.06), transparent 60%),
+    radial-gradient(900px 700px at 20% 110%, rgba(245, 166, 35, 0.05), transparent 55%),
+    linear-gradient(160deg, var(--core-navy) 0%, var(--core-ink) 100%);
+}
+
+/* Sidebar: aksen gold pada item aktif */
+.sidebar a.active,
+.nav-item.active,
+.nav-link.active {
+  border-left: 2px solid var(--core-gold);
+  color: var(--core-gold-bright);
+  background: linear-gradient(90deg, rgba(245, 166, 35, 0.12), transparent);
+}
+.sidebar .nav-section-title { color: var(--core-cyan-soft); }
+
+/* Header/topbar: garis bawah cyan lembut */
+.topbar, header.app-header {
+  border-bottom: 1px solid rgba(0, 229, 255, 0.18);
+}
+
+/* KPI cards & panel: ring emas tipis */
+.kpi-card {
+  border-color: rgba(245, 166, 35, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.05);
+}
+.kpi-value { color: var(--text-primary); }
+.kpi-icon.icon-emerald { color: var(--core-green); }
+.kpi-icon.icon-amber { color: var(--core-gold); }
+.kpi-icon.icon-cyan { color: var(--core-cyan); }
+
+/* Tabel & form: aksen konsisten */
+table thead th { color: var(--core-cyan-soft); border-bottom: 1px solid rgba(0, 229, 255, 0.25); }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--core-cyan);
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.15);
+}
+button.primary, .btn-primary {
+  background: linear-gradient(135deg, var(--core-gold), #d98c12);
+  border: 1px solid rgba(255, 208, 128, 0.4);
+}
+
+/* Status badge mapping (processing/degraded) — kelas visual saja */
+.status-badge.state-processing { background: rgba(52, 211, 153, 0.15); color: var(--core-green); border: 1px solid rgba(52, 211, 153, 0.3); }
+.status-badge.state-degraded { background: rgba(245, 166, 35, 0.18); color: var(--core-gold-bright); border: 1px solid rgba(245, 166, 35, 0.35); }
+
+/* REDUCE-MOTION: hormati preferensi OS; marquee fungsional tetap jalan */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Pengecualian fungsional (bukan dekoratif): running text info */
+  .gov-strip .marquee-track,
+  .kr-marquee .marquee-track,
+  .gov-strip, .kr-marquee {
+    animation-play-state: running !important;
+    animation-duration: 30s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
