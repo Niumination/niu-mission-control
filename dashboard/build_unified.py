@@ -6,8 +6,15 @@ Extracts content from the backup (pre-refactor) index.html so NOTHING is lost.
 import re
 import pathlib
 
-BACKUP = pathlib.Path('/Users/zaryu/Desktop/Niumination/services/niu-mission-control/dashboard_backup_refactor_20260816/index.html')
-OUT = pathlib.Path('/Users/zaryu/Desktop/Niumination/services/niu-mission-control/dashboard/index.html')
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+BACKUP = ROOT / "dashboard_backup_refactor_20260816" / "index.html"
+OUT = ROOT / "dashboard" / "index.html"
+
+# Backup pre-refactor tidak di-track di repo (mesin lokal saja).
+# Di CI: index.html yang sudah tracked tetap dipakai — build dilewati.
+if not BACKUP.exists():
+    print(f"[skip] {BACKUP} tidak ada — pakai dashboard/index.html yang sudah tracked")
+    raise SystemExit(0)
 
 src = BACKUP.read_text()
 
