@@ -120,11 +120,11 @@ function renderAgents(agents) {
     if (a.status === 'thinking') {
       statusClass = 'state-thinking';
       pulseHtml = '<span class="status-pulse-amber"></span>';
-    } else if (a.status === 'executing') {
-      statusClass = 'state-executing';
+    } else if (a.status === 'executing' || a.status === 'processing') {
+      statusClass = 'state-processing';
       pulseHtml = '<span class="status-pulse-emerald"></span>';
     } else if (a.status === 'error' || a.status === 'failed') {
-      statusClass = 'state-error';
+      statusClass = 'state-degraded';
       pulseHtml = '<span class="status-pulse-red"></span>';
     }
 
@@ -849,7 +849,7 @@ async function loadSystemSettings() {
           const row = document.createElement('tr');
           const isAct = j.status === 'active' || j.active;
           const statusBadge = isAct 
-            ? '<span class="status-badge state-executing">ACTIVE</span>' 
+            ? '<span class="status-badge state-processing">ACTIVE</span>' 
             : '<span class="status-badge state-idle">PAUSED</span>';
             
           row.innerHTML = `
@@ -1284,7 +1284,7 @@ function renderSkillActiveList() {
   }
 
   container.innerHTML = skills.map(sk => {
-    const activeClass = sk.active ? 'state-executing' : 'state-idle';
+    const activeClass = sk.active ? 'state-processing' : 'state-idle';
     const activeLabel = sk.active ? 'ACTIVE' : 'IDLE';
     const ts = sk.last_timestamp ? formatDateShort(new Date(sk.last_timestamp * 1000).toISOString()) : 'never';
     const icon = sk.active ? '<span class="status-pulse-emerald"></span>' : '';
@@ -1566,7 +1566,7 @@ async function loadDeployStatus() {
     const grid = document.getElementById('deployProjectGrid');
     if (grid && data.projects && data.projects.length) {
       grid.innerHTML = data.projects.map(p => {
-        const badgeClass = (p.status === 'live' || p.status === 'success') ? 'state-executing' : 'state-error';
+        const badgeClass = (p.status === 'live' || p.status === 'success') ? 'state-processing' : 'state-degraded';
         const badgeText = p.status === 'success' ? 'LIVE' : (p.status || 'UNKNOWN');
         const url = p.url || '#';
         const lastDeploy = p.last_deploy || '—';
