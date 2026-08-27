@@ -1,6 +1,8 @@
 """Tests for hermes_status gateway detection (fast-path + parse fixes).
 
 Avoids spawning the real heavy Hermes CLI by monkeypatching subprocess.
+Cache is fully disabled per-test via monkeypatch on ``_cached`` so results
+never leak from other test modules (e.g. test_server.py).
 """
 import os
 import sys
@@ -13,12 +15,10 @@ import modules.hermes_status as hs
 
 
 @pytest.fixture(autouse=True)
-def clear_cache():
-    hs._cache.clear()
-    hs._cache_ttl.clear()
+def no_cache(monkeypatch):
+    """Disable module cache entirely — force recompute every call."""
+    monkeypatch.setattr(hs, "_cached", lambda key: None)
     yield
-    hs._cache.clear()
-    hs._cache_ttl.clear()
 
 
 class TestGatewayFastPath:
@@ -42,7 +42,6 @@ class TestGatewayFastPath:
 
     def test_gateway_online_via_pgrep(self, monkeypatch):
         monkeypatch.setattr(hs, "_gateway_pid_pgrep", lambda: 573)
-        # Force CLI path to fail fast (should not be reached for online check)
         data = hs.gateway_status()
         assert data["online"] is True
         assert data["pid"] == 573
@@ -50,7 +49,6 @@ class TestGatewayFastPath:
 
     def test_gateway_offline_no_pid_no_cli(self, monkeypatch):
         monkeypatch.setattr(hs, "_gateway_pid_pgrep", lambda: None)
-        # Simulate CLI output where gateway is NOT supervised
         monkeypatch.setattr(
             hs, "_run",
             lambda cmd, timeout=10: {"rc": 0, "out": "gateway not running", "err": ""},
@@ -78,7 +76,6 @@ class TestCronTimeout:
 
         def fake_run(args, timeout=10):
             captured["timeout"] = timeout
-            # Minimal valid-ish output so parser doesn't crash
             return {"rc": 0, "out": "", "err": ""}
 
         monkeypatch.setattr(hs, "_run", fake_run)
