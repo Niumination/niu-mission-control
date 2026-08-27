@@ -4,40 +4,109 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Mission Control — Niumination</title>
-  <link rel="stylesheet" href="/static/orb.css?v=apex1" />
+  <link rel="stylesheet" href="/static/orb.css?v=apex5" />
 </head>
 <body>
-  <!-- Skip link (a11y) -->
   <a href="#overview" class="visually-hidden">Lewati ke kontrol utama</a>
 
-  <!-- World stage -->
   <main id="world" aria-label="Mission Control Niumination">
     <div id="lightcast"></div>
 
-    <!-- Reasoning graph: node = ekosistem (trio + kategori) -->
-    <svg id="graph" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <g id="edges"></g>
-      <g id="nodes"></g>
-    </svg>
+    <div id="orb-stage">
+      <svg id="orb-svg" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <defs>
+          <radialGradient id="ringFill" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="#f5a623" stop-opacity="0"/>
+            <stop offset="58%"  stop-color="#f5a623" stop-opacity="0.07"/>
+            <stop offset="85%"  stop-color="#f5a623" stop-opacity="0.24"/>
+            <stop offset="100%" stop-color="#ffd080" stop-opacity="0.65"/>
+          </radialGradient>
+          <radialGradient id="ambBg" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="#f5a623" stop-opacity="0.16"/>
+            <stop offset="55%"  stop-color="#f5a623" stop-opacity="0.05"/>
+            <stop offset="100%" stop-color="#f5a623" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="#fff0d0" stop-opacity="0.95"/>
+            <stop offset="30%"  stop-color="#f5a623" stop-opacity="0.5"/>
+            <stop offset="65%"  stop-color="#f5a623" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#f5a623" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="ringBlur" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="12" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="dotF" x="-300%" y="-300%" width="700%" height="700%">
+            <feGaussianBlur stdDeviation="5"/>
+          </filter>
+          <filter id="txtF" x="-30%" y="-80%" width="160%" height="260%">
+            <feGaussianBlur stdDeviation="5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
 
-    <!-- Orb core -->
-    <div id="orb-wrap">
-      <div id="orb-core"></div>
-      <svg id="orb-ring" viewBox="0 0 200 200">
-        <circle cx="100" cy="100" r="92" class="ring-pulse" />
-        <circle cx="100" cy="100" r="74" opacity="0.4" />
+        <!-- ambient bg -->
+        <ellipse class="orb-ambient" cx="450" cy="280" rx="400" ry="320" fill="url(#ambBg)"/>
+
+        <!-- outer thin rings -->
+        <circle cx="450" cy="280" r="240" stroke="#f5a623" stroke-width="0.8" stroke-opacity="0.16" fill="none"/>
+        <circle cx="450" cy="280" r="258" stroke="#f5a623" stroke-width="0.4" stroke-opacity="0.12" fill="none" stroke-dasharray="3 7"/>
+        <circle cx="450" cy="280" r="278" stroke="#f5a623" stroke-width="0.4" stroke-opacity="0.09" fill="none"/>
+
+        <!-- crosshair ticks -->
+        <line x1="450" y1="16" x2="450" y2="40" stroke="#f5a623" stroke-width="1" opacity="0.3"/>
+        <line x1="450" y1="520" x2="450" y2="544" stroke="#f5a623" stroke-width="1" opacity="0.3"/>
+
+        <!-- sound waves -->
+        <g id="sound-waves">
+          <circle class="sound-wave wave-0" cx="450" cy="280" r="220" stroke="#f5a623" stroke-width="1.5" fill="none" opacity="0.22"/>
+          <circle class="sound-wave wave-1" cx="450" cy="280" r="220" stroke="#f5a623" stroke-width="1.5" fill="none" opacity="0.22"/>
+          <circle class="sound-wave wave-2" cx="450" cy="280" r="220" stroke="#f5a623" stroke-width="1.5" fill="none" opacity="0.22"/>
+          <circle class="sound-wave wave-3" cx="450" cy="280" r="220" stroke="#f5a623" stroke-width="1.5" fill="none" opacity="0.22"/>
+        </g>
+
+        <!-- thinking dashed orbit -->
+        <circle id="think-orbit" cx="450" cy="280" r="238" stroke="#f5a623" stroke-width="1.4" stroke-opacity="0" stroke-dasharray="8 14" fill="none"/>
+
+        <!-- main ring glow (thick) -->
+        <circle cx="450" cy="280" r="220" fill="url(#ringFill)" class="orb-ring-breathe"/>
+        <circle cx="450" cy="280" r="220" stroke="#f5a623" stroke-width="28" stroke-opacity="0.10" fill="none" filter="url(#ringBlur)" class="orb-ring-glow"/>
+        <circle cx="450" cy="280" r="220" stroke="#f5a623" stroke-width="10" stroke-opacity="0.45" fill="none" filter="url(#ringBlur)"/>
+        <circle cx="450" cy="280" r="220" stroke="#ffd080" stroke-width="3" stroke-opacity="0.95" fill="none" class="orb-ring-bright"/>
+
+        <!-- inner swirl -->
+        <circle cx="450" cy="280" r="128" stroke="#f5a623" stroke-width="1.5" stroke-opacity="0.18" fill="none" stroke-dasharray="55 25" class="orb-orbit-cw"/>
+        <circle cx="450" cy="280" r="76" stroke="#f5a623" stroke-width="1" stroke-opacity="0.12" fill="none" stroke-dasharray="28 18" class="orb-orbit-ccw"/>
+
+        <!-- particle core (JS-generated) -->
+        <g id="particles"></g>
+        <circle cx="450" cy="280" r="110" fill="url(#coreGlow)" class="orb-core-pulse"/>
+        <circle cx="450" cy="280" r="38" fill="url(#coreGlow)" filter="url(#dotF)"/>
+        <circle cx="450" cy="280" r="10" fill="#fff0d0" opacity="0.95" filter="url(#dotF)" class="orb-center"/>
+
+        <!-- reasoning nodes orbit (R=315, dekat ring luar) -->
+        <g id="nodes"></g>
+
+        <!-- equalizer kiri & kanan ring -->
+        <g id="waveform-left"></g>
+        <g id="waveform-right"></g>
+
+        <!-- label -->
+        <text x="450" y="436" text-anchor="middle" fill="#f5a623" font-size="14" font-family="'Inter',monospace" font-weight="400" letter-spacing="0.34em" opacity="0.62" filter="url(#txtF)" id="orb-label">STANDBY</text>
+        <g id="orb-dots">
+          <circle cx="434" cy="458" r="3" fill="#f5a623" class="orb-dot-blink blink-0"/>
+          <circle cx="450" cy="458" r="3" fill="#f5a623" class="orb-dot-blink blink-1"/>
+          <circle cx="466" cy="458" r="3" fill="#f5a623" class="orb-dot-blink blink-2"/>
+        </g>
       </svg>
+      <button id="orb-tap" role="button" tabindex="0" aria-label="Energize core"></button>
     </div>
-    <button id="orb-tap" role="button" tabindex="0" aria-label="Energize core"></button>
-    <div id="orb-label">STANDBY</div>
 
-    <!-- Keyboard/SR equivalent of the graph -->
     <nav class="visually-hidden" id="graph-nav" aria-label="Node ekosistem">
       <ul id="graph-nav-list"></ul>
     </nav>
   </main>
 
-  <!-- Overview HUD (top-left) -->
   <section id="overview" aria-label="Overview">
     <div id="ov-filament" role="button" tabindex="0" aria-label="Toggle overview" aria-expanded="false">
       <div id="ov-line"></div>
@@ -50,7 +119,7 @@
       <div id="ov-status" aria-live="polite">
         <div class="ov-row"><span class="dot" style="color:#34d399"></span> MC <b id="ov-mc">…</b></div>
         <div class="ov-row"><span class="dot" style="color:#00e5ff"></span> Hermes <b id="ov-hermes">…</b></div>
-        <div class="ov-row"><span class="dot" style="color:#f5c542"></span> Trio <b id="ov-trio">…</b></div>
+        <div class="ov-row"><span class="dot" style="color:#f5a623"></span> Trio <b id="ov-trio">…</b></div>
       </div>
       <div id="ov-tiles">
         <a class="ov-tile" href="/static/ecosystem.html" target="_blank" rel="noopener">⬡ Ekosistem</a>
@@ -60,7 +129,6 @@
     </div>
   </section>
 
-  <!-- Status bar (bottom) -->
   <footer id="statusbar" aria-label="Status">
     <div class="eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
     <div class="sb-item"><span id="sb-state" class="ok">STANDBY</span></div>
@@ -71,7 +139,6 @@
     <div class="sb-item" id="sb-hint">tap orb untuk energize</div>
   </footer>
 
-  <!-- Overview card -->
   <div id="card" role="dialog" aria-modal="true" aria-label="Detail node">
     <div id="card-head">
       <div class="badge"><span></span></div>
@@ -84,6 +151,6 @@
     <div id="card-body"></div>
   </div>
 
-  <script src="/static/orb.js?v=apex1"></script>
+  <script src="/static/orb.js?v=apex5"></script>
 </body>
 </html>

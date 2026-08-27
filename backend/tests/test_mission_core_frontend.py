@@ -15,8 +15,8 @@ def test_orb_view_assets_are_wired():
     """index.html must load the orb layers (css + js)."""
     html = (DASHBOARD / "index.html").read_text(encoding="utf-8")
 
-    assert 'id="orb-core"' in html
-    assert 'id="graph"' in html
+    assert 'id="orb-stage"' in html
+    assert 'id="nodes"' in html
     assert 'id="overview"' in html
     assert 'id="statusbar"' in html
     assert 'href="/static/orb.css' in html

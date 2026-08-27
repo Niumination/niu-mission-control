@@ -1,110 +1,160 @@
 /* ══════════════════════════════════════════════════════════════════════════
    APEX-MC orb.js — vanilla, no deps.
-   - Graph node = ekosistem (trio + kategori proyek)
+   Faithful APEX-UI replication (apex-ui-xi.vercel.app):
+   - Golden ring (R=220) mengisi layar + sound waves + inner swirl
+   - Particle core: SVG dots mengorbit di dalam ring (pengganti three.js)
+   - Equalizer bars kiri & kanan ring
+   - Reasoning nodes mengorbit (trio + kategori ekosistem)
    - Orb state = Hermes gateway (idle/thinking/speaking) dari /api/mc/hermes
-   - Reduced-motion: animasi dimatikan, data tetap live
+   - Reduced-motion: animasi mati, data tetap live
    ══════════════════════════════════════════════════════════════════════════ */
 (function () {
   "use strict";
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const SVG_NS = "http://www.w3.org/2000/svg";
+  const CX = 450, CY = 280;
 
-  // ── Node graph data (trio + kategori ekosistem) ──
-  // Diisi dari /api/mc/ecosystem saat load; fallback statis ini.
   const STATIC_NODES = [
-    { key: "hermes",   name: "Hermes",     cat: "trio", color: "#00e5ff" },
-    { key: "jcode",    name: "JCode",      cat: "trio", color: "#34d399" },
-    { key: "opencode", name: "OpenCode",   cat: "trio", color: "#f5c542" },
-    { key: "apps",     name: "Apps",       cat: "cat",  color: "#00e5ff" },
-    { key: "services", name: "Services",   cat: "cat",  color: "#00e5ff" },
-    { key: "sites",    name: "Sites",      cat: "cat",  color: "#00e5ff" },
-    { key: "desktop",  name: "Desktop",    cat: "cat",  color: "#7f9bb3" },
-    { key: "agents",   name: "Agents",     cat: "cat",  color: "#7f9bb3" },
-    { key: "labs",     name: "Labs",       cat: "cat",  color: "#7f9bb3" },
-    { key: "skills",   name: "Skill Bank", cat: "cat",  color: "#f5c542" },
+    { key: "hermes",   name: "Hermes",   color: "#00e5ff", tier: 0 },
+    { key: "jcode",    name: "JCode",    color: "#34d399", tier: 0 },
+    { key: "opencode", name: "OpenCode", color: "#f5c542", tier: 0 },
+    { key: "apps",     name: "Apps",     color: "#f5a623", tier: 1 },
+    { key: "services", name: "Services", color: "#f5a623", tier: 1 },
+    { key: "sites",    name: "Sites",    color: "#f5a623", tier: 1 },
+    { key: "desktop",  name: "Desktop",  color: "#7f9bb3", tier: 1 },
+    { key: "agents",   name: "Agents",   color: "#7f9bb3", tier: 1 },
+    { key: "labs",     name: "Labs",     color: "#7f9bb3", tier: 1 },
+    { key: "skills",   name: "Skill",    color: "#f5a623", tier: 1 },
   ];
 
   let NODES = STATIC_NODES.slice();
-  let nodeData = {}; // key -> {status, detail}
+  let nodeData = {};
 
-  // ── Build SVG graph (orbit rings) ──
-  function layoutGraph() {
-    const cx = 500, cy = 500;
-    const ringR = [180, 280, 360]; // 3 orbit rings
-    const groups = { trio: ringR[0], cat: ringR[1], skills: ringR[2] };
-    // place 'skills' on outer ring too
-    const edgesG = document.getElementById("edges");
-    const nodesG = document.getElementById("nodes");
-    edgesG.innerHTML = "";
-    nodesG.innerHTML = "";
+  // ── Particle core (mengorbit di dalam ring R~120) ──
+  const PARTICLES = [];
+  function buildParticles() {
+    const g = document.getElementById("particles");
+    const count = reduced ? 0 : 46;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 30 + Math.random() * 95; // 30..125
+      const speed = 0.002 + Math.random() * 0.006;
+      const dir = Math.random() > 0.5 ? 1 : -1;
+      const size = 1 + Math.random() * 2.2;
+      const c = document.createElementNS(SVG_NS, "circle");
+      c.setAttribute("r", size.toFixed(1));
+      c.setAttribute("fill", i % 3 === 0 ? "#ffd080" : "#f5a623");
+      c.setAttribute("opacity", (0.4 + Math.random() * 0.5).toFixed(2));
+      g.appendChild(c);
+      PARTICLES.push({ el: c, angle, r, speed: speed * dir, baseR: r });
+    }
+  }
+  function animateParticles() {
+    if (reduced) return;
+    PARTICLES.forEach((p) => {
+      p.angle += p.speed;
+      p.r = p.baseR + Math.sin(p.angle * 2) * 8;
+      const x = CX + p.r * Math.cos(p.angle);
+      const y = CY + p.r * Math.sin(p.angle);
+      p.el.setAttribute("cx", x.toFixed(1));
+      p.el.setAttribute("cy", y.toFixed(1));
+    });
+    requestAnimationFrame(animateParticles);
+  }
 
+  // ── Equalizer bars (kiri & kanan ring) ──
+  function buildWaveform() {
+    const left = document.getElementById("waveform-left");
+    const right = document.getElementById("waveform-right");
+    const barCount = 14, barW = 4, gap = 3, maxH = 70;
+    const startL = CX - 250, startR = CX + 250 - (barCount * (barW + gap));
+    for (let i = 0; i < barCount; i++) {
+      const h = 8 + Math.abs(Math.sin(i * 0.7)) * (maxH - 8);
+      const xL = startL + i * (barW + gap);
+      const xR = startR + i * (barW + gap);
+      [["L", xL], ["R", xR]].forEach(([side, x]) => {
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", x);
+        rect.setAttribute("y", CY - h / 2);
+        rect.setAttribute("width", barW);
+        rect.setAttribute("height", h);
+        rect.setAttribute("rx", 2);
+        rect.setAttribute("fill", "#f5a623");
+        rect.setAttribute("class", "wavebar wavebar-" + (i % 7));
+        rect.style.transformBox = "fill-box";
+        rect.style.transformOrigin = "center";
+        (side === "L" ? left : right).appendChild(rect);
+      });
+    }
+  }
+
+  // ── Reasoning nodes orbit (R=315) ──
+  function buildNodes() {
+    const g = document.getElementById("nodes");
+    g.innerHTML = "";
+    const ringR = 315;
     NODES.forEach((n, i) => {
-      const r = n.cat === "trio" ? groups.trio : n.key === "skills" ? groups.skills : groups.cat;
       const angle = (i / NODES.length) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
+      const x = CX + ringR * Math.cos(angle);
+      const y = CY + ringR * Math.sin(angle);
       n._x = x; n._y = y;
 
-      // edge to center
       const line = document.createElementNS(SVG_NS, "line");
-      line.setAttribute("x1", cx); line.setAttribute("y1", cy);
+      line.setAttribute("x1", CX); line.setAttribute("y1", CY);
       line.setAttribute("x2", x); line.setAttribute("y2", y);
-      line.setAttribute("class", "edge");
-      edgesG.appendChild(line);
+      line.setAttribute("class", "node-spoke");
+      g.appendChild(line);
 
-      // hit area
-      const g = document.createElementNS(SVG_NS, "g");
-      g.setAttribute("class", "node-hit");
-      g.setAttribute("tabindex", "0");
-      g.setAttribute("role", "button");
-      g.setAttribute("aria-label", n.name);
+      const hit = document.createElementNS(SVG_NS, "g");
+      hit.setAttribute("class", "node-hit");
+      hit.setAttribute("tabindex", "0");
+      hit.setAttribute("role", "button");
+      hit.setAttribute("aria-label", n.name);
+
       const ring = document.createElementNS(SVG_NS, "circle");
-      ring.setAttribute("cx", x); ring.setAttribute("cy", y); ring.setAttribute("r", 26);
+      ring.setAttribute("cx", x); ring.setAttribute("cy", y); ring.setAttribute("r", 22);
       ring.setAttribute("class", "node-ring");
       ring.setAttribute("stroke", n.color);
+
       const dot = document.createElementNS(SVG_NS, "circle");
-      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", 7);
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", 5);
       dot.setAttribute("class", "node-dot");
       dot.setAttribute("fill", n.color);
+
       const txt = document.createElementNS(SVG_NS, "text");
-      txt.setAttribute("x", x); txt.setAttribute("y", y + 44);
-      txt.setAttribute("text-anchor", "middle");
-      txt.setAttribute("fill", "rgba(240,237,232,0.7)");
-      txt.setAttribute("font-size", "13");
-      txt.setAttribute("font-family", "var(--font-mono)");
+      txt.setAttribute("x", x); txt.setAttribute("y", y + 38);
+      txt.setAttribute("class", "node-label");
       txt.textContent = n.name;
-      g.appendChild(ring); g.appendChild(dot); g.appendChild(txt);
-      g.addEventListener("click", () => openCard(n));
-      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(n); } });
-      nodesG.appendChild(g);
-      n._dot = dot; n._ring = ring;
+
+      hit.appendChild(ring); hit.appendChild(dot); hit.appendChild(txt);
+      hit.addEventListener("click", () => openCard(n));
+      hit.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(n); } });
+      g.appendChild(hit);
+      n._dot = dot;
     });
 
-    // keyboard nav list
     const nav = document.getElementById("graph-nav-list");
     nav.innerHTML = "";
     NODES.forEach((n) => {
       const li = document.createElement("li");
       const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = n.name;
+      btn.type = "button"; btn.textContent = n.name;
       btn.addEventListener("click", () => openCard(n));
       li.appendChild(btn); nav.appendChild(li);
     });
   }
 
   // ── Orb state ──
-  let orbState = "idle"; // idle | thinking | speaking
+  let orbState = "idle";
   function setOrb(state) {
     orbState = state;
-    const light = document.getElementById("lightcast");
+    document.getElementById("orb-stage").setAttribute("data-state", state);
     const label = document.getElementById("orb-label");
-    const sbState = document.getElementById("sb-state");
-    light.classList.toggle("speaking", state === "speaking");
-    label.textContent = state === "speaking" ? "SPEAKING" : state === "thinking" ? "THINKING" : "STANDBY";
-    sbState.textContent = label.textContent;
-    sbState.className = state === "speaking" ? "ok" : state === "thinking" ? "warn" : "ok";
+    const sb = document.getElementById("sb-state");
+    label.textContent = state === "speaking" ? "SPEAKING" : state === "thinking" ? "PROCESSING" : "STANDBY";
+    sb.textContent = label.textContent;
+    sb.className = state === "speaking" ? "warn" : "ok";
   }
 
   function boost() {
@@ -117,12 +167,12 @@
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); boost(); }
   });
 
-  // ── Overview card ──
+  // ── Node card ──
   const card = document.getElementById("card");
   function openCard(n) {
     const d = nodeData[n.key] || {};
     document.getElementById("card-title").textContent = n.name.toUpperCase();
-    document.getElementById("card-sub").textContent = d.role || (n.cat === "trio" ? "Agent Trio" : "Kategori Ekosistem");
+    document.getElementById("card-sub").textContent = d.role || (n.tier === 0 ? "Agent Trio" : "Kategori Ekosistem");
     const body = document.getElementById("card-body");
     let html = "";
     if (d.caps) {
@@ -130,19 +180,16 @@
       d.caps.forEach((c) => { html += '<div class="cap">' + c + "</div>"; });
       html += "</div>";
     }
-    if (d.meta) {
-      html += '<div class="meta">' + d.meta + "</div>";
-    } else {
-      html += '<div class="meta">Status: <b>' + (d.status || "aktif") + "</b></div>";
-    }
+    if (d.meta) html += '<div class="meta">' + d.meta + "</div>";
+    else html += '<div class="meta">Status: <b>' + (d.status || "aktif") + "</b></div>";
     body.innerHTML = html;
     card.classList.add("open");
-    card.querySelector("#card-close").focus();
+    document.getElementById("card-close").focus();
   }
   document.getElementById("card-close").addEventListener("click", () => card.classList.remove("open"));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") card.classList.remove("open"); });
 
-  // ── Overview HUD toggle ──
+  // ── Overview toggle ──
   const ovFil = document.getElementById("ov-filament");
   ovFil.addEventListener("click", () => {
     const open = ovFil.getAttribute("aria-expanded") === "true";
@@ -150,9 +197,7 @@
     document.getElementById("ov-tiles").style.display = open ? "none" : "flex";
     document.getElementById("ov-status").style.display = open ? "none" : "flex";
   });
-  ovFil.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ovFil.click(); }
-  });
+  ovFil.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ovFil.click(); } });
 
   // ── Clock ──
   function tickClock() {
@@ -172,7 +217,6 @@
       document.getElementById("ov-hermes").textContent = online ? "ONLINE (PID " + (gw.pid || "?") + ")" : "OFFLINE";
       document.getElementById("sb-gw").textContent = online ? "UP" : "DOWN";
       document.getElementById("sb-gw").className = online ? "ok" : "bad";
-      // orb reflects hermes activity (thinking if cron running, else idle)
       setOrb(online ? "thinking" : "idle");
     } catch (e) {
       document.getElementById("ov-hermes").textContent = "ERR";
@@ -180,14 +224,12 @@
       document.getElementById("sb-gw").className = "bad";
     }
   }
-
   async function loadEcosystem() {
     try {
       const r = await fetch("/api/mc/ecosystem?type=projects");
       const d = await r.json();
       const projs = d.projects || [];
       document.getElementById("sb-proj").textContent = projs.length;
-      // enrich node data with real project counts
       const byCat = {};
       projs.forEach((p) => { byCat[p.category] = (byCat[p.category] || 0) + 1; });
       Object.keys(byCat).forEach((c) => {
@@ -200,16 +242,13 @@
       nodeData["opencode"] = { role: "Agent Coding", caps: ["CLI coding assistant"], status: "standby" };
     } catch (e) { /* keep static */ }
   }
-
   async function loadSkills() {
     try {
       const r = await fetch("/api/mc/skills/stats");
       const d = await r.json();
-      const total = d.total || 68;
-      document.getElementById("sb-skill").textContent = total;
+      document.getElementById("sb-skill").textContent = d.total || 68;
     } catch (e) { document.getElementById("sb-skill").textContent = "68"; }
   }
-
   async function loadMC() {
     try {
       const r = await fetch("/healthz");
@@ -222,17 +261,18 @@
       document.getElementById("sb-mc").className = "bad";
     }
   }
-
   async function refresh() {
     await Promise.all([loadMC(), loadHermes(), loadEcosystem(), loadSkills()]);
   }
 
   // ── Init ──
-  layoutGraph();
+  buildParticles();
+  buildWaveform();
+  buildNodes();
   setOrb("idle");
+  if (!reduced) animateParticles();
   refresh();
   setInterval(refresh, 15000);
 
-  // expose for debugging
   window.__mc = { setOrb, refresh, NODES };
 })();
