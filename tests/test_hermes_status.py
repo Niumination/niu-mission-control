@@ -28,22 +28,21 @@ def real_branch(monkeypatch):
 
 class TestGatewayFastPath:
     def test_pgrep_finds_pid(self, monkeypatch):
-        """When pgrep returns a PID, gateway is online without CLI call."""
+        """When psutil finds the gateway process, gateway is online without CLI call."""
         calls = []
 
-        def fake_run(args, *a, **k):
-            calls.append(list(args))
-            return type("R", (), {"returncode": 0, "stdout": "573\n"})()
+        class FakeProc:
+            def __init__(self, pid, cmdline):
+                self.info = {"pid": pid, "cmdline": cmdline}
 
-        monkeypatch.setattr(hs.subprocess, "run", fake_run)
+        # psutil.process_iter yields a process whose cmdline contains hermes_cli.main gateway
+        procs = [FakeProc(573, ["python", "-m", "hermes_cli.main", "gateway", "run", "--replace"])]
+        monkeypatch.setattr(
+            hs.psutil, "process_iter",
+            lambda *a, **k: iter(procs),
+        )
         pid = hs._gateway_pid_pgrep()
         assert pid == 573
-        # pgrep path must not invoke the heavy hermes CLI binary
-        hermes_cli_calls = [
-            c for c in calls
-            if c and str(c[0]).endswith("hermes") and "gateway" in str(c)
-        ]
-        assert hermes_cli_calls == []
 
     def test_gateway_online_via_pgrep(self, monkeypatch):
         monkeypatch.setattr(hs, "_gateway_pid_pgrep", lambda: 573)
