@@ -173,13 +173,13 @@ def test_list_artifacts(client):
 # ── 9. Dashboard ─────────────────────────────────────────
 
 def test_dashboard_serves_html(client):
-    """GET / serves the dashboard HTML page."""
+    """GET / serves the APEX-MC orb dashboard HTML page."""
     r = client.get("/")
     assert r.status_code == 200
     content = r.text
-    assert "HERMES" in content
-    assert "MISSION CONTROL" in content
-    assert "pageVault" in content  # unified: 12 halaman tertanam + launcher + orb
+    assert "Mission Control" in content
+    assert "Hermes" in content
+    assert 'id="orb-core"' in content
 
 
 def test_openapi_available(client):

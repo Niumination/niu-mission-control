@@ -1672,10 +1672,8 @@ async def index():
 
 @app.get("/orb", response_class=HTMLResponse, tags=["system"])
 async def orb_standalone():
-    """Serve the original ORB page (standalone, for reference)."""
-    orb_path = os.path.join(DASHBOARD_DIR, "orb.html")
-    if os.path.exists(orb_path):
-        return FileResponse(orb_path)
+    """Serve the APEX-MC orb dashboard (same as /)."""
+    return FileResponse(os.path.join(DASHBOARD_DIR, "index.html"))
 
 
 @app.get("/dashboard", response_class=HTMLResponse, tags=["system"])
