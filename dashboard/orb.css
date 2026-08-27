@@ -1,0 +1,199 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   APEX-MC — Mission Control redesign
+   Adaptasi APEX-UI (RubenM1990) ke ekosistem Niumination.
+   Vanilla CSS, no framework. Reduced-motion safe (Mac REDUCE-MOTION ON).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-0: #04080f;
+  --bg-1: #07111f;
+  --bg-2: #0c1d30;
+  --gold: #f5c542;
+  --gold-dim: #f5c54244;
+  --cyan: #00e5ff;
+  --cyan-dim: #00e5ff2a;
+  --text: #f0ede8;
+  --text-dim: rgba(240, 237, 232, 0.55);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ── World stage ── */
+#world {
+  position: fixed; inset: 0; overflow: hidden; user-select: none;
+  background:
+    radial-gradient(ellipse 95% 88% at 50% 42%, #122c43 0%, #0c1d30 38%, #07111f 72%, #050b14 100%);
+}
+
+/* cyan light-cast behind orb */
+#lightcast {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle at 50% 42%, rgba(13,210,255,0.18) 0%, rgba(13,170,228,0.08) 30%, rgba(8,17,31,0) 62%);
+  transition: background 0.6s ease;
+}
+#lightcast.speaking {
+  background: radial-gradient(circle at 50% 42%, rgba(13,210,255,0.32) 0%, rgba(13,170,228,0.10) 30%, rgba(8,17,31,0) 62%);
+}
+
+/* ── Orb core (SVG + CSS glow) ── */
+#orb-wrap {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, 46vw); height: min(420px, 46vw);
+  z-index: 3; pointer-events: none;
+}
+#orb-core {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, rgba(0,229,255,0.22) 0%, rgba(0,229,255,0.06) 40%, transparent 70%);
+  box-shadow: 0 0 60px rgba(0,229,255,0.25), inset 0 0 40px rgba(0,229,255,0.12);
+}
+/* gold ring (SVG drawn in HTML) */
+#orb-ring { position: absolute; inset: 0; }
+#orb-ring circle { fill: none; stroke: var(--gold); stroke-width: 1.5; opacity: 0.7; }
+#orb-ring .ring-pulse { animation: ringPulse 4s ease-in-out infinite; }
+@keyframes ringPulse {
+  0%, 100% { opacity: 0.35; stroke-width: 1; }
+  50% { opacity: 0.85; stroke-width: 2.5; }
+}
+/* tap disc */
+#orb-tap {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(300px, 32vw); height: min(300px, 32vw);
+  border-radius: 50%; z-index: 4; cursor: pointer;
+  background: transparent; border: none;
+}
+#orb-label {
+  position: absolute; left: 50%; top: calc(50% + min(210px, 23vw));
+  transform: translateX(-50%); z-index: 4;
+  font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.3em;
+  color: var(--text-dim); text-transform: uppercase; text-align: center;
+  pointer-events: none;
+}
+
+/* ── Reasoning graph (SVG, decorative) ── */
+#graph { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+#graph .node-hit { pointer-events: auto; cursor: pointer; }
+#graph .node-dot { transition: r 0.3s ease, fill 0.3s ease; }
+#graph .node-ring { fill: none; stroke-width: 1; opacity: 0.5; }
+#graph .edge { stroke: var(--cyan); stroke-width: 0.6; opacity: 0.25; }
+
+/* ── Overview HUD (top-left) ── */
+#overview {
+  position: fixed; top: 10px; left: 0; width: 540px; max-width: 92vw; z-index: 30;
+}
+#ov-filament {
+  position: relative; height: 40px; cursor: pointer;
+}
+#ov-line {
+  position: absolute; top: 14px; left: 8px; width: min(320px, 70vw); height: 2px;
+  border-radius: 2px; background: #a5f3fc;
+  box-shadow: 0 0 10px var(--cyan), 0 0 26px var(--cyan);
+  transition: all 0.5s ease;
+}
+#ov-node {
+  position: absolute; top: 11px; left: 6px; width: 8px; height: 8px; border-radius: 50%;
+  background: #e0fbff; box-shadow: 0 0 10px var(--cyan), 0 0 18px var(--cyan);
+  transition: left 0.5s ease; pointer-events: none;
+}
+#ov-label {
+  position: absolute; top: 20px; left: 10px;
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.34em;
+  color: rgba(165,243,252,0.7);
+}
+#ov-body { padding-left: 14px; padding-top: 6px; width: fit-content; }
+#ov-clock { font-size: 34px; font-weight: 300; letter-spacing: 0.04em; line-height: 1; text-shadow: 0 0 22px #00e5ff33; }
+#ov-date { font-size: 10.5px; letter-spacing: 0.2em; color: var(--text-dim); text-transform: uppercase; margin-top: 4px; }
+#ov-status { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.ov-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); }
+.ov-row .dot { width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.ov-row b { color: var(--text); font-weight: 500; }
+#ov-tiles { margin-top: 14px; width: 250px; display: flex; flex-direction: column; gap: 8px; }
+.ov-tile {
+  display: flex; align-items: center; gap: 11px; padding: 11px 14px;
+  background: rgba(6,14,26,0.72); border: 1px solid var(--cyan-dim);
+  border-radius: 10px; cursor: pointer; color: var(--text); text-decoration: none;
+  backdrop-filter: blur(8px); transition: all 0.2s; font-size: 11.5px; letter-spacing: 0.05em;
+}
+.ov-tile:hover { border-color: var(--cyan); background: rgba(6,14,26,0.9); }
+
+/* ── Status bar (bottom) ── */
+#statusbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 25;
+  display: flex; align-items: center; gap: 24px; padding: 12px 22px;
+  background: linear-gradient(0deg, rgba(4,8,15,0.9), transparent);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em;
+  color: var(--text-dim); text-transform: uppercase;
+}
+#statusbar .eq { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+#statusbar .eq span {
+  width: 3px; background: var(--cyan); border-radius: 2px; opacity: 0.6;
+  animation: eq 1.1s ease-in-out infinite;
+}
+#statusbar .eq span:nth-child(2) { animation-delay: 0.2s; }
+#statusbar .eq span:nth-child(3) { animation-delay: 0.4s; }
+#statusbar .eq span:nth-child(4) { animation-delay: 0.6s; }
+#statusbar .eq span:nth-child(5) { animation-delay: 0.8s; }
+@keyframes eq { 0%,100% { height: 5px; } 50% { height: 20px; } }
+#statusbar .sb-item { display: flex; align-items: center; gap: 7px; }
+#statusbar .sb-item .ok { color: #34d399; }
+#statusbar .sb-item .warn { color: var(--gold); }
+#statusbar .sb-item .bad { color: #ef4444; }
+
+/* ── Agent / project overview card ── */
+#card {
+  position: fixed; left: 50%; top: 16%; transform: translateX(-50%);
+  width: min(360px, 92vw); z-index: 60; display: none;
+  background: rgba(4,3,12,0.92); backdrop-filter: blur(24px);
+  border: 1px solid var(--cyan-dim); border-radius: 16px;
+  box-shadow: 0 0 40px rgba(0,229,255,0.1), 0 8px 32px rgba(0,0,0,0.6); overflow: hidden;
+}
+#card.open { display: block; }
+#card-head {
+  display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  border-bottom: 1px solid var(--cyan-dim); cursor: grab; user-select: none;
+  background: linear-gradient(135deg, rgba(0,229,255,0.05), transparent);
+}
+#card-head .badge {
+  width: 36px; height: 36px; border-radius: 50%; background: rgba(0,229,255,0.08);
+  border: 1px solid var(--cyan-dim); display: flex; align-items: center; justify-content: center;
+}
+#card-head .badge span { width: 10px; height: 10px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+#card-title { font-size: 13px; font-weight: 600; letter-spacing: 0.08em; color: var(--cyan); }
+#card-sub { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.06em; }
+#card-close { margin-left: auto; background: none; border: none; color: rgba(255,255,255,0.3); cursor: pointer; font-size: 18px; }
+#card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+#card-body .cap-label { font-size: 9px; letter-spacing: 0.14em; color: rgba(0,229,255,0.6); margin-bottom: 8px; font-family: var(--font-mono); }
+#card-body .cap { display: flex; align-items: flex-start; gap: 7px; font-size: 11.5px; color: rgba(255,255,255,0.6); line-height: 1.55; margin-bottom: 4px; }
+#card-body .cap::before { content: "•"; color: var(--cyan); }
+#card-body .meta { font-size: 11px; color: var(--text-dim); }
+#card-body .meta b { color: var(--text); }
+
+/* ── Reduced motion: kill decorative animation, keep static glow ── */
+@media (prefers-reduced-motion: reduce) {
+  #orb-ring .ring-pulse { animation: none; }
+  #statusbar .eq span { animation: none; height: 10px; }
+  #ov-line, #ov-node, #lightcast { transition: none; }
+}
+@media (max-width: 700px) {
+  #statusbar .sb-hide { display: none; }
+}
