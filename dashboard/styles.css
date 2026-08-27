@@ -3071,6 +3071,21 @@ html, body { height: 100%; overflow: hidden; }
   white-space: nowrap; border: 0;
 }
 
+/* Skip link — keyboard user bypass navigasi (WCAG 2.4.1) */
+.skip-link {
+  position: absolute;
+  left: 1rem; top: -3rem;
+  z-index: 9999;
+  padding: 0.5rem 1rem;
+  background: #00f0ff;
+  color: #050811;
+  font-weight: 700;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.skip-link:focus { top: 1rem; }
+
 /* Focus ring — hanya saat navigasi keyboard (WCAG 2.4.7 Focus Visible) */
 :focus { outline: none; }
 :focus-visible {
