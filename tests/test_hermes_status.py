@@ -3,6 +3,10 @@
 Avoids spawning the real heavy Hermes CLI by monkeypatching subprocess.
 Cache is fully disabled per-test via monkeypatch on ``_cached`` so results
 never leak from other test modules (e.g. test_server.py).
+
+NOTE: force _is_cli_available()=True so we always exercise the REAL branch
+(pgrep / CLI parse), not the SIMULATED mock fallback (which returns pid 41203
+and would make assertions flaky between local and CI runners).
 """
 import os
 import sys
@@ -15,9 +19,10 @@ import modules.hermes_status as hs
 
 
 @pytest.fixture(autouse=True)
-def no_cache(monkeypatch):
-    """Disable module cache entirely — force recompute every call."""
+def real_branch(monkeypatch):
+    """Disable cache + force CLI-available so we test the real code path."""
     monkeypatch.setattr(hs, "_cached", lambda key: None)
+    monkeypatch.setattr(hs, "_is_cli_available", lambda: True)
     yield
 
 
@@ -79,7 +84,6 @@ class TestCronTimeout:
             return {"rc": 0, "out": "", "err": ""}
 
         monkeypatch.setattr(hs, "_run", fake_run)
-        monkeypatch.setattr(hs, "_is_cli_available", lambda: True)
         monkeypatch.setattr(hs, "_gateway_pid_pgrep", lambda: 573)
         hs.cron_jobs()
         assert captured.get("timeout", 10) >= 20
