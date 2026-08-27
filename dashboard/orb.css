@@ -49,7 +49,7 @@ body {
 #orb-stage {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  width: min(86vmin, 820px); height: min(86vmin, 820px);
+  width: min(96vmin, 1000px); height: min(62vmin, 620px);
   z-index: 3;
 }
 #orb-svg { width: 100%; height: 100%; display: block; }
@@ -57,7 +57,7 @@ body {
 #orb-tap {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  width: 40%; height: 40%;
+  width: 46%; height: 80%;
   border-radius: 50%; z-index: 4; cursor: pointer;
   background: transparent; border: none;
 }
@@ -183,8 +183,8 @@ body {
 .blink-2 { animation-delay: 0.8s; }
 
 /* Sound waves */
-@keyframes soundWave { 0% { r: 155px; opacity: 0.18; stroke-width: 0.8; } 60% { opacity: 0.06; } 100% { r: 230px; opacity: 0; stroke-width: 0.3; } }
-@keyframes soundWaveActive { 0% { r: 155px; opacity: 0.55; stroke-width: 1.5; } 60% { opacity: 0.2; } 100% { r: 245px; opacity: 0; stroke-width: 0.5; } }
+@keyframes soundWave { 0% { r: 220px; opacity: 0.22; stroke-width: 1.4; } 60% { opacity: 0.06; } 100% { r: 340px; opacity: 0; stroke-width: 0.3; } }
+@keyframes soundWaveActive { 0% { r: 220px; opacity: 0.55; stroke-width: 1.5; } 60% { opacity: 0.2; } 100% { r: 360px; opacity: 0; stroke-width: 0.5; } }
 .sound-wave { animation: soundWave 3.5s ease-out infinite; }
 .wave-0 { animation-delay: 0s; }
 .wave-1 { animation-delay: 0.9s; }
@@ -206,16 +206,20 @@ body {
 /* Orb rotate */
 @keyframes orbRotateCW { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes orbRotateCCW { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-.orb-orbit-cw { transform-origin: 450px 450px; animation: orbRotateCW 5s linear infinite; }
-.orb-orbit-ccw { transform-origin: 450px 450px; animation: orbRotateCCW 3s linear infinite; }
+.orb-orbit-cw { transform-origin: 450px 280px; animation: orbRotateCW 5s linear infinite; }
+.orb-orbit-ccw { transform-origin: 450px 280px; animation: orbRotateCCW 3s linear infinite; }
 
 .orb-center { animation: dotBlink 2s ease-in-out infinite; }
-.orb-ambient { transform-origin: 450px 450px; animation: orbAmbient 4s ease-in-out infinite; }
-@keyframes orbAmbient { 0%,100% { opacity: 0.15; transform: scale(1); } 50% { opacity: 0.25; transform: scale(1.05); } }
+.orb-ambient { transform-origin: 450px 260px; animation: orbAmbient 4s ease-in-out infinite; }
+@keyframes orbAmbient { 0%,100% { opacity: 0.15; transform: scale(1); } 50% { opacity: 0.28; transform: scale(1.05); } }
+
+/* Core glow pulse */
+@keyframes orbCorePulse { 0%,100% { opacity: 0.75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+.orb-core-pulse { transform-origin: 450px 260px; animation: orbCorePulse 3.5s ease-in-out infinite; }
 
 /* Thinking orbit */
 #think-orbit { opacity: 0; }
-#orb-stage[data-state="thinking"] #think-orbit { opacity: 0.45; animation: orbRotateCW 5s linear infinite; transform-origin: 450px 450px; }
+#orb-stage[data-state="thinking"] #think-orbit { opacity: 0.45; animation: orbRotateCW 5s linear infinite; transform-origin: 450px 280px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    Reduced motion — kill decorative animation, keep static glow + live data

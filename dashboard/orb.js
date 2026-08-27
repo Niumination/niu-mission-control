@@ -1,7 +1,10 @@
 /* ══════════════════════════════════════════════════════════════════════════
    APEX-MC orb.js — vanilla, no deps.
-   - Golden ring (SVG di index.html) + waveform bars di center cluster
-   - Reasoning nodes mengorbit ring (ekosistem: trio + kategori)
+   Faithful APEX-UI replication (apex-ui-xi.vercel.app):
+   - Golden ring (R=220) mengisi layar + sound waves + inner swirl
+   - Particle core: SVG dots mengorbit di dalam ring (pengganti three.js)
+   - Equalizer bars kiri & kanan ring
+   - Reasoning nodes mengorbit (trio + kategori ekosistem)
    - Orb state = Hermes gateway (idle/thinking/speaking) dari /api/mc/hermes
    - Reduced-motion: animasi mati, data tetap live
    ══════════════════════════════════════════════════════════════════════════ */
@@ -10,9 +13,8 @@
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const CX = 450, CY = 450;
+  const CX = 450, CY = 280;
 
-  // ── Node graph data (trio + kategori ekosistem) ──
   const STATIC_NODES = [
     { key: "hermes",   name: "Hermes",   color: "#00e5ff", tier: 0 },
     { key: "jcode",    name: "JCode",    color: "#34d399", tier: 0 },
@@ -29,39 +31,75 @@
   let NODES = STATIC_NODES.slice();
   let nodeData = {};
 
-  // ── Waveform (center cluster equalizer) ──
+  // ── Particle core (mengorbit di dalam ring R~120) ──
+  const PARTICLES = [];
+  function buildParticles() {
+    const g = document.getElementById("particles");
+    const count = reduced ? 0 : 46;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = 30 + Math.random() * 95; // 30..125
+      const speed = 0.002 + Math.random() * 0.006;
+      const dir = Math.random() > 0.5 ? 1 : -1;
+      const size = 1 + Math.random() * 2.2;
+      const c = document.createElementNS(SVG_NS, "circle");
+      c.setAttribute("r", size.toFixed(1));
+      c.setAttribute("fill", i % 3 === 0 ? "#ffd080" : "#f5a623");
+      c.setAttribute("opacity", (0.4 + Math.random() * 0.5).toFixed(2));
+      g.appendChild(c);
+      PARTICLES.push({ el: c, angle, r, speed: speed * dir, baseR: r });
+    }
+  }
+  function animateParticles() {
+    if (reduced) return;
+    PARTICLES.forEach((p) => {
+      p.angle += p.speed;
+      p.r = p.baseR + Math.sin(p.angle * 2) * 8;
+      const x = CX + p.r * Math.cos(p.angle);
+      const y = CY + p.r * Math.sin(p.angle);
+      p.el.setAttribute("cx", x.toFixed(1));
+      p.el.setAttribute("cy", y.toFixed(1));
+    });
+    requestAnimationFrame(animateParticles);
+  }
+
+  // ── Equalizer bars (kiri & kanan ring) ──
   function buildWaveform() {
-    const g = document.getElementById("waveform");
-    const barCount = 28, barW = 3, width = 200;
-    const gap = (width - barCount * barW) / (barCount - 1);
+    const left = document.getElementById("waveform-left");
+    const right = document.getElementById("waveform-right");
+    const barCount = 14, barW = 4, gap = 3, maxH = 70;
+    const startL = CX - 250, startR = CX + 250 - (barCount * (barW + gap));
     for (let i = 0; i < barCount; i++) {
-      const x = CX - width / 2 + i * (barW + gap);
-      const rect = document.createElementNS(SVG_NS, "rect");
-      rect.setAttribute("x", x);
-      rect.setAttribute("y", CY);
-      rect.setAttribute("width", barW);
-      rect.setAttribute("height", 6);
-      rect.setAttribute("rx", 1.5);
-      rect.setAttribute("fill", "#f5a623");
-      rect.setAttribute("class", "wavebar wavebar-" + (i % 7));
-      rect.style.transformBox = "fill-box";
-      rect.style.transformOrigin = "center";
-      g.appendChild(rect);
+      const h = 8 + Math.abs(Math.sin(i * 0.7)) * (maxH - 8);
+      const xL = startL + i * (barW + gap);
+      const xR = startR + i * (barW + gap);
+      [["L", xL], ["R", xR]].forEach(([side, x]) => {
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", x);
+        rect.setAttribute("y", CY - h / 2);
+        rect.setAttribute("width", barW);
+        rect.setAttribute("height", h);
+        rect.setAttribute("rx", 2);
+        rect.setAttribute("fill", "#f5a623");
+        rect.setAttribute("class", "wavebar wavebar-" + (i % 7));
+        rect.style.transformBox = "fill-box";
+        rect.style.transformOrigin = "center";
+        (side === "L" ? left : right).appendChild(rect);
+      });
     }
   }
 
-  // ── Reasoning nodes orbit ──
+  // ── Reasoning nodes orbit (R=315) ──
   function buildNodes() {
     const g = document.getElementById("nodes");
     g.innerHTML = "";
-    const ringR = 285; // orbit radius for nodes
+    const ringR = 315;
     NODES.forEach((n, i) => {
       const angle = (i / NODES.length) * Math.PI * 2 - Math.PI / 2;
       const x = CX + ringR * Math.cos(angle);
       const y = CY + ringR * Math.sin(angle);
       n._x = x; n._y = y;
 
-      // spoke
       const line = document.createElementNS(SVG_NS, "line");
       line.setAttribute("x1", CX); line.setAttribute("y1", CY);
       line.setAttribute("x2", x); line.setAttribute("y2", y);
@@ -96,7 +134,6 @@
       n._dot = dot;
     });
 
-    // keyboard nav
     const nav = document.getElementById("graph-nav-list");
     nav.innerHTML = "";
     NODES.forEach((n) => {
@@ -187,7 +224,6 @@
       document.getElementById("sb-gw").className = "bad";
     }
   }
-
   async function loadEcosystem() {
     try {
       const r = await fetch("/api/mc/ecosystem?type=projects");
@@ -206,7 +242,6 @@
       nodeData["opencode"] = { role: "Agent Coding", caps: ["CLI coding assistant"], status: "standby" };
     } catch (e) { /* keep static */ }
   }
-
   async function loadSkills() {
     try {
       const r = await fetch("/api/mc/skills/stats");
@@ -214,7 +249,6 @@
       document.getElementById("sb-skill").textContent = d.total || 68;
     } catch (e) { document.getElementById("sb-skill").textContent = "68"; }
   }
-
   async function loadMC() {
     try {
       const r = await fetch("/healthz");
@@ -227,15 +261,16 @@
       document.getElementById("sb-mc").className = "bad";
     }
   }
-
   async function refresh() {
     await Promise.all([loadMC(), loadHermes(), loadEcosystem(), loadSkills()]);
   }
 
   // ── Init ──
+  buildParticles();
   buildWaveform();
   buildNodes();
   setOrb("idle");
+  if (!reduced) animateParticles();
   refresh();
   setInterval(refresh, 15000);
 
