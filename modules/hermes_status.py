@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import time
+import psutil
 from typing import Any, Optional
 
 logger = logging.getLogger("hermes_status")
@@ -29,8 +30,9 @@ _cache: dict[str, Any] = {}
 _cache_ttl: dict[str, float] = {}
 CACHE_SECONDS = 8
 
-# Gateway label untuk pgrep (di-set oleh launchd plist ai.hermes.gateway)
-GATEWAY_MATCH = "ai.hermes.gateway"
+# Gateway process match untuk pgrep (di-set oleh launchd plist ai.hermes.gateway).
+# Process jalan sebagai: python -m hermes_cli.main gateway run --replace
+GATEWAY_MATCH = "hermes_cli.main gateway"
 
 
 def _is_cli_available() -> bool:
@@ -66,17 +68,18 @@ def _run(cmd: list[str], timeout: int = 10) -> dict:
 
 
 def _gateway_pid_pgrep() -> Optional[int]:
-    """Cari PID gateway Hermes langsung via pgrep (fast path, <1s).
+    """Cari PID gateway Hermes tanpa jalankan CLI berat (~18s).
 
-    Menghindari eksekusi CLI penuh yang berat (~18s) tiap poll dashboard.
+    Pakai psutil (sudah ada di deps MC) — lebih reliable dari pgrep -f
+    yang di macOS gagal match command line panjang. Gateway jalan sebagai:
+    `python -m hermes_cli.main gateway run --replace`
     """
     try:
-        r = subprocess.run(
-            ["pgrep", "-f", GATEWAY_MATCH],
-            capture_output=True, text=True, timeout=3,
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            return int(r.stdout.strip().split()[0])
+        for p in psutil.process_iter(["pid", "cmdline"]):
+            cmd = p.info.get("cmdline") or []
+            cmd_str = " ".join(cmd)
+            if "hermes_cli.main" in cmd_str and "gateway" in cmd_str:
+                return int(p.info["pid"])
     except Exception:
         pass
     return None
