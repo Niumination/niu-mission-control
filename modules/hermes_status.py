@@ -3,13 +3,14 @@
 Internal connection: MC server → hermes_bridge → hermes CLI → gateway.
 External connection: hermes CLI → Telegram gateway → Hermes Agent.
 
-Fungsi ini dieksekusi sebagai subprocess dengan fallback mock data yang realistis 
+Fungsi ini dieksekusi sebagai subprocess dengan fallback mock data yang realistis
 jika CLI tidak terpasang (untuk kenyamanan development dan demo).
 """
 from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import time
@@ -28,6 +29,9 @@ _cache: dict[str, Any] = {}
 _cache_ttl: dict[str, float] = {}
 CACHE_SECONDS = 8
 
+# Gateway label untuk pgrep (di-set oleh launchd plist ai.hermes.gateway)
+GATEWAY_MATCH = "ai.hermes.gateway"
+
 
 def _is_cli_available() -> bool:
     """Cek apakah Hermes CLI benar-benar terinstall dan bisa dieksekusi."""
@@ -45,7 +49,7 @@ def _cached(key: str) -> Optional[dict]:
 def _run(cmd: list[str], timeout: int = 10) -> dict:
     if not _is_cli_available():
         return {"rc": -2, "out": "", "err": "Hermes CLI not found"}
-        
+
     env = dict(os.environ)
     env["HERMES_HOME"] = HERMES_HOME
     env["HOME"] = "/Users/zaryu"
@@ -61,33 +65,66 @@ def _run(cmd: list[str], timeout: int = 10) -> dict:
         return {"rc": -2, "out": "", "err": str(e)}
 
 
+def _gateway_pid_pgrep() -> Optional[int]:
+    """Cari PID gateway Hermes langsung via pgrep (fast path, <1s).
+
+    Menghindari eksekusi CLI penuh yang berat (~18s) tiap poll dashboard.
+    """
+    try:
+        r = subprocess.run(
+            ["pgrep", "-f", GATEWAY_MATCH],
+            capture_output=True, text=True, timeout=3,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return int(r.stdout.strip().split()[0])
+    except Exception:
+        pass
+    return None
+
+
 def gateway_status() -> dict:
     cached = _cached("gw")
     if cached:
         return cached
-        
+
     if not _is_cli_available():
         # Fallback Mock Data yang realistis
         data = {
             "online": True,
             "raw": "PID 41203 | supervised | active (SIMULATED)",
             "pid": 41203,
-            "simulated": True
+            "simulated": True,
         }
     else:
-        res = _run(["gateway", "status"])
-        online = "PID" in res["out"] and "supervised" in res["out"]
-        data = {
-            "online": online,
-            "raw": res["out"].strip()[:300],
-            "pid": None,
-            "simulated": False
-        }
-        import re
-        m = re.search(r"PID (\d+)", res["out"])
-        if m:
-            data["pid"] = int(m.group(1))
-            
+        # Fast path: cek PID gateway lewat pgrep (instant).
+        pid = _gateway_pid_pgrep()
+        if pid is not None:
+            data = {
+                "online": True,
+                "raw": f"PID {pid} | supervised by launchd | active",
+                "pid": pid,
+                "simulated": False,
+            }
+        else:
+            # Fallback: CLI (parse benar — output asli pakai "by launchd",
+            # bukan hanya "supervised"). Naikkan timeout agar tidak gagal parse.
+            res = _run(["gateway", "status"], timeout=25)
+            out = res.get("out", "")
+            # CLI asli: "Gateway is supervised by launchd (PID 573)"
+            online = ("PID" in out) and ("launchd" in out or "supervised" in out)
+            pid = None
+            m = re.search(r"PID\s+(\d+)", out)
+            if m:
+                pid = int(m.group(1))
+            if pid is None:
+                pid = _gateway_pid_pgrep()
+            data = {
+                "online": online or pid is not None,
+                "raw": out.strip()[:300],
+                "pid": pid,
+                "simulated": False,
+            }
+
     _cache["gw"] = data
     _cache_ttl["gw"] = time.time()
     return data
@@ -97,7 +134,7 @@ def cron_jobs() -> dict:
     cached = _cached("cron")
     if cached:
         return cached
-        
+
     if not _is_cli_available():
         # Fallback Mock Data
         jobs = [
@@ -139,12 +176,11 @@ def cron_jobs() -> dict:
             "count": len(jobs),
             "jobs": jobs,
             "raw": "Mocked cron listing",
-            "simulated": True
+            "simulated": True,
         }
     else:
-        res = _run(["cron", "list"])
+        res = _run(["cron", "list"], timeout=25)
         jobs = []
-        import re
         blocks = re.split(r"\n\s*(?=[0-9a-f]{12}\s)", res["out"])
         for b in blocks[1:]:
             lines = b.strip().split("\n")
@@ -159,19 +195,19 @@ def cron_jobs() -> dict:
                 elif "Schedule:" in ln:
                     schedule = ln.split("Schedule:")[1].strip()
             jobs.append({
-                "id": job_id, 
-                "status": "active" if active else "paused", 
-                "name": name, 
+                "id": job_id,
+                "status": "active" if active else "paused",
+                "name": name,
                 "schedule": schedule,
                 "last_status": "ok"
             })
         data = {
-            "count": len(jobs), 
-            "jobs": jobs, 
+            "count": len(jobs),
+            "jobs": jobs,
             "raw": res["out"].strip()[:200],
             "simulated": False
         }
-        
+
     _cache["cron"] = data
     _cache_ttl["cron"] = time.time()
     return data
