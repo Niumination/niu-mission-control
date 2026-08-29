@@ -2,6 +2,7 @@ import ApexWorld from "@/components/ApexWorld";
 import ApexOverviewPanel from "@/components/ApexOverviewPanel";
 import MCDataPanel from "@/components/MCDataPanel";
 import WebSocketMonitor from "@/components/WebSocketMonitor";
+import HermesBridgePanel from "@/components/HermesBridgePanel";
 
 export default function Home() {
   return (
@@ -13,7 +14,7 @@ export default function Home() {
       <ApexOverviewPanel />
 
       {/* The world: orb core + orbiting agent graph */}
-      <section style={{ position: "relative", height: "50vh", minHeight: 400 }}>
+      <section style={{ position: "relative", height: "45vh", minHeight: 350 }}>
         <ApexWorld />
       </section>
 
@@ -25,6 +26,11 @@ export default function Home() {
       {/* WebSocket Real-time Monitor */}
       <section style={{ position: "relative", background: "rgba(4,8,15,0.95)", borderTop: "1px solid rgba(0,229,255,0.1)" }}>
         <WebSocketMonitor />
+      </section>
+
+      {/* Hermes Bridge Panel */}
+      <section style={{ position: "relative", background: "rgba(4,8,15,0.95)", borderTop: "1px solid rgba(0,229,255,0.1)" }}>
+        <HermesBridgePanel />
       </section>
 
       {/* Repo link — attribution to upstream APEX-UI */}
