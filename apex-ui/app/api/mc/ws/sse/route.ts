@@ -5,7 +5,16 @@ const listeners = new Set<() => void>()
 const events: Array<{ type: string; data: any; timestamp: string }> = []
 
 // Simulated agent state
-let agentState = {
+type AgentStatus = 'online' | 'busy' | 'offline'
+interface AgentData {
+  key: string
+  name: string
+  status: AgentStatus
+  task: string | null
+  lastUpdate?: string
+}
+
+let agentState: Record<string, AgentData> = {
   chief: { key: 'chief', name: 'Hermes Chief', status: 'online', task: null },
   research: { key: 'research', name: 'Research', status: 'online', task: null },
   programmer: { key: 'programmer', name: 'Programmer', status: 'online', task: null },
