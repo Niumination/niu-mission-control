@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.niumination.missioncontrol</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/Users/zaryu/Desktop/Niumination/services/niu-mission-control/apex-ui/node_modules/.bin/next</string>
+        <string>start</string>
+        <string>-p</string>
+        <string>5200</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/zaryu/Desktop/Niumination/services/niu-mission-control/apex-ui</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/zaryu/Desktop/Niumination/logs/mission-control.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/zaryu/Desktop/Niumination/logs/mission-control.stderr.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key>
+        <string>production</string>
+        <key>PORT</key>
+        <string>5200</string>
+    </dict>
+
+    <key>HardResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>10240</integer>
+        <key>MemoryLock</key>
+        <integer>524288</integer>
+    </dict>
+</dict>
+</plist>

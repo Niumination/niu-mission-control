@@ -7,50 +7,33 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          node-version: '20'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-          pip install pytest pytest-asyncio pydantic-settings aiosqlite
+          cd apex-ui
+          npm ci
+
+      - name: Build
+        run: |
+          cd apex-ui
+          npm run build
 
       - name: Lint
         run: |
-          pip install ruff
-          ruff check backend/app/ --select E,F,W
+          cd apex-ui
+          npm run lint
 
       - name: Type check
         run: |
-          pip install pyright
-          pyright backend/app/ --outputjson 2>/dev/null || true
-
-      - name: Test (backend)
-        run: |
-          cd backend
-          python -m pytest tests/ -v
-
-      - name: Test (legacy)
-        run: |
-          python -m pytest tests/ -v
-
-      - name: Frontend asset check
-        run: |
-          test -f dashboard/index.html
-          test -f dashboard/orb.css
-          test -f dashboard/orb.js
-
-      - name: Docker build
-        run: docker build -t mc-test . || echo "docker unavailable, skipping"
+          cd apex-ui
+          npx tsc --noEmit
