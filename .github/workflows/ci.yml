@@ -2,38 +2,36 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: apex-ui/package-lock.json
 
       - name: Install dependencies
-        run: |
-          cd apex-ui
-          npm ci
+        run: cd apex-ui && npm ci
 
       - name: Build
-        run: |
-          cd apex-ui
-          npm run build
+        run: cd apex-ui && npm run build
 
       - name: Lint
-        run: |
-          cd apex-ui
-          npm run lint
+        run: cd apex-ui && npm run lint
 
       - name: Type check
-        run: |
-          cd apex-ui
-          npx tsc --noEmit
+        run: cd apex-ui && npx tsc --noEmit
