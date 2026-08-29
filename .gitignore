@@ -33,3 +33,7 @@ dashboard_backup_refactor_20260816/
 # IDE
 .vscode/settings.json
 frontend/static/fontawesome/fontawesome-free-6.5.1-web/
+.next/
+node_modules/
+docs/deploy-launchagent.sh
+*.log
