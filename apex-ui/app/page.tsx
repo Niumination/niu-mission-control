@@ -1,6 +1,7 @@
 import ApexWorld from "@/components/ApexWorld";
 import ApexOverviewPanel from "@/components/ApexOverviewPanel";
 import MCDataPanel from "@/components/MCDataPanel";
+import WebSocketMonitor from "@/components/WebSocketMonitor";
 
 export default function Home() {
   return (
@@ -12,13 +13,18 @@ export default function Home() {
       <ApexOverviewPanel />
 
       {/* The world: orb core + orbiting agent graph */}
-      <section style={{ position: "relative", height: "60vh", minHeight: 500 }}>
+      <section style={{ position: "relative", height: "50vh", minHeight: 400 }}>
         <ApexWorld />
       </section>
 
       {/* Mission Control Data Panel */}
       <section style={{ position: "relative", background: "rgba(4,8,15,0.9)" }}>
         <MCDataPanel />
+      </section>
+
+      {/* WebSocket Real-time Monitor */}
+      <section style={{ position: "relative", background: "rgba(4,8,15,0.95)", borderTop: "1px solid rgba(0,229,255,0.1)" }}>
+        <WebSocketMonitor />
       </section>
 
       {/* Repo link — attribution to upstream APEX-UI */}
