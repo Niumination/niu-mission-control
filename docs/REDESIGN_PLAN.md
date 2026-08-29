@@ -1,7 +1,14 @@
 # 🎯 Redesign Plan — Personal AI OS Dashboard (niu-mission-control)
 
+> **⚠️ SUPERSEDED** (2026-08-29)
+>
+> Dokumen ini merujuk pada arsitektur v2.x (FastAPI + vanilla dashboard) yang sudah **diganti** oleh v3.0.0 (Next.js + R3F + apex-ui).
+>
+> **Status**: Dokumen historis — disimpan untuk referensi.
+> **Lihat**: `apex-ui/` (Next.js app), `docs/adr/` (keputusan arsitektur baru), `README.md` (dokumentasi terkini).
+
 **Tanggal:** 2026-08-14 · **Sumber spesifikasi:** gemini-code prompt + **MC-Reference.zip (5 prototype v3.x)**
-**Status:** ✅ SELESAI v4.1 — AIOS live di `http://localhost:5200/aios` (Phase 4: view modes fungsional + WS real-time, 2026-08-14)
+**Status v2.x:** ✅ SELESAI → **v3.0.0**: ✅ MIGRASI KE APEX-UI (2026-08-29)
 
 ---
 

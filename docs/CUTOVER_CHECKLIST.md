@@ -1,6 +1,8 @@
 # Cutover Checklist — v2 → v3.0.0
 
-> **Sebelum cutover**: jalankan dry-run migrasi, verifikasi semua test pass, backup v2.
+> **STATUS: ✅ SELESAI** (2026-08-29)
+>
+> Cutover dilakukan dengan strategi: simpan legacy di branch `legacy-ui`, migrasi ke apex-ui (Next.js).
 
 ## Prerequisites (Phase 0-7 ✅)
 - [x] Auth bypass fixed (exact match paths)
@@ -16,34 +18,26 @@
 - [x] Dockerfile + docker-compose.yml
 
 ## Migrasi Data
-- [ ] Dry-run: `python3 backend/scripts/migrate_data.py --dry-run`
-- [ ] Migrate: `python3 backend/scripts/migrate_data.py`
-- [ ] Verify: dispatches table punya records
-- [ ] Backup v2 DB: `data/*.v2_backup_*.db`
+> **Not Applicable** — v3.0.0 tidak memakai SQLite dispatch table. Data legacy tersimpan di branch `legacy-ui`.
 
 ## Parallel Run
-- [ ] Jalankan v2 (server.py) di port 5200
-- [ ] Jalankan v3 (backend/run.py) di port 5201
-- [ ] Bandingkan: /health, /api/mc/system, /api/mc/tasks
-- [ ] Test: submit task → lihat di kedua versi
-- [ ] Verifikasi: tidak ada error di console kedua versi
+> **Skipped** — Cutover langsung ke apex-ui (Next.js), tidak ada parallel run FastAPI ↔ Next.js.
 
-## Cutover
-- [ ] Stop v2
-- [ ] Start v3: `cd backend && python run.py`
-- [ ] Verifikasi: http://localhost:5200
-- [ ] Test: semua endpoint utama
-- [ ] Update README.md: v3 instructions
-- [ ] Tag: `git tag v3.0.0`
+## Cutover ✅
+- [x] Snapshot legacy ke branch `legacy-ui` @ `1962edf`
+- [x] Migrate struktur ke `apex-ui/` (Next.js 15 + React 19 + R3F)
+- [x] Update roster: 18-agent APEX → 5-agent Niumination
+- [x] Update branding: title, description, overview panel
+- [x] Build test: `next build` pass
+- [x] Dev server test: localhost:3000 HTTP 200
+- [x] Merge ke main: commit `10e1fbd`
+- [x] Tag: `git tag v3.0.0`
+- [x] Push semua branch + tag ke origin
 
 ## Rollback Plan
-- [ ] Stop v3
-- [ ] Restore v2: `git checkout v2` atau `git checkout HEAD~6`
-- [ ] Start v2: `python server.py`
+- [ ] Switch branch: `git checkout legacy-ui`
+- [ ] Restore v2: `python3 server.py` di port 5200
 - [ ] Verifikasi: http://localhost:5200
 
 ## Cleanup (setelah 1-2 hari parallel run)
-- [ ] Pindah `dashboard/`, `aios/`, `fusion/` ke branch `legacy-ui`
-- [ ] Hapus `modules/` (sudah ada di `backend/app/services/`)
-- [ ] Update AGENTS.md / ORCHESTRATOR.md
-- [ ] Remove old `.bak` references
+> **Tertunda** — tunggu validasi operasional v3.0.0 sebelum cleanup branch `legacy-ui`.

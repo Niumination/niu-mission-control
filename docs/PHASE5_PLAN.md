@@ -1,7 +1,11 @@
 # Rencana Detail — Phase 5 Frontend Visual
 
-**Status:** Draft · **Tanggal:** 2026-08-17  
-**Konteks:** Backend v3 routers sudah ada (12 file), tapi kebanyakan skeleton. Frontend masih fetch dari `server.py` lama. Data v3 (tasks, cost, audit) belum terkoneksi ke UI.
+> **⚠️ SUPERSEDED** (2026-08-29)
+>
+> Dokumen ini merujuk pada arsitektur v2.x (FastAPI + vanilla dashboard) yang sudah **diganti** oleh v3.0.0 (Next.js + R3F + apex-ui).
+>
+> **Status**: Dokumen historis — disimpan untuk referensi, tidak lagi relevan dengan kode production saat ini.
+> **Lihat**: `apex-ui/` (Next.js app), `docs/REFACTOR_COMPLETION_PLAN.md` (rencana refactor lengkap).
 
 ---
 

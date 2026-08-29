@@ -1,9 +1,15 @@
 # Refactor Apex-Monorepo — Completion & Cutover Plan
 
-**Goal:** Selesaikan refactor apex-monorepo Niu-MissionControl di branch `refactor/apex-monorepo`, buat CI hijau, lalu cutover (merge) ke `main` dan deploy ulang LaunchAgent.
+> **⚠️ SUPERSEDED — TASK SELESAI** (2026-08-29)
+>
+> Refactor apex-monorepo **sudah tuntas** dan di-merge ke `main` (commit `10e1fbd`).
+>
+> **Lihat**: `README.md` (status terkini), `docs/CUTOVER_CHECKLIST.md` (cutover log), `legacy-ui` branch (snapshot v2.x).
+
+**Goal:** Selesaikan refactor apex-monorepo Niu-MissionControl di branch `refactor/apex-monorepo`, buat CI hijau, lalu cutover (merge) ke `main` d...[truncated]
 **Author:** Hermes Agent (Niumination)
 **Date:** 2026-08-29
-**Status:** Draft — menunggu approval eksekusi
+**Status:** ✅ SELESAI (2026-08-29) — merged ke main @ `10e1fbd`, tag `v3.0.0`
 
 ---
 
