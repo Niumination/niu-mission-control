@@ -6,6 +6,9 @@ const ROOT_DIR = '/Users/zaryu/Desktop/Niumination/services/niu-mission-control'
 const DB_MANAGER = `${ROOT_DIR}/db_manager.py`
 const DB_PATH = `${ROOT_DIR}/data/swarm_state.db`
 
+console.log('[MC] DB_MANAGER:', DB_MANAGER, '- exists:', existsSync(DB_MANAGER))
+console.log('[MC] DB_PATH:', DB_PATH, '- exists:', existsSync(DB_PATH))
+
 function runDBQuery(query: string, params: any[] = []): any {
   const env = { ...process.env, MC_DB_PATH: DB_PATH }
   const args = [DB_MANAGER, query, ...params.map(p => JSON.stringify(p))]
@@ -24,24 +27,29 @@ function runDBQuery(query: string, params: any[] = []): any {
 
 export async function GET() {
   try {
-    const agents = runDBQuery('get_agents')
-    if (agents) {
-      return NextResponse.json({ agents, total: agents.length })
+    const dbExists = existsSync(DB_PATH)
+    const dbTest = dbExists ? runDBQuery('test_db') : false
+    
+    console.log('[MC] Health check - dbExists:', dbExists, 'dbTest:', dbTest)
+    
+    const health = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      database: dbTest ? 'connected' : (dbExists ? 'error' : 'missing'),
+      version: '2.0.0',
+      uptime: process.uptime()
     }
     
-    // Fallback static data
-    const fallback = [
-      { key: 'chief', name: 'Hermes Chief', role: 'Orchestrator & Leader', status: 'online', color: '#00e5ff' },
-      { key: 'research', name: 'Research', role: 'Research & Learn', status: 'online', color: '#00e5ff' },
-      { key: 'programmer', name: 'Programmer', role: 'Programmer & Coder', status: 'online', color: '#f5a623' },
-      { key: 'qa', name: 'QA Tester', role: 'Tester & QA', status: 'online', color: '#34d399' },
-      { key: 'creator', name: 'Kreator', role: 'Content Creator', status: 'online', color: '#f5a623' },
-    ]
-    return NextResponse.json({ agents: fallback, total: fallback.length })
+    return NextResponse.json(health)
   } catch (error) {
+    console.error('[MC] Health error:', error)
     return NextResponse.json(
-      { error: 'Failed to get agents', details: String(error) },
+      { status: 'error', details: String(error) },
       { status: 500 }
     )
   }
+}
+
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 })
 }

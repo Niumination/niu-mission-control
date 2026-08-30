@@ -22,25 +22,24 @@ function runDBQuery(query: string, params: any[] = []): any {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const agents = runDBQuery('get_agents')
-    if (agents) {
-      return NextResponse.json({ agents, total: agents.length })
+    const { searchParams } = new URL(request.url)
+    const taskId = searchParams.get('id')
+    const status = searchParams.get('status')
+    
+    if (taskId && status) {
+      const result = runDBQuery('update_task_status', [taskId, status])
+      if (result) {
+        return NextResponse.json({ success: true })
+      }
+      return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
     }
     
-    // Fallback static data
-    const fallback = [
-      { key: 'chief', name: 'Hermes Chief', role: 'Orchestrator & Leader', status: 'online', color: '#00e5ff' },
-      { key: 'research', name: 'Research', role: 'Research & Learn', status: 'online', color: '#00e5ff' },
-      { key: 'programmer', name: 'Programmer', role: 'Programmer & Coder', status: 'online', color: '#f5a623' },
-      { key: 'qa', name: 'QA Tester', role: 'Tester & QA', status: 'online', color: '#34d399' },
-      { key: 'creator', name: 'Kreator', role: 'Content Creator', status: 'online', color: '#f5a623' },
-    ]
-    return NextResponse.json({ agents: fallback, total: fallback.length })
+    return NextResponse.json({ error: 'Task ID and status required' }, { status: 400 })
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to get agents', details: String(error) },
+      { error: 'Failed to update task', details: String(error) },
       { status: 500 }
     )
   }
