@@ -40,4 +40,4 @@
 - [ ] Verifikasi: http://localhost:5200
 
 ## Cleanup (setelah 1-2 hari parallel run)
-> **Tertunda** — tunggu validasi operasional v3.0.0 sebelum cleanup branch `legacy-ui`.
+> **✅ SELESAI** (07 Sep 2026) — Branch `redesign/apex-orb-proper`, `redesign/apex-mc`, semua branch `arena/` lama, dan stale worktree (`/private/tmp/*`) telah dibersihkan secara lokal dan remote. Tinggal `legacy-ui` sebagai snapshot cadangan cadangan jika perlu rollback darurat.
