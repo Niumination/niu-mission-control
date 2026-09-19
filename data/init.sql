@@ -38,7 +38,18 @@ CREATE TABLE IF NOT EXISTS cost_tracking (
     input_tokens INTEGER DEFAULT 0,
     output_tokens INTEGER DEFAULT 0,
     cost_usd REAL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS dispatches (
+    id TEXT PRIMARY KEY,
+    target_topic TEXT NOT NULL,
+    message TEXT NOT NULL,
+    source_agent TEXT DEFAULT 'general',
+    status TEXT DEFAULT 'pending',
+    error TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS system_logs (

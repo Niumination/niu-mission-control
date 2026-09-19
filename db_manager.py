@@ -211,6 +211,50 @@ def test_db():
         return False
 
 
+# ── Dispatch Operations ─────────────────────────────────────
+
+def add_dispatch(target_topic: str, message: str, source_agent: str = 'general') -> dict:
+    """Create a new dispatch record."""
+    import uuid
+    conn = get_connection()
+    cursor = conn.cursor()
+    dispatch_id = f"d{uuid.uuid4().hex[:12]}"
+    cursor.execute('''
+        INSERT INTO dispatches (id, target_topic, message, source_agent, status)
+        VALUES (?, ?, ?, ?, 'pending')
+    ''', (dispatch_id, target_topic, message, source_agent))
+    conn.commit()
+    cursor.execute('SELECT * FROM dispatches WHERE id = ?', (dispatch_id,))
+    row = dict(cursor.fetchone())
+    conn.close()
+    return row
+
+
+def update_dispatch_status(dispatch_id: str, status: str, error: Optional[str] = None) -> bool:
+    """Update dispatch status."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE dispatches SET status = ?, error = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (status, error, dispatch_id))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_dispatches(limit: int = 20) -> list:
+    """Get recent dispatches."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM dispatches ORDER BY created_at DESC LIMIT ?
+    ''', (limit,))
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1:
@@ -236,6 +280,12 @@ if __name__ == '__main__':
             print(json.dumps(update_task_status(*params)))
         elif query == 'get_cost_summary':
             print(json.dumps(get_cost_summary(*params)))
+        elif query == 'add_dispatch':
+            print(json.dumps(add_dispatch(*params)))
+        elif query == 'update_dispatch_status':
+            print(json.dumps(update_dispatch_status(*params)))
+        elif query == 'get_dispatches':
+            print(json.dumps(get_dispatches(*params)))
         else:
             print(json.dumps({'error': f'Unknown query: {query}'}))
     else:

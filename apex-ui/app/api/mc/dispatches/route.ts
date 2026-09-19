@@ -22,23 +22,15 @@ function runDBQuery(query: string, params: any[] = []): any {
   }
 }
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    const body = await request.json();
-    const { task_id, status, result } = body;
-
-    if (!task_id || !status) {
-      return NextResponse.json({ error: 'task_id dan status wajib diisi' }, { status: 400 });
-    }
-
-    const success = runDBQuery('update_task_status', [task_id, status, result || null]);
-    if (success) {
-      return NextResponse.json({ success: true });
-    }
-    return NextResponse.json({ error: 'Failed to update task' }, { status: 500 });
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const dispatches = runDBQuery('get_dispatches', [Math.max(1, Math.min(limit, 100))]);
+    return NextResponse.json({ dispatches: dispatches || [] });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to update task', details: String(error) },
+      { error: 'Failed to get dispatches', details: String(error) },
       { status: 500 }
     );
   }
