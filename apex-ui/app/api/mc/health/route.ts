@@ -4,7 +4,7 @@ import { existsSync } from 'fs'
 import path from 'path'
 
 // Repo root = dua level di atas apex-ui (cwd saat `next start`/`next dev` = apex-ui)
-const ROOT_DIR = path.resolve(process.cwd(), '..', '..')
+const ROOT_DIR = path.resolve(process.cwd(), '..')
 const DB_MANAGER = path.join(ROOT_DIR, 'db_manager.py')
 const DB_PATH = path.join(ROOT_DIR, 'data', 'swarm_state.db')
 

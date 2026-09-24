@@ -3,7 +3,7 @@ import { execSync } from 'child_process'
 import { existsSync } from 'fs'
 import path from 'path'
 
-const ROOT_DIR = path.resolve(process.cwd(), '..', '..')
+const ROOT_DIR = path.resolve(process.cwd(), '..')
 const DB_MANAGER = `${ROOT_DIR}/db_manager.py`
 const DB_PATH = `${ROOT_DIR}/data/swarm_state.db`
 
