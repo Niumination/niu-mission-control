@@ -14,7 +14,7 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 
-const HERMES_CLI = '/Users/zaryu/src/hermes-agent/.venv/bin/hermes';
+const HERMES_CLI = process.env.HERMES_CLI || '/usr/local/bin/hermes'
 const TELEGRAM_CHAT_ID = process.env.HERMES_TELEGRAM_CHAT_ID || '-1004204696417';
 const TOPIC_PREFIX = 'thread:';
 

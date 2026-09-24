@@ -155,3 +155,9 @@
 | Backend v3 tidak bisa handle data lama | Parallel: v3 serves dari SQLite, v2 serves dari JSON |
 | Frontend break karena fetch berubah | Test manual setiap perubahan |
 | L3 Inspector terlalu kompleks | Mulai dengan minimal viable (task detail + audit log dulu) |
+
+---
+
+> ⚠️ **USANG (24 Sep 2026):** Dokumen ini mendeskripsikan arsitektur lama dengan `server.py` (FastAPI),
+> `dashboard/`, `fusion/`, `aios/` — semua sudah dihapus dalam rapikan audit. Arsitektur aktif sekarang
+> hanya `apex-ui/` (Next.js). Lihat `docs/API.md` dan `README.md` untuk kondisi terkini.

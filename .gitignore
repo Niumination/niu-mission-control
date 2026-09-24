@@ -37,3 +37,13 @@ frontend/static/fontawesome/fontawesome-free-6.5.1-web/
 node_modules/
 docs/deploy-launchagent.sh
 *.log
+
+# Legacy — dihapus 24 Sep 2026 (rapikan audit)
+frontend/
+dashboard/
+fusion/
+aios/
+server.py
+start.sh
+start-frontend.sh
+components_backup_ApexWorld.tsx

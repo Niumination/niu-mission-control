@@ -197,3 +197,8 @@ niu-mission-control/
 | venv deps beda | Copy dari legacy requirements.txt yang sudah terbukti |
 | submodule tidak ter-clone di CI | `actions/checkout` + `submodules: recursive` di ci.yml (tambahan di Task 4) |
 | apex-ui Next.js butuh build untuk serve | Jika tidak perlu di-serve di path utama, biarkan sebagai submodule rujukan; serve hanya vanilla frontend (ikut ADR-001/004) |
+---
+
+> ⚠️ **USANG (24 Sep 2026):** Dokumen ini mendeskripsikan arsitektur lama dengan `server.py` (FastAPI),
+> `dashboard/`, `fusion/`, `aios/` — semua sudah dihapus dalam rapikan audit. Arsitektur aktif sekarang
+> hanya `apex-ui/` (Next.js). Lihat `docs/API.md` dan `README.md` untuk kondisi terkini.

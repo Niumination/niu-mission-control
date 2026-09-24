@@ -37,3 +37,9 @@ niu-mission-control/
 ├── docs/                      # ADR, ARCHITECTURE.md
 └── README.md
 ```
+
+---
+
+> ⚠️ **SUPERSEDED (24 Sep 2026):** Keputusan arsitektur sebagian besar berubah — `server.py` FastAPI,
+> `dashboard/`, `fusion/`, `aios/` telah dihapus; yang aktif hanya `apex-ui/` (Next.js).
+> Lihat ADR `004-apex-ui-adaptation` + `docs/API.md` untuk kondisi terkini.

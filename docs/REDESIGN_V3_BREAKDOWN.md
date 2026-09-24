@@ -213,3 +213,9 @@ TOTAL                          ~17–26 hari kerja
 ## URUTAN MINIMUM VIABLE (jika waktu terbatas)
 Kalau tidak bisa full 3–4 minggu, urutan paling berharga:
 **Phase 0 → 2.1–2.4 → 3.1–3.5 → 5.3–5.5** = dashboard aman, orkestrasi tahan banting, UI tunggal dengan 3 view inti. Sisanya (cost, alert, docker) bisa nyusul.
+
+---
+
+> ⚠️ **USANG (24 Sep 2026):** Dokumen ini mendeskripsikan arsitektur lama dengan `server.py` (FastAPI),
+> `dashboard/`, `fusion/`, `aios/` — semua sudah dihapus dalam rapikan audit. Arsitektur aktif sekarang
+> hanya `apex-ui/` (Next.js). Lihat `docs/API.md` dan `README.md` untuk kondisi terkini.

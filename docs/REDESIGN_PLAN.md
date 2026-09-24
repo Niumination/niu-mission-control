@@ -210,3 +210,9 @@ Spesifikasi integrasi lengkap: `aios/SPEC.md` (kontrak DOM, tema, API, pembagian
 | `aios/multimodal.js` | Sound (Web Audio) + voice (Web Speech) + gesture (MediaPipe lazy) + waveform | Agent 3 | 🔨 |
 
 **Route:** `/aios` di server.py ✅ (sudah ditambahkan) → `http://localhost:5200/aios`
+
+---
+
+> ⚠️ **USANG (24 Sep 2026):** Dokumen ini mendeskripsikan arsitektur lama dengan `server.py` (FastAPI),
+> `dashboard/`, `fusion/`, `aios/` — semua sudah dihapus dalam rapikan audit. Arsitektur aktif sekarang
+> hanya `apex-ui/` (Next.js). Lihat `docs/API.md` dan `README.md` untuk kondisi terkini.

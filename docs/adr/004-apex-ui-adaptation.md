@@ -60,3 +60,8 @@ Adapt APEX-UI's visual and interaction language into the existing zero-build fro
 - the vanilla implementation cannot consume APEX-UI component updates automatically;
 - `dashboard/` and `frontend/` remain duplicated until the planned v3 cutover completes;
 - Three.js and MediaPipe are still CDN dependencies inherited from the current ORB architecture.
+
+---
+
+> 🔄 **MASIH BERLAKU (24 Sep 2026):** ADR ini mendokumentasikan adaptasi apex-ui yang tetap menjadi
+> satu-satunya frontend aktif setelah rapikan audit (legacy dihapus).
