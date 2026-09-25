@@ -1,0 +1,28 @@
+#!/bin/sh
+# DOX v4.0 — Secret scan gate
+# Source: ecosystem-config / sapa-ai pattern
+# Aktifkan via: git config core.hooksPath .githooks
+
+echo "🔍 [pre-commit] Secret scan..."
+
+# Python secret scan jika ada
+if [ -f "scripts/secret-scan-staged.py" ]; then
+  python3 scripts/secret-scan-staged.py
+  if [ $? -ne 0 ]; then
+    echo "❌ Secret detected in staged files! Commit blocked."
+    echo "   Rahasia hanya di ~/.hermes/.env, vault/, atau gitignored."
+    echo "   Repo hanya boleh .env.example"
+    exit 1
+  fi
+fi
+
+# Fallback grep scan untuk .env, *.key, *.pem
+STAGED=$(git diff --cached --name-only)
+if echo "$STAGED" | grep -qE "(\.env$|\.env\.local$|\.key$|\.pem$|vault/)"; then
+  echo "❌ Attempt to commit secret file detected:"
+  echo "$STAGED" | grep -E "(\.env$|\.env\.local$|\.key$|\.pem$|vault/)"
+  echo "   Gunakan git reset HEAD <file> untuk unstage"
+  exit 1
+fi
+
+echo "✅ [pre-commit] No secrets detected"

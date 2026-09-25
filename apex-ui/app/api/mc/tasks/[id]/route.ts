@@ -20,8 +20,8 @@ const TASK_SELECT = `
   WHERE t.id = ?
 `
 
-export const GET = withAuth(async ({ req }) => {
-  const id = req.nextUrl.pathname.split('/').pop()!
+export const GET = withAuth(async ({ req, params }) => {
+  const id = params?.id || req.nextUrl.pathname.split('/').pop()!
   const parsed = TaskIdSchema.safeParse(id)
   if (!parsed.success) throw new ApiError(400, 'Invalid task ID')
 
@@ -66,8 +66,8 @@ export const GET = withAuth(async ({ req }) => {
   return json({ task, timeline, artifacts, costs })
 })
 
-export const PATCH = withAuth(async ({ actor, req }) => {
-  const id = req.nextUrl.pathname.split('/').pop()!
+export const PATCH = withAuth(async ({ actor, req, params }) => {
+  const id = params?.id || req.nextUrl.pathname.split('/').pop()!
   const taskIdParse = TaskIdSchema.safeParse(id)
   if (!taskIdParse.success) throw new ApiError(400, 'Invalid task ID')
   const taskId = taskIdParse.data
@@ -80,7 +80,7 @@ export const PATCH = withAuth(async ({ actor, req }) => {
   const now = new Date().toISOString()
   const updates: Record<string, unknown> = { ...body }
   const sets: string[] = []
-  const params: Record<string, unknown> = { id: taskId }
+  const dbParams: Record<string, unknown> = { id: taskId }
 
   // Status transition validation — use central state-machine
   if (body.status) {
@@ -110,7 +110,7 @@ export const PATCH = withAuth(async ({ actor, req }) => {
 
   for (const [key, value] of Object.entries(updates)) {
     sets.push(`${key} = @${key}`)
-    params[key] = value
+    dbParams[key] = value
   }
 
   if (sets.length === 0) {
@@ -118,7 +118,7 @@ export const PATCH = withAuth(async ({ actor, req }) => {
   }
 
   const tx = db.transaction(() => {
-    db.prepare(`UPDATE tasks SET ${sets.join(', ')} WHERE id = @id`).run(params)
+    db.prepare(`UPDATE tasks SET ${sets.join(', ')} WHERE id = @id`).run(dbParams)
 
     // Emit event
     if (body.status) {
@@ -151,8 +151,8 @@ export const PATCH = withAuth(async ({ actor, req }) => {
 })
 
 // Cancel = soft delete (set status cancelled)
-export const DELETE = withAuth(async ({ actor, req }) => {
-  const id = req.nextUrl.pathname.split('/').pop()!
+export const DELETE = withAuth(async ({ actor, req, params }) => {
+  const id = params?.id || req.nextUrl.pathname.split('/').pop()!
   const parsed = TaskIdSchema.safeParse(id)
   if (!parsed.success) throw new ApiError(400, 'Invalid task ID')
   const taskId = parsed.data

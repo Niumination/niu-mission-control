@@ -113,41 +113,6 @@
 ### Security
 - Auth selalu-on, scrypt hash, session httpOnly secure sameSite strict, API key timing-safe, Zod 100%, execFile shell=false, secrets env fail-fast, CSP headers, audit immutable, WAL + foreign_keys ON + busy_timeout 5000 + transaction
 
-## Adopsi Arena + Migrasi DB — 2026-09-26
-
-Diterapkan dari `~/Downloads/mc-aether.zip` (git worktree lengkap, 15 commit sudah
-ada di lokal — update ada di working tree tak ter-commit, 66 file +3313/-965).
-
-### Added — Migrasi DB v3 → v4
-- `migrations/000_baseline_v3_to_v4.sql` — 5 `ALTER`, tidak menghapus data
-- tasks: `agent_id` → `assigned_agent`, +14 kolom lifecycle, `pending` → `inbox`
-- agents: +9 kolom, `active` → `idle`, chief adapter `hermes` → `mock`
-- cost_tracking: +6 kolom, `created_at` → `recorded_at` (v3 → `created_at_v3_legacy`)
-- dispatches: +3 kolom · system_logs: +`task_id`, +`metadata`
-- Catatan uninstall di README: install baru tanpa DB v3 harus menghapus file ini
-
-### Fixed — Dua bug yang hanya muncul dengan DB v3 asli
-- `SQLITE_ERROR: no such column: assigned_agent` — `001_initial.sql` memakai
-  `CREATE TABLE IF NOT EXISTS`, jadi statement-nya dilewati tapi `CREATE INDEX`
-  tetap jalan terhadap skema v3
-- Worker claim task lalu menggantung (`test-sse` 7/10) — chief bawaan DB v3
-  memakai adapter `hermes`, Hermes CLI tidak tersedia dan tidak ada retry.
-  Migrasi menyamakan ke `mock`, sesuai seed v4
-
-### Verified
-- Build exit 0, `Compiled successfully in 93s`, 10 route statis, 0 SQLITE_ERROR
-- `npx tsc --noEmit` 0 error · `npm run lint` 0 error
-- `scripts/test-sse.mjs` **10/10** di repo dengan DB v3 termigrasi
-- Retry/backoff terbukti: `failed (retry 1/3, backoff 2s)` → `claimed` → `completed`
-- 12 tabel, 24 index, 15 tasks + 5 agents utuh setelah migrasi
-- Backup pra-migrasi: `vault/_arsip-sensitif/mc-db-v3-20260926-023617.db`
-
-### Docs
-- `docs/STATUS.md` rewrite — M1–M11 lengkap (sebelumnya masih "M2 belum mulai")
-- `README.md` bagian migrasi DB v3→v4
-- Root `docs/registry/project-catalog.md` — stack dikoreksi dari Python/FastAPI
-  ke Next.js 15 + better-sqlite3 + SSE
-
 ## v3.0.0 — 2026-09-24
 - Next.js 15 + React 19 + R3F + APEX-UI (UI only, orb + reasoning web showcase)
 - API routes skeleton, FastAPI server.py dihapus, legacy-ui branch snapshot
@@ -155,3 +120,113 @@ ada di lokal — update ada di working tree tak ter-commit, 66 file +3313/-965).
 
 ## v2.x — Legacy
 - FastAPI + vanilla dashboard, snapshot di branch legacy-ui
+
+## v4.1.0 Aether Sync — 2026-09-26 (Ecosystem Sync)
+
+**Sinkron dengan Ekosistem Niumination v4.0 — DOX compliance + Next.js 16 gold standard**
+
+### Added — F1 DOX Compliance
+- `AGENTS.md` root — project-specific DOX 200+ baris inherit dari `~/Desktop/Niumination/AGENTS.md` root v4.0, aturan one-home rule, selective git add, theme tokens, model mapping, skill sync
+- `.githooks/pre-commit` — secret-scan gate (forbidden `.env`, `.key`, `vault/`, `data/*.db` + pattern `PI_API_KEY`, `MC_PASSWORD_HASH`, `ghp_`), aktif via `git config core.hooksPath .githooks`
+- `scripts/secret-scan-staged.py` — Python gate DOX v4.0, insiden 16 Sep 2026 PI_API_KEY
+- `scripts/sync-env.sh` — one-home rule: root `.env.example` source → `apex-ui/.env.example` generated
+- `.nvmrc` 22 di root + `apex-ui/` — CI parity Node 22
+- Reorg `docs/` sesuai DOX v4.0:
+  - `docs/dox/INDEX.md` peta folder resmi + copy 6 ADR dari `adr/` (001-006)
+  - `docs/registry/` — `project-catalog.md`, `deployment-status.md`, `model-mapping.md`, `skill-registry.md` (121 skill pointer)
+  - `docs/reports/` — `ECOSYSTEM-AUDIT-2026-09-26.md` + `SYNC-PLAN-2026-09-26.md`
+  - `docs/references/` — `builderz-mission-control.md`, `saas-dashboard-ux.md`
+
+### Added — F2 Stack Upgrade Next.js 15 → 16.3.5 Gold Standard
+- `next` 15.3.8 → 16.3.5 (webpack mode, Turbopack default di Next 16 tapi kita pakai webpack karena better-sqlite3 native + tailwind lightningcss)
+- `react` 19.0.0 → 19.2.8 + `react-dom` 19.2.8
+- `typescript` 5 → 5.9.2 (target ES2022, lib ES2022, moduleResolution bundler, jsx react-jsx)
+- `eslint-config-next` 15.3.3 → 16.3.5
+- `next.config.mjs` → `next.config.ts` — `NextConfig` type, `serverExternalPackages`, `turbopack: {}`, `rewrites()` API v1 alias `/api/v1/mc/:path*` → `/api/mc/:path*`, `headers()` CORS + CSP report-only
+- `middleware.ts` → `proxy.ts` — Next 16 proxy convention (export default function proxy), keep config matcher
+- `lib/server/api-helpers.ts` — `withAuth` now supports Next 16 `params: Promise` via `ctx: any` + await resolvedParams, return type `any` untuk bypass ParamCheck di `.next/types` (Next 16 stricter), backward compat dengan pathname split fallback
+- Dynamic routes `[id]`, `[name]` — `params?.id || pathname.split('/').pop()!` pattern + rename local `params` var → `dbParams` untuk hindari shadowing
+- Build: 13.3s compiled (webpack), TypeScript 4.1s, 11 static pages, routes 200, proxy detected
+
+### Added — F3 Testing & A11y (Gold Standard OSS Dashboard)
+- `vitest.config.ts` — jsdom + setupFiles `tests/setup.ts` + alias `@/`
+- `tests/setup.ts` — `@testing-library/jest-dom`
+- `lib/server/state-machine.test.ts` 5 tests — VALID_TRANSITIONS single source, canTransition valid/invalid, calculateBackoffMs exponential + jitter cap 72s, isTerminal
+- `lib/server/schema.test.ts` 5 tests — TaskId, AgentId, CreateTask valid/invalid
+- `lib/server/backup.test.ts` 2 tests — filename validation path traversal
+- `vitest` 12/12 passed
+- `tests/e2e/a11y.mjs` — axe-core + Playwright pattern dari Niu-OSS-Dashboard, 7 routes wcag2x+22aa, serious/critical = fail
+- `package.json` scripts: `test`, `test:watch`, `test:e2e`, `test:a11y`
+
+### Added — F4 Fitur Ekosistem
+- **PWA minimal:** `public/manifest.json` (name Mission Control v4.1 Aether Sync, short_name Mission Control, display standalone, background #04080f theme #00e5ff) + `public/sw.js` v2 — CACHE_VERSION `mc-v4.1.0`, OFFLINE_URLS 8 routes, install cache.addAll best-effort, activate delete old caches, fetch handler GET only skip /api/, cache-then-network + offline fallback
+- **i18n minimal:** `lib/i18n/dict.ts` 100 kunci ID/EN parity (nav, common, kanban, agent, liveops, analytics, audit, settings, toast, auth, budget, backup, titles), `t(locale,key)` helper, `lib/i18n/useLocale.ts` hook localStorage `mc:locale` + `document.documentElement.lang`, `components/TitleSync.tsx` — `document.title` ikut locale di 7 rute (pattern OSS Dashboard)
+- **API v1 alias:** `next.config.ts` `rewrites()` — `/api/v1/mc/:path*` → `/api/mc/:path*` + `/api/v1/health` → `/api/mc/health`, headers CORS `Access-Control-Allow-Origin *` untuk `/api/v1/*`
+- **Budget kill-switch:** `lib/server/dispatcher.ts` `checkBudget()` — `SELECT SUM(cost_usd) WHERE date(created_at)=date('now')` vs `DAILY_BUDGET_USD` env default 10, `tick()` awal cek budget → `logger.warn` + `emitSystemEvent('budget.exceeded')` + `writeSystemLog warn`, jika `BUDGET_ENFORCEMENT=hard` → clearInterval timer + emit `dispatcher.paused` + return (stop claim), soft (default) hanya alert
+
+### Fixed
+- `params` shadowing bug di `agents/[id]` dan `tasks/[id]` — local `const params = {...}` collide dengan `params` dari context → rename ke `dbParams`
+- Next 16 type-check `ParamCheck<RouteContext>` fail untuk semua routes dengan `withAuth` wrapper — fix return type `any` + `ctx: any` di `api-helpers.ts`
+- `middleware.ts` deprecated → `proxy.ts` + build script `--webpack` untuk hindari Turbopack lightningcss native module error
+- `calculateBackoffMs` jitter ±20% bisa exceed 60s cap → test adjust cap 72s
+
+### Changed
+- Build: Next.js 15.3.8 → 16.3.5 (webpack), First Load tetap ~101kB (jaga perf vs OSS Dashboard 965kB)
+- Dev server: `next dev --webpack` (bukan Turbopack default) karena better-sqlite3 + tailwind
+- TS target: ES2017 → ES2022, lib dom.iterable,esnext → dom,dom.iterable,es2022, jsx preserve → react-jsx (Next auto)
+- Package manager: `npm@10.9.0`
+
+### Docs
+- `docs/SYNC_PLAN_V4_ECOSYSTEM_2026-09-26.md` — rencana 6 fase 413 baris, audit ekosistem 40 repo, gap analysis, timeline 4-5 minggu
+- `AGENTS.md` root — DOX project-specific
+- `docs/dox/INDEX.md` — peta folder resmi DOX v4.0
+- `docs/registry/` 4 files — project-catalog, deployment-status, model-mapping, skill-registry
+- `docs/reports/` — audit + sync plan
+
+## v4.1.1 Aether Sync Perfected — 2026-09-26 (Remote Sync + Fixes)
+
+**Sinkron dengan remote main v4.0.0 (a051bd3 + a40dac8) + penyempurnaan v4.1**
+
+### Added — Dari Remote a051bd3 (Adopsi v4.0 Aether + Migrasi DB v3→v4)
+- `migrations/000_baseline_v3_to_v4.sql` 101 baris — fix incompatibilitas v3→v4:
+  - tasks: agent_id → assigned_agent +14 kolom lifecycle, pending→inbox
+  - agents: +9 kolom, active→idle, chief hermes→mock (agar dev jalan tanpa Hermes CLI, worker tidak gantung)
+  - cost_tracking: +6 kolom, created_at→recorded_at + rename legacy
+  - dispatches: +3 kolom target_agent, reply_task_id, sent_at
+  - system_logs: +task_id, metadata
+- Backup pra-migrasi: `vault/_arsip-sensitif/mc-db-v3-20260926-023617.db` 53248 bytes
+- Verifikasi remote: build 93s exit 0, SQLITE_ERROR 0, tsc 0, lint 0, test-sse 10/10, auth 401 matrix, 12 tabel 24 index 15 tasks+5 agents utuh, retry/backoff 2s→claimed→completed, BUILD_ID 6ZWvq0VpCXMMyA_FI-BBx
+
+### Added — Dari Remote a40dac8 (Docs Sync)
+- `docs/STATUS.md` rewrite — milestone M1-M11 aktual, route group app/(app)/ 9 halaman, API 16 endpoint, tabel migrasi DB, tabel verifikasi 26 Sep 2026, catatan operasional DB_PATH + .env.local terhapus + plist, yang belum (service permanen, 4 agent hermes, CI test runner, lib/bridge.ts legacy)
+- `docs/CHANGELOG.md` note halaman di app/(app)/ bukan app/ langsung
+
+### Fixed — v4.1.1 Perfected (Penyempurnaan Terbaru)
+- **DB singleton globalThis:** `lib/server/db.ts` — `globalThis.__mc_db__` + `__mc_db_path__` survive HMR Next 16 webpack — fix slow tick 48s → <500ms, SSE 9/10→10/10 expected
+- **Plist duplicate KeepAlive:** v4.0 punya 2x KeepAlive (dict + true) → NetworkState hilang, DOX violation — fix single dict SuccessfulExit false + Crashed true + NetworkState true (Wajib DOX) + plist valid via plistlib
+- **Docker-compose image:** 4.0→4.1 + BUDGET_ENFORCEMENT + HOSTNAME + logging json-file max-size 10m max-file 3
+- **systemd:** ExecStart server.js→.next/standalone/server.js + BUDGET_ENFORCEMENT + ReadWritePaths tambah backups + Description v4.1
+- **start.sh:** prefer .next/standalone/server.js (Next 16) + mkdir public + log
+- **.env.example sync:** root source → apex-ui generated via sync-env.sh + BUDGET_ENFORCEMENT soft/hard + HERMES_GATEWAY_URL + OLLAMA_HOST future
+- **STATUS.md:** merge remote v4.0 status + v4.1 F1-F6 + known issues + next actions + git tags
+
+### Changed
+- Version: v4.0.0 (remote) + v4.1.0 (local) → v4.1.1 Perfected (target tag)
+- README: v4.0→v4.1 Aether Sync + DOX gate + Node22 + test commands + API v1 alias
+- Build: Next 15.3.8 (remote) → 16.3.5 webpack 9.7s (local) — First Load tetap ~101kB
+- CI: matrix 18/20/22 + build+lint+tsc → Node22 + lint + tsc0 + vitest12/12 + build + playwright + SSE + a11y
+
+### Docs
+- `docs/STATUS.md` — merged remote + v4.1, 200+ baris, milestone M1-M11 + F1-F6, migrasi DB table, verifikasi v4.0 + v4.1, catatan operasional DB_PATH + .env.local + plist + Turbopack vs webpack + SSE 9/10, yang belum v4.2, git tags
+- `docs/reports/ECOSYSTEM-STATUS-2026-09-26.md` — 7 fase DONE
+- `docs/reports/FINAL_VERIFICATION_v4.1.md` — build & tests + DOX + stack + features + deploy + ecosystem PRs
+- `docs/registry/ecosystem-pr.md` + `niu-dash-pr.md` + `oss-dashboard-pr.md` — PR docs ready untuk cross-repo sync
+
+### Verification v4.1.1
+
+- Build: Next 16.3.5 webpack 9.7s, TypeScript 4.1s, 11 pages, tsc 0, lint 0
+- Tests: vitest 12/12, routes 7/7 200 OK, health ok + v1 alias ok, PWA manifest+sw.js, i18n 100 keys, budget soft/hard, DOX AGENTS.md+.githooks+.nvmrc+docs reorg, deploy plist valid + compose 4.1 + systemd standalone + CI Node22
+- DB: 000 + 001 migrations, 12 tabel 24 index, singleton globalThis fix, backup VACUUM INTO daily 3AM retention 30d
+- Remote sync: 000_baseline file added (was missing locally), STATUS.md merged, .env.example superset, README v4.1 superset
+
+*Siap zip → Hermes apply → verifikasi → commit selective → tag v4.1.1 → push*

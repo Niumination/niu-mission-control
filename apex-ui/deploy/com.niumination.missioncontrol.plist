@@ -6,12 +6,12 @@
     <string>com.niumination.missioncontrol</string>
 
     <key>Description</key>
-    <string>Niumination Mission Control v4.0 Aether - Personal AI OS Dashboard</string>
+    <string>Niumination Mission Control v4.1 Aether Sync - Personal AI OS Dashboard (Next.js 16.3.5 + PWA + i18n + DOX)</string>
 
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/node</string>
-        <string>/opt/niu-mission-control/apex-ui/server.js</string>
+        <string>/opt/niu-mission-control/apex-ui/.next/standalone/server.js</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -33,10 +33,6 @@
     <key>ThrottleInterval</key>
     <integer>10</integer>
 
-    <!-- Restart after crash with exponential backoff -->
-    <key>KeepAlive</key>
-    <true/>
-
     <key>StandardOutPath</key>
     <string>/opt/niu-mission-control/logs/mission-control.stdout.log</string>
 
@@ -55,6 +51,8 @@
         <string>/opt/niu-mission-control/data/swarm_state.db</string>
         <key>LOG_LEVEL</key>
         <string>info</string>
+        <key>BUDGET_ENFORCEMENT</key>
+        <string>soft</string>
         <key>PATH</key>
         <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
@@ -66,16 +64,5 @@
         <key>MemoryLock</key>
         <integer>524288</integer>
     </dict>
-
-    <!-- For local dev path, override WorkingDirectory and ProgramArguments -->
-    <!--
-    <key>WorkingDirectory</key>
-    <string>/Users/YOU/path/to/niu-mission-control/apex-ui</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/opt/homebrew/bin/node</string>
-        <string>/Users/YOU/path/to/niu-mission-control/apex-ui/.next/standalone/server.js</string>
-    </array>
-    -->
 </dict>
 </plist>

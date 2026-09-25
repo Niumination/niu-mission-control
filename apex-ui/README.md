@@ -1,8 +1,8 @@
-# Niumination Mission Control v4.0 Aether
+# Niumination Mission Control v4.1 Aether Sync
 
-**Personal AI OS Dashboard** — self-hosted AI agent control plane untuk swarm 5 agent (Hermes Chief, Research, Programmer, QA, Kreator). Rebuild dari APEX-UI (MIT) dengan backend orchestration penuh.
+**Personal AI OS Dashboard** — self-hosted AI agent control plane untuk swarm 5 agent (Hermes Chief, Research, Programmer, QA, Kreator). **Sinkron dengan Ekosistem Niumination v4.0 DOX + gold standard Next.js 16.3.5 + PWA + i18n + vitest + a11y.** Rebuild dari APEX-UI (MIT) dengan backend orchestration penuh.
 
-![Orb](https://img.shields.io/badge/orb-living%20%26%20breathing-cyan) ![Next.js](https://img.shields.io/badge/Next.js-15.3.8-black) ![SQLite](https://img.shields.io/badge/SQLite-WAL%20mode-003B57) ![License](https://img.shields.io/badge/license-MIT-green)
+![Orb](https://img.shields.io/badge/orb-living%20%26%20breathing-cyan) ![Next.js](https://img.shields.io/badge/Next.js-16.3.5-black) ![SQLite](https://img.shields.io/badge/SQLite-WAL%20mode-003B57) ![License](https://img.shields.io/badge/license-MIT-green) ![Tests](https://img.shields.io/badge/vitest-12%2F12-green) ![DOX](https://img.shields.io/badge/DOX-v4.0-blue)
 
 ## 🚀 Quick Start
 

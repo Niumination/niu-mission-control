@@ -55,8 +55,13 @@ out/
 node_modules/
 apex-ui/node_modules/
 
-# Deploy script (mengandung path lokal)
-docs/deploy-launchagent.sh
+# Catatan 26 Sep 2026: `docs/deploy-launchagent.sh` TIDAK di-ignore.
+# File ini sudah tracked sejak v3 dan hanya berisi path lokal + perintah
+# launchctl (nol kredensial — dicek 26 Sep). Meng-ignore-nya tidak mencegah
+# apa pun karena file sudah terlacak, tapi membuat
+# scripts/secret-scan-staged.py menolak commit dan membingungkan.
+# Kalau nanti memang perlu dirsphinx, pindahkan ke git-ignored `deploy/`
+# lokal — jangan andalkan .gitignore untuk file yang sudah tracked.
 
 # Standalone Next.js build
 apex-ui/.next/standalone/

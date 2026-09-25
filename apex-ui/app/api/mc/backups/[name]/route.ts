@@ -12,8 +12,8 @@ export const runtime = 'nodejs'
 const DB_PATH = process.env.MC_DB_PATH || path.resolve(process.cwd(), '..', 'data', 'swarm_state.db')
 const BACKUP_DIR = path.resolve(path.dirname(DB_PATH), 'backups')
 
-export const GET = withAuth(async ({ req }) => {
-  const name = req.nextUrl.pathname.split('/').pop()!
+export const GET = withAuth(async ({ req, params }) => {
+  const name = params?.name || req.nextUrl.pathname.split('/').pop()!
   // Validate filename to prevent path traversal
   if (!/^backup-\d{4}-\d{2}-\d{2}-\d{6}\.db$/.test(name) && !/^backup-.*\.db$/.test(name)) {
     // Allow slightly more permissive but still safe

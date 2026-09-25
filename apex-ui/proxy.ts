@@ -44,7 +44,7 @@ function isPublicPath(pathname: string): boolean {
   return false
 }
 
-export async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // 1. Izinkan path publik

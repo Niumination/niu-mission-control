@@ -11,8 +11,8 @@ import { audit } from '@/lib/server/auth'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-export const GET = withAuth(async ({ req }) => {
-  const id = req.nextUrl.pathname.split('/').pop()!
+export const GET = withAuth(async ({ req, params }) => {
+  const id = params?.id || req.nextUrl.pathname.split('/').pop()!
   const parsed = AgentIdSchema.safeParse(id)
   if (!parsed.success) throw new ApiError(400, 'Invalid agent ID')
   const agentId = parsed.data
@@ -81,8 +81,8 @@ export const GET = withAuth(async ({ req }) => {
   })
 })
 
-export const PATCH = withAuth(async ({ actor, req }) => {
-  const id = req.nextUrl.pathname.split('/').pop()!
+export const PATCH = withAuth(async ({ actor, req, params }) => {
+  const id = params?.id || req.nextUrl.pathname.split('/').pop()!
   const parsed = AgentIdSchema.safeParse(id)
   if (!parsed.success) throw new ApiError(400, 'Invalid agent ID')
   const agentId = parsed.data
@@ -100,9 +100,9 @@ export const PATCH = withAuth(async ({ actor, req }) => {
   if (Object.keys(updates).length === 0) throw new ApiError(400, 'No fields to update')
 
   const sets = Object.keys(updates).map(k => `${k} = @${k}`).join(', ')
-  const params = { ...updates, id: agentId }
+  const dbParams = { ...updates, id: agentId }
 
-  db.prepare(`UPDATE agents SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = @id`).run(params)
+  db.prepare(`UPDATE agents SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE id = @id`).run(dbParams)
 
   audit(actor.name, actor.type as 'user' | 'api_key', 'agent.update', 'agent', agentId, 'success', { fields: Object.keys(updates) })
 

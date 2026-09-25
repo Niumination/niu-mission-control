@@ -16,6 +16,7 @@
 import Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
+import { ensureV3Columns } from './ensure-v3-columns'
 
 // ── Config ──────────────────────────────────────────────────────────
 
@@ -30,15 +31,28 @@ if (!fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true })
 }
 
-// ── Connect ─────────────────────────────────────────────────────────
+// ── Connect — singleton via globalThis survive HMR (Next 16 webpack) ────
 
-const db = new Database(DB_PATH)
+function createDb() {
+  const db = new Database(DB_PATH)
+  // WAL + foreign keys untuk keamanan dan performa
+  db.pragma('journal_mode = WAL')
+  db.pragma('foreign_keys = ON')
+  db.pragma('synchronous = NORMAL') // aman untuk WAL dengan backup
+  db.pragma('busy_timeout = 5000') // tunggu sampai 5 detik jika writer terkunci
+  return db
+}
 
-// WAL + foreign keys untuk keamanan dan performa
-db.pragma('journal_mode = WAL')
-db.pragma('foreign_keys = ON')
-db.pragma('synchronous = NORMAL') // aman untuk WAL dengan backup
-db.pragma('busy_timeout = 5000') // tunggu sampai 5 detik jika writer terkunci
+const g = globalThis as unknown as { __mc_db__?: Database.Database; __mc_db_path__?: string }
+// Recreate jika path berubah (env MC_DB_PATH berubah)
+const db: Database.Database = (() => {
+  if (!g.__mc_db__ || g.__mc_db_path__ !== DB_PATH) {
+    try { g.__mc_db__?.close() } catch {}
+    g.__mc_db__ = createDb()
+    g.__mc_db_path__ = DB_PATH
+  }
+  return g.__mc_db__!
+})()
 
 // ── Migrations ──────────────────────────────────────────────────────
 
@@ -69,8 +83,19 @@ export function runMigrations(): { applied: number; currentVersion: number } {
     .filter(f => /^\d{3}_.*\.sql$/.test(f))
     .sort()
 
+  // Skema v3 → v4 harus ditutup SEBELUM 001_initial.sql, karena 001 memakai
+  // CREATE TABLE IF NOT EXISTS (tabel v3 dilewati) tapi CREATE INDEX tetap
+  // jalan dan gagal: no such column: assigned_agent. Lihat ensure-v3-columns.ts.
+  ensureV3Columns(db)
+
   let appliedCount = 0
-  const insertMig = db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)')
+  // INSERT OR IGNORE: Next.js build menjalankan route handler di banyak worker
+  // paralel ("Collecting page data using N workers"). Semua worker membaca
+  // `applied` pada waktu yang hampir bersamaan, lalu semuanya mencoba insert
+  // baris yang sama → UNIQUE constraint failed: schema_migrations.version.
+  // Cek ulang di dalam transaksi (lalu masukkan) menjadikan ini optimistic:
+  // worker yang kalah tetap melihat barisnya sudah ada dan melewati migrasi.
+  const insertMig = db.prepare('INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)')
 
   for (const file of files) {
     const version = parseInt(file.slice(0, 3), 10)
@@ -79,12 +104,19 @@ export function runMigrations(): { applied: number; currentVersion: number } {
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8')
     const migName = file.replace(/^\d{3}_/, '').replace(/\.sql$/, '')
 
-    // Jalankan dalam transaksi
+    // Jalankan dalam transaksi. `claimed` = worker ini yang-installed
+    // migrasi; kalau sudah ada, worker lain menang dan SQL-nya dilewati.
+    let claimed = false
     const tx = db.transaction(() => {
+      const res = insertMig.run(version, migName)
+      // changes === 0 → worker lain sudah lebih dulu, jangan jalankan SQL.
+      if (res.changes === 0) return
       db.exec(sql)
-      insertMig.run(version, migName)
+      claimed = true
     })
     tx()
+    if (!claimed) continue
+    applied.add(version)
     console.log(`[db] Applied migration ${file}`)
     appliedCount++
   }

@@ -4,11 +4,16 @@
   "description": "An animated autonomous-agent orb + reasoning-graph UI. Hand-written SVG/CSS, no 3D libraries.",
   "license": "MIT",
   "private": false,
+  "packageManager": "npm@10.9.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:a11y": "node tests/e2e/a11y.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -21,9 +26,9 @@
     "cmdk": "^1.1.1",
     "iron-session": "^8.0.4",
     "lucide-react": "^0.511.0",
-    "next": "15.3.8",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "next": "16.3.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "server-only": "^0.0.1",
     "swr": "^2.5.1",
     "three": "^0.184.0",
@@ -31,21 +36,31 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@eslint/eslintrc": "^3.3.7",
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/node": "^22",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.8",
     "@types/three": "^0.184.1",
+    "@typescript-eslint/parser": "^8.70.1",
     "eslint": "^9",
-    "eslint-config-next": "15.3.3",
+    "eslint-config-next": "16.3.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "allowScripts": {
     "better-sqlite3@12.11.1": true,
-    "sharp@0.34.5": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true,
     "unrs-resolver@1.12.2": true
   }
 }

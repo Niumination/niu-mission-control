@@ -1,0 +1,18 @@
+{
+  "name": "Niumination Mission Control v4.1 Aether Sync",
+  "short_name": "Mission Control",
+  "description": "Self-hosted AI Agent Control Plane — Hermes Swarm",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04080f",
+  "theme_color": "#00e5ff",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["productivity", "developer"],
+  "orientation": "any"
+}

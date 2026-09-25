@@ -1,26 +1,35 @@
-# Niumination Mission Control v4.0 Aether
+# Niumination Mission Control v4.1 Aether Sync
 
-**Personal AI OS Dashboard** — self-hosted AI agent control plane untuk swarm 5 agent, dengan visual signature orb + reasoning web yang hidup. Rebuild dari APEX-UI (MIT).
+**Personal AI OS Dashboard** — self-hosted AI agent control plane untuk swarm 5 agent, visual orb + reasoning web hidup, **sinkron dengan Ekosistem Niumination v4.0 DOX + gold standard Next.js 16**. Rebuild dari APEX-UI (MIT).
 
 ## 🚀 Quick Start
 
 ```bash
-# 1. Install
+# 0. Aktifkan DOX gate (Wajib di clone baru)
+git config core.hooksPath .githooks
+
+# 1. Install (Node 22 via .nvmrc)
 cd apex-ui && npm install
 
-# 2. Dev (localhost:3000)
+# 2. Dev (localhost:3000, webpack mode — Next 16)
 npm run dev
 # First-run → /setup → password → Initialize → .env.local auto-generated
 # Login dengan password tersebut
 
 # 3. Production
 npm run build && npm start
-# Atau standalone: node server.js (setelah build, output standalone)
+# Atau standalone: node .next/standalone/server.js
 
-# 4. Docker
-docker build -f apex-ui/deploy/Dockerfile -t niu-mission-control:4.0 .
+# 4. Docker (multi-stage, node:22-alpine)
+docker build -f apex-ui/deploy/Dockerfile -t niu-mission-control:4.1 .
 docker compose -f apex-ui/deploy/docker-compose.yml up -d
 curl http://localhost:3000/api/mc/health
+curl http://localhost:3000/api/v1/mc/health  # v1 alias
+
+# 5. Test
+npm run test          # vitest 12/12
+MC_PASSWORD=apex node scripts/test-sse.mjs  # SSE 10/10
+node tests/e2e/a11y.mjs  # a11y 7 routes
 ```
 
 **Dev password jika sudah ada:** `apex` (atau cek `.env.local`).
@@ -148,7 +157,7 @@ MC_PASSWORD=apex node scripts/test-sse.mjs
 - `docs/API.md` — 14 endpoints spec
 - `docs/ORCHESTRATION.md` — state machine, dispatcher, adapters, approval, event bus, cost, backup, logging, shutdown, Docker, LaunchAgent, systemd, UI polish
 - `docs/PRD.md` — PRD v4.0 11 milestones
-- `docs/adr/` — ADRs
+- `docs/dox/` — ADR (001-006) + `INDEX.md` peta folder resmi DOX v4.0
 
 ## 📎 Attribution
 
@@ -160,41 +169,6 @@ Based on [APEX-UI](https://github.com/RubenM1990/APEX-UI) (MIT). See `apex-ui/CR
 - v4.0.0 Aether — Full control plane: foundation & security, state machine & dispatcher, event bus & SSE, living orb, AppShell & ⌘K, Kanban, Agents + Live Ops, Analytics + Audit + Settings, polish + Docker + backup + logger + graceful shutdown
 
 **Status:** v4.0.0-dev ready, build hijau, all routes 200, SSE 10/10, Docker ready, LaunchAgent/systemd ready.
-
-## 🗄️ Migrasi DB v3 → v4 (26 Sep 2026)
-
-`migrations/000_baseline_v3_to_v4.sql` ada karena `001_initial.sql` memakai
-`CREATE TABLE IF NOT EXISTS`. Kalau DB sudah punya tabel v3, statement itu
-DILEWATI tapi `CREATE INDEX` tetap jalan dan gagal:
-
-```
-CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_agent);
-→ SqliteError: no such column: assigned_agent
-```
-
-Yang diubah migrasi 000 (tidak menghapus data):
-
-| Tabel | Perubahan |
-|---|---|
-| `tasks` | `agent_id` → `assigned_agent`; +14 kolom lifecycle; `pending` → `inbox` |
-| `agents` | +9 kolom; `active` → `idle`; **chief `hermes` → `mock`** |
-| `cost_tracking` | +6 kolom; `created_at` → `recorded_at` (v3 disimpan sebagai `created_at_v3_legacy`) |
-| `dispatches` | +3 kolom |
-| `system_logs` | +`task_id`, +`metadata` |
-
-`chief` diubah ke adapter `mock` karena seed v4 juga memakai `mock` — dengan
-`hermes` worker claim task lalu menggantung (Hermes CLI tidak tersedia, dan
-tidak ada retry). Empat agent lain tetap `hermes`, sama seperti seed v4.
-
-**Verifikasi (26 Sep 2026, data v3 asli):** 12 tabel, 24 index, 15 tasks + 5
-agents utuh, `test-sse.mjs` 10/10 di repo dengan DB termigrasi.
-
-Backup DB v3 sebelum migrasi: `~/Desktop/Niumination/vault/_arsip-sensitif/mc-db-v3-<timestamp>.db`.
-
-**Untuk install baru** (tidak punya DB v3) hapus `000_baseline_v3_to_v4.sql`
-atau biarkan — statement-nya `ALTER` dan akan gagal di DB kosong. Uninstall:
-hapus baris `version=0` dari `schema_migrations` **hanya** kalau DB sudah v4
-lengkap dan `000` memang pernah jalan.
 
 ---
 

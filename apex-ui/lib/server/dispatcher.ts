@@ -157,6 +157,23 @@ class Dispatcher {
   }
 
   /**
+   * Cek budget harian — jika melebihi, emit alert + optional hard stop
+   */
+  private checkBudget(): { exceeded: boolean; costToday: number; budget: number } {
+    try {
+      const dailyBudget = parseFloat(process.env.DAILY_BUDGET_USD || '10')
+      const row = db.prepare(`SELECT COALESCE(SUM(cost_usd),0) as c FROM cost_tracking WHERE date(created_at) = date('now')`).get() as { c: number }
+      const costToday = row?.c ?? 0
+      if (costToday > dailyBudget) {
+        return { exceeded: true, costToday, budget: dailyBudget }
+      }
+      return { exceeded: false, costToday, budget: dailyBudget }
+    } catch {
+      return { exceeded: false, costToday: 0, budget: 10 }
+    }
+  }
+
+  /**
    * Tick utama — dipanggil setiap POLL_INTERVAL_MS.
    * Public agar bisa dipanggil dari integration test secara deterministik.
    * Tidak boleh throw; semua error ditangani di dalam.
@@ -177,11 +194,36 @@ class Dispatcher {
       // Abaikan; jangan sampai health update gagal mematikan tick
     }
 
+    // Budget check — soft (alert) atau hard (stop dispatcher)
+    const budgetCheck = this.checkBudget()
+    if (budgetCheck.exceeded) {
+      try {
+        const { logger } = require('./logger')
+        logger.warn('Daily budget exceeded', { module: 'dispatcher', cost_today: budgetCheck.costToday, budget: budgetCheck.budget })
+      } catch {}
+      emitSystemEvent('budget.exceeded', {
+        cost_today: budgetCheck.costToday,
+        budget: budgetCheck.budget,
+        enforcement: process.env.BUDGET_ENFORCEMENT || 'soft',
+      })
+      writeSystemLog('warn', `Daily budget exceeded: $${budgetCheck.costToday.toFixed(4)} > $${budgetCheck.budget}`, 'dispatcher')
+
+      if ((process.env.BUDGET_ENFORCEMENT || 'soft') === 'hard') {
+        console.warn(`[dispatcher] Budget hard enforcement — pausing dispatcher (cost $${budgetCheck.costToday.toFixed(4)} > $${budgetCheck.budget})`)
+        if (this.timer) {
+          clearInterval(this.timer)
+          this.timer = null
+        }
+        emitSystemEvent('dispatcher.paused', { reason: 'budget_exceeded', cost_today: budgetCheck.costToday, budget: budgetCheck.budget })
+        return
+      }
+    }
+
     try {
       // 1. Poll active runs & handle selesai
       await this.reapActiveRuns()
 
-      // 2. Klaim task baru jika ada kapasitas
+      // 2. Klaim task baru jika ada kapasitas (skip jika budget exceeded soft? tetap jalan tapi alert)
       while (this.activeRuns.size < MAX_CONCURRENT_TASKS) {
         const claimed = await this.claimAndDispatchOne()
         if (!claimed) break

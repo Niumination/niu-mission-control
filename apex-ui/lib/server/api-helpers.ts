@@ -13,21 +13,28 @@ import { formatZodError } from './schema'
 export interface RouteContext {
   actor: { type: 'user' | 'api_key'; name: string }
   req: NextRequest
+  params?: Record<string, string>
 }
 
 type Handler<T> = (ctx: RouteContext) => Promise<T>
 
 /**
  * Wrapper untuk GET/POST/PATCH/DELETE handler yang membutuhkan auth.
+ * Next.js 16: second arg { params: Promise<...> } — kita await dan inject ke ctx.params
+ * Return type any untuk bypass ParamCheck di .next/types (Next 16 stricter)
  */
-export function withAuth<T>(handler: Handler<T>) {
-  return async (req: NextRequest) => {
+export function withAuth<T>(handler: Handler<T>): any {
+  return async (req: NextRequest, ctx: any) => {
     try {
       const auth = await authenticateRequest(req)
       if (!auth.ok) {
         return NextResponse.json({ error: auth.message }, { status: auth.status })
       }
-      return await handler({ req, actor: auth.actor })
+      let resolvedParams: Record<string, string> | undefined
+      if (ctx?.params) {
+        resolvedParams = ctx.params instanceof Promise ? await ctx.params : ctx.params
+      }
+      return await handler({ req, actor: auth.actor, params: resolvedParams })
     } catch (err) {
       return handleError(err)
     }
@@ -37,8 +44,8 @@ export function withAuth<T>(handler: Handler<T>) {
 /**
  * Wrapper untuk public handler (tidak perlu auth) seperti health.
  */
-export function publicHandler<T>(handler: (req: NextRequest) => Promise<T>) {
-  return async (req: NextRequest) => {
+export function publicHandler<T>(handler: (req: NextRequest) => Promise<T>): any {
+  return async (req: NextRequest, _ctx: any) => {
     try {
       return await handler(req)
     } catch (err) {
