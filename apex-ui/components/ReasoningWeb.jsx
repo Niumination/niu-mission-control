@@ -132,7 +132,8 @@ export default function ReasoningWeb({ state = 'standby', trace = null, mode = '
         fillG.append(c)
       })
       const map = {}, pts = []
-      NODES.forEach((r) => { const n = { id: r[0], label: r[1], layer: r[2], x: r[3], y: r[4], live: r[5], bend: r[6], r: r[7], col: P.col[r[2]] || COL[r[2]] }; map[r[0]] = n; pts.push(n) })
+      // r[8] (opsional): jumlah task aktif untuk badge kecil di atas node (dipasang dari luar via roster prop)
+      NODES.forEach((r) => { const n = { id: r[0], label: r[1], layer: r[2], x: r[3], y: r[4], live: r[5], bend: r[6], r: r[7], count: r[8] || 0, col: P.col[r[2]] || COL[r[2]] }; map[r[0]] = n; pts.push(n) })
       // Keep a clear moat around the centre so no node sits ON the orb — push the inner ring out.
       const MINR = 128
       pts.forEach((n) => { const dx = n.x - AX, dy = n.y - AY, d = Math.hypot(dx, dy) || 1; if (d < MINR) { n.x = AX + dx / d * MINR; n.y = AY + dy / d * MINR } })
@@ -152,6 +153,16 @@ export default function ReasoningWeb({ state = 'standby', trace = null, mode = '
         n.circ = mk('circle', { cx: n.x, cy: n.y, r: rr, fill: 'none', stroke: n.col, 'stroke-width': n.live ? 2 : 1.3, opacity: n.live ? 1 : 0.6 })
         if (!n.live) n.circ.setAttribute('stroke-dasharray', '2 2')
         nodesG.append(n.circ)
+        // Badge jumlah task aktif (hanya muncul bila count > 0)
+        if (n.count > 0) {
+          const badgeR = 7
+          const bx = n.x + rr * 0.7, by = n.y - rr * 0.7
+          const bg = mk('circle', { cx: bx, cy: by, r: badgeR, fill: '#ef4444', stroke: '#04080f', 'stroke-width': 1.2 })
+          nodesG.append(bg)
+          const bt = mk('text', { x: bx, y: by + 3, 'text-anchor': 'middle', 'font-size': 8.5, 'font-family': 'inherit', 'font-weight': 700, fill: '#ffffff' })
+          bt.textContent = n.count > 9 ? '9+' : String(n.count)
+          nodesG.append(bt)
+        }
         const dx = n.x - AX, dy = n.y - AY, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, off = rr + 11
         // Bottom-most nodes: label ABOVE the node so it doesn't drop into the STANDBY bar below.
         const above = uy > 0.82

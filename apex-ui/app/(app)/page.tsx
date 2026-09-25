@@ -1,110 +1,64 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import ApexWorld from "@/components/ApexWorld";
 import ApexOverviewPanel from "@/components/ApexOverviewPanel";
 import TaskPanel from "@/components/TaskPanel";
 import BottomDrawer from "@/components/BottomDrawer";
-
-interface Agent {
-  id: string
-  name: string
-  role: string
-  model: string
-  status: string
-  color: string
-  total_tasks: number
-  completed_tasks: number
-  failed_tasks: number
-}
-
-interface Task {
-  id: string
-  title: string
-  description: string | null
-  agent_id: string | null
-  status: string
-  priority: string
-  progress: number
-  created_at: string
-  agent_name: string | null
-}
-
-interface Health {
-  status: string
-  database: string
-  version: string
-  uptime: number
-}
+import ActivityFeed from "@/components/ActivityFeed";
+import ConnectionStatus from "@/components/ConnectionStatus";
+import { useTasksStore } from '@/lib/client/stores'
 
 export default function Home() {
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [health, setHealth] = useState<Health | null>(null)
-  const [loading, setLoading] = useState(true)
+  // SSE diinisialisasi di AppShell layout via useEventStream() singleton (guard ref).
+
   const [showTaskPanel, setShowTaskPanel] = useState(false)
   const [showBottomDrawer, setShowBottomDrawer] = useState(false)
 
-  const fetchAgents = async () => {
-    try {
-      const res = await fetch('/api/mc/agents')
-      const data = await res.json()
-      setAgents(data.agents || [])
-    } catch (err) {
-      console.error('Failed to fetch agents:', err)
-    }
-  }
-
-  const fetchTasks = async () => {
-    try {
-      const res = await fetch('/api/mc/tasks')
-      const data = await res.json()
-      setTasks([...(data.pending || []), ...(data.running || []), ...(data.completed || []), ...(data.failed || [])])
-    } catch (err) {
-      console.error('Failed to fetch tasks:', err)
-    }
-  }
-
-  const fetchHealth = async () => {
-    try {
-      const res = await fetch('/api/mc/health')
-      const data = await res.json()
-      setHealth(data)
-    } catch (err) {
-      console.error('Failed to fetch health:', err)
-    }
-  }
-
-  useEffect(() => {
-    Promise.all([fetchAgents(), fetchTasks(), fetchHealth()]).then(() => setLoading(false))
-  }, [])
-
-  const handleTaskCreated = () => {
-    fetchTasks()
-  }
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#04080f' }}>
-        <div style={{ color: '#94a3b8', fontSize: '1.2rem' }}>Loading Mission Control...</div>
-      </div>
-    )
-  }
+  // Task count = inbox + queued + running (yang butuh perhatian)
+  const activeCount = useTasksStore(s => {
+    return Object.values(s.tasks).filter(t =>
+      t.status === 'inbox' || t.status === 'queued' || t.status === 'running' || t.status === 'review'
+    ).length
+  })
+  const runningCount = useTasksStore(s => Object.values(s.tasks).filter(t => t.status === 'running').length)
 
   return (
     <main
       id="main"
       style={{ background: "#04080f", color: "#f0ede8", position: "relative", overflow: "hidden" }}
     >
-      {/* Overview Panel */}
+      {/* Overview Panel (top-left: clock/weather/menu tiles) */}
       <ApexOverviewPanel />
+
+      {/* Connection status dot + label — top-right, di atas tombol */}
+      <div style={{
+        position: 'absolute', top: 24, right: 24, zIndex: 110,
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <ConnectionStatus />
+        {runningCount > 0 && (
+          <span style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.65rem',
+            color: '#00e5ff',
+            letterSpacing: '0.1em',
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: 'rgba(0,229,255,0.12)',
+            border: '1px solid rgba(0,229,255,0.3)',
+          }}>
+            {runningCount} running
+          </span>
+        )}
+      </div>
 
       {/* Task Queue Button - Top Right */}
       <button
         onClick={() => setShowTaskPanel(true)}
         style={{
           position: 'absolute',
-          top: 80,
-          right: 20,
+          top: 56,
+          right: 390, // geser ke kiri agar tidak tabrakan dengan stat cards (width 360 + gap 20)
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
@@ -142,7 +96,7 @@ export default function Home() {
         </span>
         <span>TASK QUEUE</span>
         <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(0, 229, 255, 0.2)', borderRadius: 4, color: '#00e5ff', minWidth: 24, textAlign: 'center' }}>
-          {tasks.length}
+          {activeCount}
         </span>
       </button>
 
@@ -151,8 +105,8 @@ export default function Home() {
         onClick={() => setShowBottomDrawer(true)}
         style={{
           position: 'absolute',
-          top: 130,
-          right: 20,
+          top: 106,
+          right: 390,
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
@@ -191,6 +145,18 @@ export default function Home() {
         <span>MENU</span>
       </button>
 
+      {/* Activity Feed — bottom-right HUD */}
+      <div style={{
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        width: 340,
+        height: 240,
+        zIndex: 90,
+      }}>
+        <ActivityFeed maxItems={20} />
+      </div>
+
       {/* Apex World Orb */}
       <section style={{ position: "relative", height: "100vh", minHeight: 620 }}>
         <ApexWorld />
@@ -200,7 +166,7 @@ export default function Home() {
       <TaskPanel
         isOpen={showTaskPanel}
         onClose={() => setShowTaskPanel(false)}
-        onTaskCreated={handleTaskCreated}
+        onTaskCreated={() => { /* akan di-update otomatis via SSE; tidak perlu refetch manual */ }}
       />
 
       {/* Bottom Drawer - Slide-up Menu */}
@@ -208,6 +174,14 @@ export default function Home() {
         isOpen={showBottomDrawer}
         onClose={() => setShowBottomDrawer(false)}
       />
+
+      {/* Global keyframes untuk pulse dot */}
+      <style jsx global>{`
+        @keyframes mc-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
+        }
+      `}</style>
     </main>
   )
 }

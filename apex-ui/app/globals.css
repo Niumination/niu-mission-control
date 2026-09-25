@@ -1,19 +1,86 @@
-:root {
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+@import "tailwindcss";
+
+/* ============================================================
+   Niumination Mission Control — Design Tokens (v4 "Aether")
+   Dark-first. Semantic custom properties for use in both
+   Tailwind utilities and hand-written CSS/JSX.
+   ============================================================ */
+@theme {
+  /* ── Fonts ── */
+  --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, "JetBrains Mono", "Fira Code", monospace;
+
+  /* ── Backgrounds (slate navy, BUKAN hitam murni) ── */
+  --color-bg-base: #0a0f1a;
+  --color-bg-surface: rgba(15, 23, 42, 0.72);
+  --color-bg-surface-2: rgba(22, 32, 52, 0.85);
+  --color-bg-elevated: rgba(30, 41, 59, 0.9);
+  --color-bg-input: rgba(8, 14, 26, 0.6);
+
+  /* ── Text ── */
+  --color-text-primary: #e8eef5;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #546a7d;
+
+  /* ── Accent palette (Niumination brand) ── */
+  --color-cyan: #00e5ff;
+  --color-cyan-dim: #0891b2;
+  --color-amber: #f5a623;
+  --color-emerald: #34d399;
+  --color-red: #ef4444;
+  --color-violet: #8b5cf6;
+  --color-gold: #ffcf6b;
+
+  /* ── Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* ── Spacing (4px grid) ── */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+
+  /* ── Glow shadows (sebagai box-shadow utilities) ── */
+  --shadow-glow-cyan: 0 0 12px var(--color-cyan), 0 0 32px rgba(0, 229, 255, 0.3);
+  --shadow-glow-amber: 0 0 12px var(--color-amber), 0 0 32px rgba(245, 166, 35, 0.3);
+  --shadow-glow-red: 0 0 12px var(--color-red), 0 0 32px rgba(239, 68, 68, 0.3);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+  /* ── Transitions ── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ============================================================
+   Global base styles
+   ============================================================ */
 * { box-sizing: border-box; }
 
-html, body { margin: 0; padding: 0; }
-
-body {
-  background: #04080f;
-  color: #f0ede8;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0a0f1a;
+  color: #e8eef5;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* Screen-reader-only content (used by the accessible agent list). */
+/* Monospace untuk elemen kode/label teknis */
+code, pre, .mono, [data-mono] {
+  font-family: var(--font-mono);
+}
+
+/* Screen-reader-only */
 .visually-hidden {
   position: absolute !important;
   width: 1px;
@@ -26,9 +93,26 @@ body {
   border: 0;
 }
 
-/* ── Overview lamp panel: pinned to the top-left, out of document flow ──
-   Without position:fixed the panel takes layout height and pushes the world
-   down (leaving a black band at the top). */
+/* Focus ring global (aksesibilitas) */
+:focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Tabular numerik untuk stats/metric */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Scrollbar gelap */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(8, 14, 26, 0.3); }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 229, 255, 0.4); }
+
+/* Apex overview panel (dari v3 — dipertahankan agar tidak merusak halaman existing) */
 .apex-overview {
   position: fixed;
   top: 10px;
@@ -45,13 +129,20 @@ body {
   }
 }
 
-/* Agent-node breathing (ReasoningWeb). */
 @keyframes agentPulse {
   0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.06); }
+  50% { transform: scale(1.06); }
 }
 
-/* Status-bar hint is hidden on small screens. */
 @media (max-width: 700px) {
   .sb-hint { display: none; }
+}
+
+/* Reduced motion global */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,4 +1,4 @@
-# Python
+# Python (legacy — masih dipakai untuk transisi; akan dihapus setelah M2 stabil)
 __pycache__/
 *.pyc
 venv/
@@ -7,43 +7,59 @@ venv/
 # Environment (berisi secrets — JANGAN commit)
 .env
 .env.local
+.env.*.local
+.apex-ui/.env
+.apex-ui/.env.local
+apex-ui/.env
+apex-ui/.env.local
+apex-ui/.env.*.local
 
 # SQLite (runtime state — jangan commit)
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/*.db-journal
 data/swarm_state.db*
+data/backups/
 
-# Runtime data (berisi dispatch logs, chat ID, dll)
+# Runtime data
 data/*.json
 data/contents/
 
 # OS
 .DS_Store
+Thumbs.db
 
-# Temp
+# Temp & logs
 /tmp/hermes_*
 *.log
 cookies.txt
+npm-debug.log*
 
-# Backups (jangan commit)
+# Legacy file backups (jangan commit)
 dashboard/index.html.bak*
-dashboard_backup_refactor_20260816/
+dashboard_backup_refactor_*/
 
 # IDE
 .vscode/settings.json
-frontend/static/fontawesome/fontawesome-free-6.5.1-web/
-.next/
-node_modules/
-docs/deploy-launchagent.sh
-*.log
+.idea/
 
-# Legacy — dihapus 24 Sep 2026 (rapikan audit)
-frontend/
-dashboard/
-fusion/
-aios/
-server.py
-start.sh
-start-frontend.sh
-components_backup_ApexWorld.tsx
+# Frontend legacy assets (dihapus 24 Sep 2026)
+frontend/static/fontawesome/fontawesome-free-6.5.1-web/
+
+# Next.js build output
+.next/
+out/
+
+# Node
+node_modules/
+apex-ui/node_modules/
+
+# Deploy script (mengandung path lokal)
+docs/deploy-launchagent.sh
+
+# Standalone Next.js build
+apex-ui/.next/standalone/
+
+# TypeScript build info
+apex-ui/tsconfig.tsbuildinfo

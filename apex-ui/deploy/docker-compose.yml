@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  mission-control:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: niu-mission-control:4.0
+    container_name: niu-mission-control
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist SQLite DB and backups
+      - ../data:/app/data
+      # Or use named volume:
+      # - mc-data:/app/data
+    env_file:
+      - ../.env.local
+      # Fallback to .env.example if .env.local not exists, but better create .env.local first
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MC_DB_PATH=/app/data/swarm_state.db
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/mc/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# Uncomment to use named volume instead of bind mount:
+# volumes:
+#   mc-data:
+#     driver: local

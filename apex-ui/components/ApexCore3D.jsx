@@ -46,6 +46,22 @@ const ARM_N = 340   // particles forming the stream/arm to the cursor (rest = th
 const GREEN = 1.5
 const RED = 2.05
 
+// ── Per-state color palettes ──────────────────────────────────────
+// alert: merah-amarah (error / failed / approval); offline: abu keperakan (semua agent off)
+const PALETTES = {
+  standby:    { core: CYAN, line: GOLDLINE, node: GOLDNODE, ring: GOLDLINE, ball: BALL },
+  processing: { core: CYAN, line: GOLDLINE, node: GOLDNODE, ring: GOLDNODE, ball: BALL },
+  listening:  { core: '#7df9ff', line: GOLDLINE, node: GOLDNODE, ring: GOLDNODE, ball: BALL },
+  speaking:   { core: '#bff7ff', line: '#ffd98a', node: '#fff5d6', ring: '#ffd98a', ball: '#ffffff' },
+  alert:      { core: '#ff6b6b', line: '#ff4444', node: '#ffd0d0', ring: '#ff5e5e', ball: '#ffeaea' },
+  offline:    { core: '#6b7280', line: '#4b5563', node: '#9ca3af', ring: '#4b5563', ball: '#9ca3af' },
+}
+
+function hexToColor(hex) {
+  // THREE.Color accepts '#rrggbb' directly
+  return new THREE.Color(hex)
+}
+
 const BG_VARIANTS = [
   { name: 'Subtle', css: [
     'radial-gradient(circle 22% at 50% 45%, rgba(0,229,255,0.08), transparent 70%)',
@@ -73,6 +89,8 @@ const BG_VARIANTS = [
 
 function normalizeState(state) {
   const s = String(state || '').toLowerCase()
+  if (s.includes('alert') || s.includes('error')) return 'alert'
+  if (s.includes('offline')) return 'offline'
   if (s.includes('think') || s.includes('process')) return 'processing'
   if (s.includes('listen')) return 'listening'
   if (s.includes('speak')) return 'speaking'
@@ -166,7 +184,33 @@ function Core({ state, variant, corner = false, bigDock = false }) {
   const calmStartRef = useRef(0)
   const calmCarryRef = useRef(0)
 
+  // ── Material refs (warna diganti dinamis per state) ─────────────
+  const coreMatRef = useRef(null)
+  const icoLineMatRef = useRef(null)
+  const icoNodeMatRef = useRef(null)
+  const sphereLineMatRef = useRef(null)
+  const sphereNodeMatRef = useRef(null)
+  const gyroMatsRef = useRef([])
+  const gyroBallMatsRef = useRef([])
+  const lastPaletteRef = useRef('')
+
   useFrame((frame, dt) => {
+    const st = normalizeState(state)
+
+    // ── Palette switch: lerp warna material jika state berubah ───
+    if (lastPaletteRef.current !== st) {
+      const target = PALETTES[st] || PALETTES.standby
+      const lerpMat = (mat, hex) => { if (mat) mat.color.lerp(hexToColor(hex), 0.25) }
+      lerpMat(coreMatRef.current, target.core)
+      lerpMat(icoLineMatRef.current, target.line)
+      lerpMat(icoNodeMatRef.current, target.node)
+      lerpMat(sphereLineMatRef.current, target.line)
+      lerpMat(sphereNodeMatRef.current, target.node)
+      gyroMatsRef.current.forEach(m => lerpMat(m, target.ring))
+      gyroBallMatsRef.current.forEach(m => lerpMat(m, target.ball))
+      lastPaletteRef.current = st
+    }
+
     // [perf] Tier B Step 1: while a reply streams / Apex speaks, halve the per-frame particle work (skip
     // every other frame) so the main thread stops starving the WS audio-delivery queue. Two guards keep
     // the throttle from reading as a FROZEN orb (Ruben saw the ball stop mid-way through long replies):
@@ -376,8 +420,8 @@ function Core({ state, variant, corner = false, bigDock = false }) {
 
   return (
     <group ref={group}>
-      {/* cyan particle core â€” all variants */}
-      <points ref={points}>
+      {/* particle core — all variants */}
+      <points ref={(el) => { if (el) { points.current = el; coreMatRef.current = el.material } }}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" count={N} array={positions} itemSize={3} />
         </bufferGeometry>
@@ -387,9 +431,11 @@ function Core({ state, variant, corner = false, bigDock = false }) {
 
       {variant === 'geodesic' && (
         <>
-          <mesh geometry={geoIco}><meshBasicMaterial color={GOLDLINE} wireframe transparent opacity={0.45} /></mesh>
+          <mesh geometry={geoIco}>
+            <meshBasicMaterial ref={(m) => { if (m) icoLineMatRef.current = m }} color={GOLDLINE} wireframe transparent opacity={0.45} />
+          </mesh>
           <points geometry={geoIco}>
-            <pointsMaterial size={0.055} map={sprite} color={GOLDNODE} transparent opacity={1}
+            <pointsMaterial ref={(m) => { if (m) icoNodeMatRef.current = m }} size={0.055} map={sprite} color={GOLDNODE} transparent opacity={1}
               sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} alphaTest={0.01} />
           </points>
         </>
@@ -397,24 +443,25 @@ function Core({ state, variant, corner = false, bigDock = false }) {
 
       {variant === 'meridian' && (
         <>
-          <mesh geometry={geoSphere}><meshBasicMaterial color={GOLDLINE} wireframe transparent opacity={0.42} /></mesh>
+          <mesh geometry={geoSphere}>
+            <meshBasicMaterial ref={(m) => { if (m) sphereLineMatRef.current = m }} color={GOLDLINE} wireframe transparent opacity={0.42} />
+          </mesh>
           <points geometry={geoSphere}>
-            <pointsMaterial size={0.04} map={sprite} color={GOLDNODE} transparent opacity={1}
+            <pointsMaterial ref={(m) => { if (m) sphereNodeMatRef.current = m }} size={0.04} map={sprite} color={GOLDNODE} transparent opacity={1}
               sizeAttenuation depthWrite={false} blending={THREE.AdditiveBlending} alphaTest={0.01} />
           </points>
         </>
       )}
 
-
       {variant === 'gyro' && ringData.map((rd, i) => (
         <group key={i} ref={(el) => (ringsRef.current[i] = el)} rotation={rd.tilt}>
           <mesh>
             <torusGeometry args={[rd.r, rd.tube, 16, 110]} />
-            <meshBasicMaterial color={GOLD} transparent opacity={0.9} />
+            <meshBasicMaterial ref={(m) => { if (m) gyroMatsRef.current[i] = m }} color={GOLD} transparent opacity={0.9} />
           </mesh>
           <mesh ref={(el) => (ballsRef.current[i] = el)}>
             <sphereGeometry args={[0.05, 16, 16]} />
-            <meshBasicMaterial color={BALL} />
+            <meshBasicMaterial ref={(m) => { if (m) gyroBallMatsRef.current[i] = m }} color={BALL} />
           </mesh>
         </group>
       ))}
@@ -424,7 +471,7 @@ function Core({ state, variant, corner = false, bigDock = false }) {
 
 export default function ApexCore3D({ state = 'idle', variant = 'geodesic', onClick, corner = false, bigDock = false, contained = false }) {
   const st = normalizeState(state)
-  const label = st === 'processing' ? 'Processing' : st === 'listening' ? 'Listening' : st === 'speaking' ? 'Speaking' : 'Standby'
+  const label = st === 'alert' ? 'Attention' : st === 'offline' ? 'Offline' : st === 'processing' ? 'Processing' : st === 'listening' ? 'Listening' : st === 'speaking' ? 'Speaking' : 'Standby'
   const [bgIdx, setBgIdx] = useState(2) // Grid default
   const isParticles = variant === 'particles' // cyan-only, transparent, status moves to OrbStatusBar
 

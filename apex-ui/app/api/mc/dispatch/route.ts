@@ -1,81 +1,114 @@
-import { NextResponse } from 'next/server';
-import { execSync } from 'child_process';
-import { existsSync } from 'fs';
-import path from 'path';
+/**
+ * POST /api/mc/dispatch
+ *
+ * Endpoint penerima instruksi (dari UI, Telegram, CLI via API key, webhook).
+ * Fungsinya adalah shortcut yang memaksa tugas masuk ke antrian (queued)
+ * dengan agent default 'chief' (orchestrator), lalu menyerahkan ke worker loop.
+ *
+ * Flow:
+ *   POST /api/mc/dispatch
+ *     → validasi body (CreateTaskSchema, field `to` jadi agent opsional)
+ *     → buat task status 'queued', agent = body.to || 'chief'
+ *     → worker loop (3s) meng-claim, jalankan adapter (hermes/mock)
+ *     → hasil/cost/artifacts disimpan
+ *
+ * GET /api/mc/dispatch
+ *   → alias list tasks terbaru (untuk backward-compatible).
+ */
 
-const ROOT_DIR = path.resolve(process.cwd(), '..')
-const DB_MANAGER = `${ROOT_DIR}/db_manager.py`;
-const DB_PATH = `${ROOT_DIR}/data/swarm_state.db`;
+import crypto from 'crypto'
+import db from '@/lib/server/db'
+import { withAuth, json, parseBody, parseQuery } from '@/lib/server/api-helpers'
+import { CreateTaskSchema, ListTasksQuerySchema } from '@/lib/server/schema'
+import { audit } from '@/lib/server/auth'
+import { emitTaskEvent } from '@/lib/server/events'
 
-function runDBQuery(query: string, params: any[] = []): any {
-  const env = { ...process.env, MC_DB_PATH: DB_PATH };
-  const args = [DB_MANAGER, query, ...params.map(p => JSON.stringify(p))];
-  try {
-    const output = execSync(`python3 ${args.join(' ')}`, {
-      timeout: 5000,
-      encoding: 'utf-8',
-      env
-    });
-    return JSON.parse(output.trim());
-  } catch (error) {
-    console.error('[MC] DB Query error:', error instanceof Error ? error.message : error);
-    return null;
-  }
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+function generateTaskId(): string {
+  return `t${Date.now().toString(36)}${crypto.randomBytes(3).toString('hex')}`
 }
 
-// Agent-to-topic mapping (matches Hermes channel overrides)
-const TOPIC_MAP: Record<string, string> = {
-  'chief': '1',
-  'research': '802',
-  'programmer': '803',
-  'qa': '804',
-  'creator': '1172',
-};
-
-// Validate target topic
-function validateTarget(to: string): [boolean, string] {
-  const validTopics = ['1', '802', '803', '804', '1172'];
-  if (!validTopics.includes(to)) {
-    return [false, `Invalid target. Must be one of: ${validTopics.join(', ')}`];
+export const GET = withAuth(async ({ req }) => {
+  const q = parseQuery(req, ListTasksQuerySchema)
+  const where: string[] = []
+  const params: Record<string, unknown> = { limit: q.limit, offset: q.offset }
+  if (q.status)   { where.push('t.status = @status');   params.status = q.status }
+  if (q.agent)    { where.push('t.assigned_agent = @agent'); params.agent = q.agent }
+  if (q.priority) { where.push('t.priority = @priority'); params.priority = q.priority }
+  if (q.search)   {
+    where.push('(t.title LIKE @s OR t.description LIKE @s OR t.id LIKE @s)')
+    params.s = `%${q.search}%`
   }
-  return [true, ''];
-}
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
+  const rows = db.prepare(`
+    SELECT t.*, a.name as agent_name, a.color as agent_color
+    FROM tasks t LEFT JOIN agents a ON t.assigned_agent = a.id
+    ${whereSql}
+    ORDER BY
+      CASE t.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END,
+      t.created_at DESC
+    LIMIT @limit OFFSET @offset
+  `).all({ ...params, limit: q.limit, offset: q.offset })
+  const total = (db.prepare(`SELECT COUNT(*) as c FROM tasks t ${whereSql}`).get(params) as { c: number }).c
+  return json({ tasks: rows, total })
+})
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { to, message, source } = body;
+export const POST = withAuth(async ({ actor, req }) => {
+  const body = await parseBody(req, CreateTaskSchema)
+  const now = new Date().toISOString()
+  const taskId = generateTaskId()
 
-    if (!message || typeof message !== 'string') {
-      return NextResponse.json({ error: 'message wajib diisi' }, { status: 400 });
-    }
+  // Default agent = chief (orchestrator) — override via body.to / body.agent
+  const assignedAgent = body.agent || 'chief'
 
-    const [ok, err] = validateTarget(to);
-    if (!ok) {
-      return NextResponse.json({ error: err }, { status: 400 });
-    }
-
-    // 1. Record pending dispatch
-    const record = runDBQuery('add_dispatch', [to, message, source || 'general']);
-    if (!record) {
-      return NextResponse.json({ error: 'Failed to create dispatch record' }, { status: 500 });
-    }
-
-    // 2. Send to Telegram via hermes CLI (async — don't block response)
-    // The actual send is handled by the frontend via the bridge or can be done here
-    // For now, we return the record and let the frontend poll for status updates
-
-    return NextResponse.json({
-      id: record.id,
-      status: 'pending',
-      target: to,
-      message: message.slice(0, 100),
-      created_at: record.created_at,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to dispatch', details: String(error) },
-      { status: 500 }
-    );
+  // Validasi agent exists
+  const agent = db.prepare('SELECT id, status FROM agents WHERE id = ?').get(assignedAgent) as
+    | { id: string; status: string } | undefined
+  if (!agent) {
+    return json({ error: `Agent '${assignedAgent}' tidak ditemukan` }, { status: 400 })
   }
-}
+
+  // Insert langsung queued agar worker bisa pick up
+  db.prepare(`
+    INSERT INTO tasks (
+      id, title, description, instruction, assigned_agent, priority,
+      status, source, depends_on, deadline_at, metadata,
+      retry_count, created_at, queued_at
+    ) VALUES (
+      @id, @title, @description, @instruction, @assigned_agent, @priority,
+      'queued', @source, @depends_on, @deadline_at, @metadata,
+      0, @now, @now
+    )
+  `).run({
+    id: taskId,
+    title: body.title,
+    description: body.description ?? null,
+    instruction: body.instruction ?? body.description ?? null,
+    assigned_agent: assignedAgent,
+    priority: body.priority,
+    source: body.source,
+    depends_on: body.depends_on ?? null,
+    deadline_at: body.deadline_at ?? null,
+    metadata: body.metadata ? JSON.stringify(body.metadata) : null,
+    now,
+  })
+
+  emitTaskEvent(taskId, 'task.queued', { title: body.title, agent: assignedAgent, priority: body.priority })
+  audit(
+    actor.name,
+    actor.type as 'user' | 'api_key',
+    'dispatch.create',
+    'task',
+    taskId,
+    'success',
+    { title: body.title.slice(0, 80), agent: assignedAgent, priority: body.priority },
+  )
+
+  const task = db.prepare(
+    `SELECT t.*, a.name as agent_name, a.color as agent_color
+     FROM tasks t LEFT JOIN agents a ON t.assigned_agent = a.id WHERE t.id = ?`
+  ).get(taskId)
+  return json({ id: taskId, status: 'queued', task }, { status: 201 })
+})

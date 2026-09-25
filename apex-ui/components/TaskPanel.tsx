@@ -1,7 +1,13 @@
 'use client';
 
+/**
+ * TaskPanel — slide-in drawer kanan untuk membuat task & melihat queue.
+ * v2: subscribe ke Zustand stores (SSE-realtime) ketimbang polling fetch manual.
+ */
+
 import { useState, useEffect } from 'react';
 import { X, Plus, Play, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { useTasksStore, useAgentsStore, useHealthStore, type TaskState, type AgentState } from '@/lib/client/stores';
 
 const ACCENT = '#00e5ff';
 const GOLD = '#f5a623';
@@ -13,76 +19,48 @@ const BORDER = 'rgba(240, 237, 232, 0.15)';
 const TEXT = '#f0ede8';
 const TEXT_MUTED = '#94a3b8';
 
-interface Agent {
-  id: string;
-  name: string;
-  role: string;
-  status: string;
-  color: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  agent_id: string | null;
-  status: string;
-  priority: string;
-  progress: number;
-  created_at: string;
-  agent_name: string | null;
-}
+type Agent = AgentState;
+type Task = TaskState;
 
 interface Health {
   status: string;
-  database: string;
-  version: string;
-  uptime: number;
+  worker_last_tick: string | null;
+  connected: boolean;
+  reconnectCount: number;
 }
 
 export default function TaskPanel({ isOpen, onClose, onTaskCreated }: { isOpen: boolean; onClose: () => void; onTaskCreated?: () => void }) {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [health, setHealth] = useState<Health | null>(null);
+  // Subscribe ke stores — otomatis update realtime via SSE
+  const agents = useAgentsStore(s => Object.values(s.agents));
+  const allTasks = useTasksStore(s => Object.values(s.tasks));
+  const healthStore = useHealthStore();
+  const health: Health = {
+    status: healthStore.status,
+    worker_last_tick: healthStore.worker_last_tick,
+    connected: healthStore.connected,
+    reconnectCount: healthStore.reconnectCount,
+  };
+
   const [newTask, setNewTask] = useState({ title: '', agent: 'chief', priority: 'medium' });
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
-  const fetchAgents = async () => {
-    try {
-      const res = await fetch('/api/mc/agents');
-      const data = await res.json();
-      setAgents(data.agents || []);
-    } catch (err) {
-      console.error('Failed to fetch agents:', err);
-    }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      const res = await fetch('/api/mc/tasks');
-      const data = await res.json();
-      setTasks([...(data.pending || []), ...(data.running || []), ...(data.completed || []), ...(data.failed || [])]);
-    } catch (err) {
-      console.error('Failed to fetch tasks:', err);
-    }
-  };
-
-  const fetchHealth = async () => {
-    try {
-      const res = await fetch('/api/mc/health');
-      const data = await res.json();
-      setHealth(data);
-    } catch (err) {
-      console.error('Failed to fetch health:', err);
-    }
-  };
-
+  // Snapshot bootstraps dengan sendirinya saat SSE connect;
+  // jadi kita hanya perlu menunda spinner sampai data awal masuk.
   useEffect(() => {
-    if (isOpen) {
-      Promise.all([fetchAgents(), fetchTasks(), fetchHealth()]).then(() => setLoading(false));
-    }
-  }, [isOpen]);
+    if (isOpen && agents.length > 0) setLoading(false);
+    const t = setTimeout(() => setLoading(false), 2000); // fallback
+    return () => clearTimeout(t);
+  }, [isOpen, agents.length]);
+
+  // Urut dan kelompokkan tasks
+  const statusOrder = ['running', 'queued', 'review', 'inbox', 'done', 'failed'] as const;
+  const tasks = [...allTasks].sort((a, b) => {
+    const sa = statusOrder.indexOf(a.status as any);
+    const sb = statusOrder.indexOf(b.status as any);
+    if (sa !== sb) return sa - sb;
+    return (b.created_at || '').localeCompare(a.created_at || '');
+  }).slice(0, 100); // batasi 100 task terbaru
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,15 +68,20 @@ export default function TaskPanel({ isOpen, onClose, onTaskCreated }: { isOpen: 
 
     setCreating(true);
     try {
-      const res = await fetch('/api/mc/tasks', {
+      // Dispatch via /api/mc/dispatch (shortcut yang langsung enqueue ke chief/specialist)
+      const res = await fetch('/api/mc/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTask)
+        body: JSON.stringify({
+          title: newTask.title,
+          instruction: newTask.title,
+          agent: newTask.agent,
+          priority: newTask.priority,
+        })
       });
       const data = await res.json();
       if (data.id) {
         setNewTask({ ...newTask, title: '' });
-        fetchTasks();
         onTaskCreated?.();
       }
     } catch (err) {
@@ -110,16 +93,22 @@ export default function TaskPanel({ isOpen, onClose, onTaskCreated }: { isOpen: 
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     try {
-      await fetch(`/api/mc/tasks/update?id=${taskId}&status=${newStatus}`, { method: 'PATCH' });
-      fetchTasks();
+      // Map nama status UI → internal
+      const mapped = newStatus === 'completed' ? 'done' : newStatus;
+      await fetch(`/api/mc/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: mapped }),
+      });
+      // Tidak perlu refetch manual — SSE akan mengirim event update ke store
     } catch (err) {
       console.error('Failed to update task:', err);
     }
   };
 
-  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  const pendingTasks = tasks.filter(t => t.status === 'queued' || t.status === 'inbox');
   const runningTasks = tasks.filter(t => t.status === 'running');
-  const completedTasks = tasks.filter(t => t.status === 'completed');
+  const completedTasks = tasks.filter(t => t.status === 'done' || t.status === 'review');
   const failedTasks = tasks.filter(t => t.status === 'failed');
 
   const priorityColor = (priority: string) => {
@@ -133,10 +122,14 @@ export default function TaskPanel({ isOpen, onClose, onTaskCreated }: { isOpen: 
 
   const statusColor = (status: string) => {
     switch (status) {
-      case 'pending': return GOLD;
+      case 'inbox':
+      case 'queued': return GOLD;
       case 'running': return ACCENT;
+      case 'review': return '#a855f7';
+      case 'done':
       case 'completed': return GREEN;
       case 'failed': return RED;
+      case 'cancelled': return TEXT_MUTED;
       default: return TEXT_MUTED;
     }
   };
@@ -197,8 +190,8 @@ export default function TaskPanel({ isOpen, onClose, onTaskCreated }: { isOpen: 
                 width: 10,
                 height: 10,
                 borderRadius: '50%',
-                background: health?.database === 'connected' ? GREEN : RED,
-                boxShadow: `0 0 12px ${health?.database === 'connected' ? GREEN : RED}`,
+                background: health?.connected ? GREEN : RED,
+                boxShadow: `0 0 12px ${health?.connected ? GREEN : RED}`,
               }}
             />
             <span style={{ fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: ACCENT }}>
@@ -431,10 +424,10 @@ function TaskCard({ task, priorityColor, statusColor, onStatusChange }: { task: 
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: TEXT_MUTED }}>
         <span>👤 {task.agent_name || 'Unassigned'}</span>
-        <span>🕐 {new Date(task.created_at).toLocaleString()}</span>
+        <span>🕐 {task.created_at ? new Date(task.created_at).toLocaleString() : '—'}</span>
       </div>
       <div style={{ display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${BORDER}` }}>
-        {task.status === 'pending' && (
+        {(task.status === 'queued' || task.status === 'inbox') && (
           <button
             onClick={() => onStatusChange(task.id, 'running')}
             style={{

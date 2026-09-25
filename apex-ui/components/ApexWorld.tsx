@@ -1,13 +1,17 @@
 "use client";
 
 /**
- * ApexWorld - the Apex app's CURRENT main screen, replicated for the site.
- * Layers: app-blue backdrop → clickable orb core (ring + particles, same tap
- * cycle) → ReasoningWeb (verbatim copy from the app: circuit traces, orbit
- * rings, the full asymmetric roster, ambient motes) → OrbStatusBar (equalizer
- * + STANDBY cluster at the bottom).
- * Clicking any node opens the site's AGENT OVERVIEW window template; the
- * orb's tap cycle drives the whole web (standby → processing → speaking).
+ * ApexWorld — main dashboard viewport.
+ * Layers:
+ *   1. Backdrop radial + shader waves
+ *   2. Light-cast (state-driven warna/intensitas)
+ *   3. ReasoningWeb (dengan roster live dari SSE)
+ *   4. Orb core (ApexHeroOrb) — state di-drive dari useOrbState()
+ *   5. Tap disc (manual override boost, kembali ke derived state setelah 8s)
+ *   6. Stat cards (top-right), ActivityFeed (bottom-right)
+ *   7. ApprovalBanner (di atas orb saat review pending)
+ *   8. OrbStatusBar (equalizer di bawah orb)
+ *   9. AgentOverview popups
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +19,10 @@ import ApexHeroOrb, { type OrbState } from "./ApexHeroOrb";
 import ReasoningWebJs from "./ReasoningWeb";
 import ShaderBackgroundJs from "./ShaderBackground";
 import OrbStatusBar from "./OrbStatusBar";
+import { useOrbState } from "@/lib/client/useOrbState";
+import { useReasoningWebState } from "@/lib/client/useReasoningWebState";
+import StatCards from "./StatCards";
+import ApprovalBanner from "./ApprovalBanner";
 
 export type NodeSel = { name: string; key: string; color: string };
 
@@ -180,22 +188,26 @@ export function AgentOverview({ sel, onClose }: { sel: NodeSel; onClose: () => v
 
 /* ── The world ── */
 export default function ApexWorld() {
+  // SSE diinisialisasi di AppShell layout (singleton, guard ref) — stores live saat komponen ini mount.
   const [selected, setSelected] = useState<NodeSel | null>(null);
   const [reduced, setReduced] = useState(false);
 
-  // A tap cycles idle → thinking → speaking → idle. That state drives the
-  // backdrop, the light-cast and the reasoning web's activity level.
-  const [showState, setShowState] = useState<OrbState>("idle");
-  const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const orbState: OrbState = showState;
+  // Derive orb state realtime dari stores (SSE-driven)
+  const orb = useOrbState();
+  const web = useReasoningWebState();
 
+  // Manual tap boost — sementara override state ke "speaking" selama 3 detik
+  // (feedback visual saat user klik orb), lalu kembali ke derived state.
+  const [manualBoostUntil, setManualBoostUntil] = useState<number>(0);
   const boost = () => {
-    const next: OrbState = showState === "idle" ? "thinking" : showState === "thinking" ? "speaking" : "idle";
-    setShowState(next);
-    if (showTimer.current) clearTimeout(showTimer.current);
-    showTimer.current = setTimeout(() => setShowState("idle"), 8000);
+    setManualBoostUntil(Date.now() + 3000);
   };
-  useEffect(() => () => { if (showTimer.current) clearTimeout(showTimer.current); }, []);
+
+  // Orb state final: derived dari data, di-override jika manual boost aktif
+  const derived: OrbState = orb.state;
+  const isManualBoost = Date.now() < manualBoostUntil;
+  const orbState: OrbState = isManualBoost ? 'speaking' : derived;
+  const intensity = isManualBoost ? 2 : orb.intensity;
 
   // Single entry point for opening an agent, shared by the SVG graph and the
   // hidden accessible list, so both routes behave identically.
@@ -211,34 +223,58 @@ export default function ApexWorld() {
     return () => mq.removeEventListener("change", apply);
   }, []);
 
-  // orb tap cycle → the web's activity level (same states the app streams)
-  const webState = orbState === "thinking" ? "processing" : orbState === "speaking" ? "speaking" : "standby";
+  // Map orb state → ReasoningWeb state string
+  const webState =
+    orbState === "thinking" ? "processing" :
+    orbState === "speaking" ? "speaking" :
+    orbState === "alert" ? "processing" :
+    orbState === "offline" ? "standby" :
+    "standby";
 
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", userSelect: "none" }}>
-      {/* backdrop - the app's EXACT stack (Chat.jsx dark mode): base radial page
-          gradient, waves at 0.12, the cyan breathing glow behind the orb, and the
-          dark moat disc directly behind the particle cloud that makes it pop. */}
+      {/* backdrop - state-tinted */}
       <div aria-hidden="true" style={{
         position: "absolute", inset: 0,
-        background: "radial-gradient(ellipse 95% 88% at 50% 42%, #122c43 0%, #0c1d30 38%, #07111f 72%, #050b14 100%)",
+        background:
+          orbState === "alert"
+            ? "radial-gradient(ellipse 95% 88% at 50% 42%, #2d1215 0%, #1a0d14 38%, #0a0609 72%, #050305 100%)"
+            : orbState === "offline"
+            ? "radial-gradient(ellipse 95% 88% at 50% 42%, #1a1a1f 0%, #0f0f15 38%, #07070b 72%, #030305 100%)"
+            : "radial-gradient(ellipse 95% 88% at 50% 42%, #122c43 0%, #0c1d30 38%, #07111f 72%, #050b14 100%)",
+        transition: "background 1s ease",
       }} />
 
-      {/* background waves - the app's WebGL shader at the app's opacity */}
+      {/* background waves - opacity menyesuaikan intensity */}
       {!reduced && (
-        <div aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-          <ShaderBackground opacity={0.12} voiceActive={orbState === "speaking"} gold={false} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, opacity: 0.08 + intensity * 0.04 }}>
+          <ShaderBackground
+            opacity={0.12 + intensity * 0.04}
+            voiceActive={orbState === "speaking"}
+            gold={orbState === "alert"}
+          />
         </div>
       )}
 
-      {/* cyan LIGHT-CAST - app copy exactly: mixBlendMode screen (only ever LIFTS the
-          navy, never darkens), brightens while speaking. The app has NO dark moat disc
-          in dark mode - that layer is its light-theme "reactor well" only. */}
-      <div aria-hidden="true" style={{
-        position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", mixBlendMode: "screen",
-        background: `radial-gradient(circle at 50% 42%, rgba(13,210,255,${orbState === "speaking" ? 0.30 : 0.18}) 0%, rgba(13,170,228,0.08) 30%, rgba(8,17,31,0) 62%)`,
-        transition: "background 0.6s ease",
-      }} />
+      {/* LIGHT-CAST — warna & intensitas berubah per state */}
+      {(() => {
+        const isSpeak = orbState === "speaking";
+        const isAlert = orbState === "alert";
+        const isOffline = orbState === "offline";
+        const isThinking = orbState === "thinking";
+        const baseOpacity = isOffline ? 0.06 : isAlert ? 0.22 : isSpeak ? 0.30 : isThinking ? 0.18 + intensity * 0.04 : 0.15;
+        const castColor = isAlert ? "rgba(239,68,68," : isOffline ? "rgba(148,163,184," : "rgba(13,210,255,";
+        const secondColor = isAlert ? "rgba(245,166,35," : isOffline ? "rgba(100,116,139," : "rgba(13,170,228,";
+        return (
+          <div aria-hidden="true" style={{
+            position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none", mixBlendMode: "screen",
+            background: `radial-gradient(circle at 50% 42%, ${castColor}${baseOpacity}) 0%, ${secondColor}${(baseOpacity * 0.4).toFixed(2)}) 30%, rgba(8,17,31,0) 62%)`,
+            transition: "background 0.6s ease",
+            animation: isAlert ? "orb-alert-shake 0.5s ease-in-out infinite" : "none",
+            transformOrigin: "50% 50%",
+          }} />
+        );
+      })()}
 
       {/* the reasoning web - app z-order: web (z13) sits BELOW the orb canvas (z15),
           so the bloom haze washes over the lines near the centre, exactly like the app */}
@@ -248,12 +284,19 @@ export default function ApexWorld() {
           the graph is marked decorative here and the same onSelect path is exposed
           through the equivalent list of real buttons below. */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}>
-        <ReasoningWeb
-          state={webState}
-          mode="full"
-          coreless
-          onSelect={(n: NodeSel) => { openAgent(n); }}
-        />
+        {(() => {
+          const RW: any = ReasoningWeb;
+          return (
+            <RW
+              state={webState}
+              mode="full"
+              coreless
+              roster={web.roster}
+              trace={{ n: web.pulseKey, trace: web.traceIds.map((id: string) => ({ helper: id })) }}
+              onSelect={(n: NodeSel) => { openAgent(n); }}
+            />
+          );
+        })()}
       </div>
 
       {/* Keyboard and screen-reader equivalent of the agent graph. */}
@@ -269,9 +312,24 @@ export default function ApexWorld() {
         </ul>
       </nav>
 
-      {/* the core - painted ABOVE the web (app order); display-only, the tap target
-          is the circular disc below so agent nodes near the ring stay clickable */}
-      <div style={{ position: "absolute", left: "50%", top: "50%", width: "min(560px, 58vw)", height: "min(500px, 56vw, 70vh)", transform: "translate(-50%, -50%)", zIndex: 3, pointerEvents: "none" }}>
+      {/* Approval banner (muncul saat ada task review/approval pending) */}
+      <ApprovalBanner />
+
+      {/* the core - painted ABOVE the web, dengan state-tinted filter */}
+      <div style={{
+        position: "absolute", left: "50%", top: "50%",
+        width: "min(560px, 58vw)", height: "min(500px, 56vw, 70vh)",
+        transform: "translate(-50%, -50%)",
+        zIndex: 3, pointerEvents: "none",
+        filter: orbState === "alert"
+          ? "drop-shadow(0 0 30px rgba(239,68,68,0.6))"
+          : orbState === "offline"
+          ? "saturate(0.2) brightness(0.7)"
+          : orbState === "thinking"
+          ? `drop-shadow(0 0 ${15 + intensity * 8}px rgba(0,229,255,${0.25 + intensity * 0.1}))`
+          : "none",
+        transition: "filter 1s ease",
+      }}>
         <ApexHeroOrb state={orbState} interactive={false} />
       </div>
 
@@ -290,10 +348,23 @@ export default function ApexWorld() {
         }}
       />
 
+      {/* Realtime stat cards (top-right HUD) */}
+      <StatCards />
+
       {/* equalizer + STANDBY cluster */}
       <OrbStatusBar state={orbState} />
 
       {selected && <AgentOverview sel={selected} onClose={() => setSelected(null)} />}
+
+      {/* Global keyframes untuk state-driven animasi */}
+      <style>{`
+        @keyframes orb-alert-shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-2px); }
+          50% { transform: translateX(2px); }
+          75% { transform: translateX(-1px); }
+        }
+      `}</style>
     </div>
   );
 }

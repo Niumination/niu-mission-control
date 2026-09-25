@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.niumination.missioncontrol</string>
+
+    <key>Description</key>
+    <string>Niumination Mission Control v4.0 Aether - Personal AI OS Dashboard</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/node</string>
+        <string>/opt/niu-mission-control/apex-ui/server.js</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/opt/niu-mission-control/apex-ui</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+        <key>NetworkState</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Restart after crash with exponential backoff -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/opt/niu-mission-control/logs/mission-control.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/opt/niu-mission-control/logs/mission-control.stderr.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key>
+        <string>production</string>
+        <key>PORT</key>
+        <string>3000</string>
+        <key>HOSTNAME</key>
+        <string>0.0.0.0</string>
+        <key>MC_DB_PATH</key>
+        <string>/opt/niu-mission-control/data/swarm_state.db</string>
+        <key>LOG_LEVEL</key>
+        <string>info</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>HardResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>10240</integer>
+        <key>MemoryLock</key>
+        <integer>524288</integer>
+    </dict>
+
+    <!-- For local dev path, override WorkingDirectory and ProgramArguments -->
+    <!--
+    <key>WorkingDirectory</key>
+    <string>/Users/YOU/path/to/niu-mission-control/apex-ui</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/Users/YOU/path/to/niu-mission-control/apex-ui/.next/standalone/server.js</string>
+    </array>
+    -->
+</dict>
+</plist>

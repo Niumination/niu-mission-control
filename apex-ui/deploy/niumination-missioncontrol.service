@@ -1,0 +1,54 @@
+# systemd unit — Niumination Mission Control v4.0 Aether
+# Place in /etc/systemd/system/niumination-missioncontrol.service
+# Then: systemctl daemon-reload && systemctl enable --now niumination-missioncontrol
+
+[Unit]
+Description=Niumination Mission Control v4.0 Aether - Personal AI OS Dashboard
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=niu
+Group=niu
+WorkingDirectory=/opt/niu-mission-control/apex-ui
+ExecStart=/usr/bin/node /opt/niu-mission-control/apex-ui/server.js
+# For Docker-less dev with npm start:
+# ExecStart=/usr/bin/node /opt/niu-mission-control/apex-ui/.next/standalone/server.js
+
+Restart=always
+RestartSec=10
+# Auto-restart on failure, with backoff
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Environment
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+Environment=MC_DB_PATH=/opt/niu-mission-control/data/swarm_state.db
+Environment=LOG_LEVEL=info
+# Load secrets from env file (create /opt/niu-mission-control/.env.local)
+EnvironmentFile=-/opt/niu-mission-control/.env.local
+EnvironmentFile=-/opt/niu-mission-control/apex-ui/.env.local
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=niu-mission-control
+
+# Security hardening (optional, adjust as needed)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/niu-mission-control/data /opt/niu-mission-control/logs
+
+# Resource limits
+LimitNOFILE=10240
+MemoryMax=1G
+# Restart if memory exceeds 800M (watchdog)
+# MemoryHigh=800M
+
+[Install]
+WantedBy=multi-user.target
