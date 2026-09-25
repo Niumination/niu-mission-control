@@ -113,6 +113,41 @@
 ### Security
 - Auth selalu-on, scrypt hash, session httpOnly secure sameSite strict, API key timing-safe, Zod 100%, execFile shell=false, secrets env fail-fast, CSP headers, audit immutable, WAL + foreign_keys ON + busy_timeout 5000 + transaction
 
+## Adopsi Arena + Migrasi DB — 2026-09-26
+
+Diterapkan dari `~/Downloads/mc-aether.zip` (git worktree lengkap, 15 commit sudah
+ada di lokal — update ada di working tree tak ter-commit, 66 file +3313/-965).
+
+### Added — Migrasi DB v3 → v4
+- `migrations/000_baseline_v3_to_v4.sql` — 5 `ALTER`, tidak menghapus data
+- tasks: `agent_id` → `assigned_agent`, +14 kolom lifecycle, `pending` → `inbox`
+- agents: +9 kolom, `active` → `idle`, chief adapter `hermes` → `mock`
+- cost_tracking: +6 kolom, `created_at` → `recorded_at` (v3 → `created_at_v3_legacy`)
+- dispatches: +3 kolom · system_logs: +`task_id`, +`metadata`
+- Catatan uninstall di README: install baru tanpa DB v3 harus menghapus file ini
+
+### Fixed — Dua bug yang hanya muncul dengan DB v3 asli
+- `SQLITE_ERROR: no such column: assigned_agent` — `001_initial.sql` memakai
+  `CREATE TABLE IF NOT EXISTS`, jadi statement-nya dilewati tapi `CREATE INDEX`
+  tetap jalan terhadap skema v3
+- Worker claim task lalu menggantung (`test-sse` 7/10) — chief bawaan DB v3
+  memakai adapter `hermes`, Hermes CLI tidak tersedia dan tidak ada retry.
+  Migrasi menyamakan ke `mock`, sesuai seed v4
+
+### Verified
+- Build exit 0, `Compiled successfully in 93s`, 10 route statis, 0 SQLITE_ERROR
+- `npx tsc --noEmit` 0 error · `npm run lint` 0 error
+- `scripts/test-sse.mjs` **10/10** di repo dengan DB v3 termigrasi
+- Retry/backoff terbukti: `failed (retry 1/3, backoff 2s)` → `claimed` → `completed`
+- 12 tabel, 24 index, 15 tasks + 5 agents utuh setelah migrasi
+- Backup pra-migrasi: `vault/_arsip-sensitif/mc-db-v3-20260926-023617.db`
+
+### Docs
+- `docs/STATUS.md` rewrite — M1–M11 lengkap (sebelumnya masih "M2 belum mulai")
+- `README.md` bagian migrasi DB v3→v4
+- Root `docs/registry/project-catalog.md` — stack dikoreksi dari Python/FastAPI
+  ke Next.js 15 + better-sqlite3 + SSE
+
 ## v3.0.0 — 2026-09-24
 - Next.js 15 + React 19 + R3F + APEX-UI (UI only, orb + reasoning web showcase)
 - API routes skeleton, FastAPI server.py dihapus, legacy-ui branch snapshot

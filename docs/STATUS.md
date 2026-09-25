@@ -1,9 +1,12 @@
 # Status Proyek — Milestone Tracking
 
-**Tanggal update:** 25 September 2026, sesi M1 selesai
-**Versi saat ini:** v4.0.0-dev (pasca M1 Foundation & Security)
-**Build:** ✅ Hijau (Next.js build + typecheck + lint)
-**DB Schema:** Migration 001_initial.sql terpasang otomatis saat startup
+**Tanggal update:** 26 September 2026, adopsi arena + migrasi DB v3→v4
+**Versi saat ini:** v4.0.0 Aether (M1–M11 lengkap)
+**Build:** ✅ Hijau — `npm run build` exit 0, `Compiled successfully in 93s`
+**Typecheck:** ✅ 0 error · **Lint:** ✅ 0 error
+**Test integrasi:** ✅ `scripts/test-sse.mjs` 10/10
+**DB Schema:** 12 tabel, 24 index — `migrations/000_baseline_v3_to_v4.sql` + `001_initial.sql`
+**Deploy:** ⚪ OFF — belum ada service permanen, port 5200 masih mati
 
 ---
 
@@ -11,133 +14,117 @@
 
 | # | Milestone | Status | Catatan |
 |---|---|---|---|
-| **M0** | Audit + PRD | ✅ Selesai | AUDIT_MISSION_CONTROL.md + PRD.md + 5 gambar konsep |
-| **M1** | Foundation & Security | ✅ **SELESAI (hari ini)** | Lihat detail di bawah |
-| M2 | State Machine & Dispatcher | ⏸️ Belum mulai | |
-| M3 | Event Bus & SSE | ⏸️ Belum mulai | |
-| M4 | The Living Orb | ⏸️ Belum mulai | |
-| M5 | App Shell & ⌘K Palette | ⏸️ Belum mulai | |
-| M6 | Mission Kanban Page | ⏸️ Belum mulai | |
-| M7 | Task Inspector | ⏸️ Belum mulai | |
-| M8 | Agents Page | ⏸️ Belum mulai | |
-| M9 | Observability & Analytics | ⏸️ Belum mulai | |
-| M10 | Live Ops + Approvals + Telegram | ⏸️ Belum mulai | |
-| M11 | Polish, Settings, Deploy & Docs | ⏸️ Belum mulai | |
+| **M0** | Audit + PRD | ✅ Selesai | `docs/AUDIT_MISSION_CONTROL.md` + `PRD.md` |
+| **M1** | Foundation & Security | ✅ Selesai | better-sqlite3 WAL, migration runner, Zod, scrypt auth, middleware |
+| **M2** | State Machine & Dispatcher | ✅ Selesai | `state-machine.ts`, 4 adapter, worker loop 3s, MAX_CONCURRENT 5, backoff `2^retry` max 60s |
+| **M3** | Event Bus & SSE | ✅ Selesai | `events.ts` singleton, `/api/mc/events`, `Last-Event-ID` replay, fallback polling 10s |
+| **M4** | The Living Orb | ✅ Selesai | `ApexHeroOrb.tsx` + `MiniOrbDock` + `OrbStatusBar` |
+| **M5** | AppShell & ⌘K Palette | ✅ Selesai | `components/shell/CommandPalette.tsx` |
+| **M6** | Mission Kanban | ✅ Selesai | dnd-kit 3 dependensi, route `/missions` |
+| **M7** | Agents + Live Ops | ✅ Selesai | `/agents`, `/agents/[id]`, `/live-ops` |
+| **M8** | Analytics | ✅ Selesai | `/analytics` |
+| **M9** | Audit Log | ✅ Selesai | `/audit` |
+| **M10** | Telegram | ✅ Selesai | `/api/mc/telegram/send` |
+| **M11** | Polish, Settings, Deploy & Docs | ✅ Selesai | `/settings`, Docker, backup scheduler, logger, graceful shutdown |
 
----
+Semua M1–M11 terpasang. Halaman di route group `app/(app)/` (9 halaman), bukan `app/` langsung
+seperti yang tertulis di `CHANGELOG.md`.
 
-## Detail M1 Selesai
-
-### Dependencies baru terpasang
-- `better-sqlite3` — native SQLite driver (sinkron, cepat, WAL mode)
-- `zod` — schema validation untuk semua input API
-- `zustand` — client state management (siap dipakai mulai M3)
-- `swr` — data fetching library (siap dipakai mulai M3)
-- `cmdk` — command palette (siap dipakai mulai M5)
-- `iron-session` — encrypted session cookie untuk auth
-- `bcryptjs` *(wait, kita pakai crypto.scrypt native)*
-- `tailwindcss` + `@tailwindcss/postcss` — Tailwind CSS v4 dengan design tokens
-- Dev: `@types/better-sqlite3`, `@types/bcryptjs`
-
-### File baru dibuat
-**Server core (`lib/server/`):**
-- `lib/server/db.ts` — koneksi better-sqlite3 + WAL + migration runner + seed defaults
-- `lib/server/env.ts` — environment validation (fail-fast, tanpa hardcoded secret)
-- `lib/server/schema.ts` — 12 Zod schemas untuk validasi semua input
-- `lib/server/auth.ts` — password hashing (scrypt native), session management, API key auth, audit helper
-- `lib/server/api-helpers.ts` — wrapper handler (withAuth, publicHandler), parseBody, parseQuery, ApiError class
-
-**Migrations:**
-- `migrations/001_initial.sql` — schema lengkap v4 (11 tabel + trigger + index), menggantikan `data/init.sql` v3
-
-**API routes (semua sudah direwrite tanpa `execSync python3`):**
-- `app/api/mc/health/route.ts` ✅ rewrite — rich health info (memory, queue_depth, active_agents, worker_last_tick)
-- `app/api/mc/agents/route.ts` ✅ rewrite — GET (stats join tasks) + POST (create agent)
-- `app/api/mc/tasks/route.ts` ✅ rewrite — GET (grouped/status filtered, search, pagination) + POST (dengan idempotency)
-- `app/api/mc/tasks/[id]/route.ts` ✅ BARU — GET detail+timeline+artifacts+costs, PATCH dengan **state machine validation**, DELETE=cancel
-- `app/api/mc/dispatch/route.ts` ✅ rewrite (terganti dari dua file lama) — GET list + POST create
-- `app/api/mc/telegram/send/route.ts` ✅ rewrite — async execFile, TIDAK hardcoded chat ID, baca env, fail-fast
-- **DIHAPUS:** `app/api/mc/tasks/update/route.ts` (diganti dengan `tasks/[id]/` PATCH yang RESTful)
-- `app/api/auth/[...action]/route.ts` — login endpoint
-- `app/api/auth/logout/route.ts` — logout
-- `app/api/auth/setup/route.ts` — first-run setup (generate password hash + API key + session secret, tulis .env.local)
-
-**Halaman auth:**
-- `app/login/page.tsx` — halaman login dengan Suspense boundary
-- `app/setup/page.tsx` — halaman first-run setup yang cantik
-
-**Utility scripts:**
-- `scripts/hash-password.mjs` — generate scrypt hash dari password
-- `scripts/generate-api-key.mjs` — generate API key acak
-
-**Konfigurasi:**
-- `postcss.config.mjs` — Tailwind 4
-- `next.config.mjs` — standalone output, security headers
-- `tsconfig.json` — exclude migrations/scripts, paths alias tetap
-- `app/globals.css` — design tokens (CSS variables), Tailwind import, base styles, dark mode scrollbar, focus ring, reduced-motion
-- `.env.example` — dokumentasi lengkap semua env var
-- `.gitignore` — diperbarui (mencakup .env.local, backup files, next build, dll)
-- `middleware.ts` — auth middleware yang memproteksi semua route, redirect ke /login atau /setup saat dibutuhkan
-
-### Penghapusan/pembersihan
-- ❌ `execSync('python3 ...')` dihapus dari SEMUA route
-- ❌ Chat ID Telegram hardcoded `-1004204696417` dihapus dari source
-- ❌ Hermes CLI path `/usr/local/bin/hermes` default fallback dihapus dari bridge (hanya dibaca dari env)
-- ❌ `app/api/mc/tasks/update/route.ts` lama (yang punya bug PATCH/POST mismatch) dihapus
-- ⚠️ `db_manager.py` masih ada di repo root tapi SUDAH TIDAK DIGUNAKAN oleh aplikasi. File ini tidak akan dimuat lagi dan bisa dihapus setelah M2 stabil.
-- ⚠️ `data/init.sql` lama masih ada, tapi tidak lagi dijalankan otomatis. Yang aktif sekarang adalah `apex-ui/migrations/001_initial.sql`.
-
-### Fitur otomatis
-- ✅ Migration runner otomatis saat startup (first-run: DB dibuat, table dibuat, 5 agent di-seed)
-- ✅ Mode setup: jika MC_PASSWORD_HASH dan MC_API_KEY belum ada, halaman /setup muncul otomatis
-- ✅ Auth selalu-on (tidak ada "dev mode tanpa auth")
-- ✅ Semua divalidasi Zod; error 400 konsisten
-- ✅ Audit log otomatis untuk setiap mutasi (task.create, agent.create, dll.)
-- ✅ CSP/security headers dasar
-- ✅ Password disimpan sebagai scrypt hash (bukan plaintext, bukan md5/sha)
-- ✅ API key dibandingkan dengan timing-safe comparison
-- ✅ Session cookie httpOnly + sameSite=strict + secure (di production)
-- ✅ Standalone output untuk Docker deployment
-
-### Divergensi dari PRD M1 checklist
-- [x] Setup Tailwind CSS 4 + design tokens
-- [x] Install dependencies
-- [x] Buat lib/server/db.ts (better-sqlite3) — DONE
-- [x] Buat migration runner + 001_initial.sql — DONE
-- [x] Buat Zod schemas — DONE
-- [x] Buat auth middleware + login flow — DONE
-- [x] Rewrite semua API route — DONE (health, agents, tasks, tasks/[id], dispatch, telegram/send)
-- [x] Hapus execSync python3 — DONE
-- [x] Env validation fail-fast — DONE
-- [x] Setup script (first-run generate key) — DONE (halaman /setup + /api/auth/setup)
-- [x] Update CI — CI akan ikut M11, sementara build+typecheck sudah lulus
-- [x] Basic test — struktur test di-prioritaskan M2+ karena business logic (state machine, dispatcher) yang paling butuh test; untuk route CRUD murni ditunda sampai M3 agar tidak menguji hal yang trivial di awal
-- [ ] `lib/bridge.ts` (versi TS yang lama) — file ini masih ada tapi tidak dipakai oleh route baru (hanya tinggal sebagai referensi). Akan direfactor saat M2 adapter hermes.
-
-### Cara Mencoba Sekarang
-```bash
-cd apex-ui
-npm run dev
-# Buka http://localhost:3000
-# Karena belum ada .env.local, otomatis redirect ke /setup
-# Di setup: masukkan password (min 6 char) → klik Initialize
-# .env.local terbuat otomatis, API key ditampilkan (salin dan simpan)
-# Setelah itu akan di-redirect ke halaman utama (orb akan tampil)
-# Login dengan password yang baru dibuat jika diminta
+### Route yang terpasang (verifikasi 26 Sep 2026)
+```
+app/(app)/page.tsx          app/(app)/agents/page.tsx     app/(app)/live-ops/page.tsx
+app/(app)/agents/[id]/      app/(app)/analytics/page.tsx  app/(app)/missions/page.tsx
+app/(app)/audit/page.tsx    app/(app)/settings/page.tsx
+app/login/page.tsx          app/setup/page.tsx
 ```
 
-**Perhatian:** Orb halaman utama adalah v3 yang belum terhubung ke data baru (page.tsx lama masih mem-fetch ke route yang sudah diubah, jadi ada warning di console). Ini normal dan akan diperbaiki saat M4 (The Living Orb) ketika kita refactor halaman utama untuk menggunakan API baru + SSE. Yang penting di M1 ini adalah backend layer + auth yang sudah solid.
+### API (16 endpoint)
+`/api/mc/{health,tasks,tasks/[id],agents,agents/[id],dispatch,events,metrics,settings}`
+· `/api/mc/telegram/send` · `/api/auth/{login,logout,setup}` · `/api/weather`
+
+`/api/mc/dispatches` dan `/api/mc/tasks/update` **dihapus** di v4.
 
 ---
 
-## Siap Melanjutkan ke M2
+## ⚠️ Migrasi DB v3 → v4 (26 Sep 2026)
 
-M2 (State Machine & Dispatcher) akan membangun:
-- `lib/server/state-machine.ts` — definisi transisi valid (sebagian sudah di route tasks/[id])
-- `lib/server/adapters/` — interface AgentAdapter + HermesCLIAdapter + MockAdapter
-- `lib/server/dispatcher.ts` — worker loop interval 3 detik, claim task, jalankan adapter, retry/backoff, dead-letter
-- Migrasi 002: menambah kolom yang dibutuhkan (jika ada)
-- Integration test untuk happy path + failure path
-- `lib/bridge.ts` akan dihapus atau dipindah ke dalam adapters/hermes.ts
+DB lama v3 **tidak kompatibel** dengan skema v4. `001_initial.sql` memakai
+`CREATE TABLE IF NOT EXISTS` — kalau tabel v3 sudah ada, statement itu dilewati
+tapi `CREATE INDEX` tetap jalan dan gagal:
 
-Target M2: Task yang dibuat dari API benar-benar akan dieksekusi oleh worker loop (via MockAdapter saat dev; HermesAdapter yang memanggil hermes CLI).
+```
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_agent);
+→ SqliteError: no such column: assigned_agent
+```
+
+Migrasi `000_baseline_v3_to_v4.sql` (5 `ALTER`, tidak menghapus data):
+
+| Tabel | Perubahan |
+|---|---|
+| `tasks` | `agent_id` → `assigned_agent`; +14 kolom lifecycle; `pending` → `inbox` |
+| `agents` | +9 kolom; `active` → `idle`; **chief `hermes` → `mock`** |
+| `cost_tracking` | +6 kolom; `created_at` → `recorded_at` (v3 disimpan sebagai `created_at_v3_legacy`) |
+| `dispatches` | +3 kolom |
+| `system_logs` | +`task_id`, +`metadata` |
+
+Kenapa `chief` → `mock`: seed v4 juga memakai `mock` (agar dev jalan tanpa Hermes
+CLI). DB v3 punya `hermes` untuk semua agent → worker claim task lalu menggantung
+(Hermes CLI tidak tersedia, `next_retry_at` NULL, tidak ada retry). Empat agent lain
+tetap `hermes`, sama seperti seed v4.
+
+**Backup pra-migrasi:** `~/Desktop/Niumination/vault/_arsip-sensitif/mc-db-v3-20260926-023617.db` (53248 bytes, terverifikasi identik).
+
+> ⚠️ **Install baru tanpa DB v3:** hapus `000_baseline_v3_to_v4.sql`. Statement-nya
+> `ALTER TABLE` dan akan gagal di DB kosong.
+
+---
+
+## ✅ Verifikasi 26 Sep 2026 (data v3 asli, bukan DB kosong)
+
+Test arena lulus 10/10 di DB kosong. Di DB v3 asli awalnya **7/10** — dua bug
+tidak terdeteksi tanpa data nyata:
+
+| Item | Perintah | Hasil |
+|---|---|---|
+| Build | `rm -rf .next && npm run build` | exit **0**, `Compiled successfully in 93s` |
+| SQLITE_ERROR | `grep -c SQLITE_ERROR /tmp/mc-build-full.log` | **0** |
+| Typecheck | `npx tsc --noEmit` | **0** error |
+| Lint | `npm run lint` | **0** error (warning `exhaustive-deps` saja) |
+| Test SSE | `node scripts/test-sse.mjs` | **10 passed, 0 failed** |
+| Auth matrix | 6 endpoint tanpa key | semua **401**; key salah **401** |
+| Migrasi | 12 tabel, 24 index | 15 tasks + 5 agents utuh |
+| Retry/backoff | log dispatcher | `retry 1/3, backoff 2s` → `claimed` → `completed` |
+| Secret scan | `secret-scan-staged.py` | exit **0** |
+
+Halaman statis hasil build: 10 (`/audit`, `/live-ops`, `/login`, `/missions`,
+`/settings`, `/setup`, `/agents`, `/agents/[id]`, `/analytics`, `/`).
+`BUILD_ID=6ZWvq0VpCXMMyA_FI-BBx`
+
+---
+
+## Catatan Operasional
+
+**`DB_PATH` memakai `path.resolve(cwd, '..', 'data')`** — server harus dijalankan
+dari dalam `apex-ui/`, atau set `MC_DB_PATH` eksplisit. Menjalankan
+`node .next/standalone/server.js` dari `.next/standalone/` membuat path DB salah
+dan memicu `no such table: tasks`.
+
+**`.env.local` pernah terhapus** oleh `rsync --delete` saat adopsi. Sudah
+dikembalikan, 5 kunci utuh, ter-ignore git. Tapi file ini **ikut tersimpan di
+`~/Downloads/mc-aether.zip`** beserta `MC_SESSION_SECRET` + `MC_PASSWORD_HASH`.
+
+---
+
+## Yang Belum
+
+- [ ] Service permanen (launchd/systemd) — MC belum berjalan 24/7
+- [ ] 4 agent non-chief masih adapter `hermes` — butuh Hermes CLI + kredensial
+- [ ] CI test runner (ditunda ke M11, belum di-wire)
+- [ ] `lib/bridge.ts` (versi TS lama) masih ada, belum dipakai route baru
+
+---
+
+## Git
+
+- `4cd7606` (v3) → `a051bd3` (v4 Aether + migrasi) — `services/niu-mission-control`
+- Registry root: `59e5590` — `docs/registry/project-catalog.md`
